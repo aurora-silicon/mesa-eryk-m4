@@ -267,7 +267,9 @@ try_lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    /* Without sparse binding every buffer descriptor names canonical backing,
     * even if the buffer also has a distinct capture/replay BDA. Make that
     * invariant visible to alias lowering. Raw BDA reads retain translation. */
-   desc = mark_direct_buffer_descriptor(b, desc, ctx);
+   if (ctx->stage != MESA_SHADER_FRAGMENT ||
+       desc_type == nir_descriptor_type_uniform_buffer)
+      desc = mark_direct_buffer_descriptor(b, desc, ctx);
 
    nir_def_rewrite_uses(&intrin->def, desc);
 
@@ -1081,7 +1083,8 @@ lower_load_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
       UNREACHABLE("Unknown address mode");
    }
 
-   desc = mark_direct_buffer_descriptor(b, desc, ctx);
+   if (ctx->stage != MESA_SHADER_FRAGMENT)
+      desc = mark_direct_buffer_descriptor(b, desc, ctx);
    nir_def_rewrite_uses(&intrin->def, desc);
 
    return true;
@@ -1104,6 +1107,27 @@ lower_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intr, void *_data)
    }
 }
 
+/* A reciprocal followed by multiplication by its original operand is
+ * rounding-sensitive. Removing address-control-flow can expose a different
+ * legal multiply association. Keep the established path for these shaders
+ * while extending descriptor provenance without changing reference pixels. */
+static bool
+has_reciprocal_factor(nir_scalar value, nir_scalar factor, unsigned depth)
+{
+   value = nir_scalar_chase_movs(value);
+   if (!depth || !nir_scalar_is_alu(value))
+      return false;
+   if (nir_scalar_alu_op(value) == nir_op_frcp)
+      return nir_scalar_equal(nir_scalar_chase_movs(
+                                 nir_scalar_chase_alu_src(value, 0)), factor);
+   if (nir_scalar_alu_op(value) != nir_op_fmul)
+      return false;
+   return has_reciprocal_factor(nir_scalar_chase_alu_src(value, 0), factor,
+                                depth - 1) ||
+          has_reciprocal_factor(nir_scalar_chase_alu_src(value, 1), factor,
+                                depth - 1);
+}
+
 bool
 hk_nir_lower_descriptors(nir_shader *nir, enum agx_chip chip, bool view_min,
                          bool direct_buffers,
@@ -1111,10 +1135,35 @@ hk_nir_lower_descriptors(nir_shader *nir, enum agx_chip chip, bool view_min,
                          uint32_t set_layout_count,
                          struct vk_descriptor_set_layout *const *set_layouts)
 {
+   bool reciprocal_product = false;
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      nir_foreach_function_impl(impl, nir) {
+         nir_foreach_block(block, impl) {
+            nir_foreach_instr(instr, block) {
+               if (instr->type != nir_instr_type_alu)
+                  continue;
+               nir_alu_instr *alu = nir_instr_as_alu(instr);
+               if (alu->op != nir_op_fmul)
+                  continue;
+               for (unsigned c = 0; c < alu->def.num_components; ++c) {
+                  nir_scalar a = nir_scalar_chase_movs(
+                     nir_scalar_chase_alu_src(nir_get_scalar(&alu->def, c), 0));
+                  nir_scalar b = nir_scalar_chase_movs(
+                     nir_scalar_chase_alu_src(nir_get_scalar(&alu->def, c), 1));
+                  reciprocal_product |= has_reciprocal_factor(a, b, 8) ||
+                                        has_reciprocal_factor(b, a, 8);
+               }
+            }
+         }
+      }
+   }
    struct lower_descriptors_ctx ctx = {
-      /* Static provenance is currently qualified for native compute. */
+      /* Compute descriptors and eligible fragment UBOs have qualified static
+       * provenance. Fragment SSBOs retain the runtime translation path. */
       .direct_buffers = direct_buffers && agx_chip_uses_g15_g16_shader_abi(chip) &&
-                        nir->info.stage == MESA_SHADER_COMPUTE,
+                        (nir->info.stage == MESA_SHADER_COMPUTE ||
+                         (nir->info.stage == MESA_SHADER_FRAGMENT &&
+                          !reciprocal_product)),
       .stage = nir->info.stage,
       /* Gen4 has no sampler bias field. HAL200 deliberately leaves its field
        * zero to combine biases before quantization. Gen5 retains hardware bias.

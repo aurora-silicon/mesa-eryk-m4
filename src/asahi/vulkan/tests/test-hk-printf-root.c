@@ -5,6 +5,7 @@
 
 #include "hk_cmd_buffer.h"
 #include "hk_buffer.h"
+#include "hk_descriptor_set_layout.h"
 #include "hk_shader.h"
 
 #include "nir_builder.h"
@@ -13,6 +14,55 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+static void
+check_direct_descriptor(mesa_shader_stage stage, bool storage,
+                        unsigned product, bool enabled, bool expect_direct)
+{
+   nir_builder b = nir_builder_init_simple_shader(stage, NULL, "descriptor provenance");
+   struct hk_descriptor_set_layout *layout = calloc(1, sizeof(*layout) + sizeof(layout->binding[0]));
+   layout->binding_count = 1;
+   layout->binding[0].type = storage ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+   layout->binding[0].array_size = 1;
+   layout->binding[0].stride = 16;
+   struct vk_descriptor_set_layout *sets[] = {&layout->vk};
+   nir_descriptor_type type = storage ? nir_descriptor_type_storage_buffer : nir_descriptor_type_uniform_buffer;
+   nir_def *idx = nir_vulkan_resource_index(&b, 3, 32, nir_imm_int(&b, 0),
+                                           .desc_set = 0, .binding = 0, .desc_type = type);
+   nir_def *desc = nir_load_vulkan_descriptor(&b, 4, 32, idx, .desc_type = type);
+   nir_store_global(&b, desc, nir_imm_int64(&b, 0x10000), .align_mul = 16);
+   if (product) {
+      nir_def *coord = nir_load_frag_coord(&b);
+      nir_def *w = nir_channel(&b, coord, 3);
+      nir_def *inv = nir_frcp(&b, w);
+      nir_def *chain = nir_fmul(&b, nir_fmul(&b, nir_channel(&b, coord, 0), inv), nir_imm_float(&b, 2));
+      /* Same-denominator cancellation is sensitive; an unrelated factor is not. */
+      nir_def *value = nir_fmul(&b, chain, product == 1 ? w : nir_channel(&b, coord, 2));
+      nir_store_global(&b, value, nir_imm_int64(&b, 0x10100), .align_mul = 4);
+   }
+   const struct vk_pipeline_robustness_state rs = {
+      .storage_buffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT,
+      .uniform_buffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT,
+      .vertex_inputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT,
+      .images = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DISABLED_EXT,
+   };
+   assert(hk_nir_lower_descriptors(b.shader, AGX_CHIP_G15S, false, enabled, &rs, 1, sets));
+   bool marked = false;
+   nir_foreach_block(block, b.impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_alu) continue;
+         nir_alu_instr *alu = nir_instr_as_alu(instr);
+         if (alu->op != nir_op_ior || alu->def.bit_size != 64) continue;
+         for (unsigned i = 0; i < 2; ++i)
+            marked |= nir_src_is_const(alu->src[i].src) &&
+                      nir_src_as_uint(alu->src[i].src) == HK_BUFFER_ADDRESS_DIRECT_BIT;
+      }
+   }
+   assert(marked == expect_direct);
+   nir_validate_shader(b.shader, "descriptor provenance boundary");
+   ralloc_free(b.shader); free(layout);
+}
 
 static bool
 source_is_constant(nir_src src, uint64_t expected)
@@ -32,6 +82,13 @@ source_is_constant(nir_src src, uint64_t expected)
 int
 main(void)
 {
+   check_direct_descriptor(MESA_SHADER_COMPUTE, false, 0, true, true);
+   check_direct_descriptor(MESA_SHADER_COMPUTE, true, 0, true, true);
+   check_direct_descriptor(MESA_SHADER_FRAGMENT, false, 0, true, true);
+   check_direct_descriptor(MESA_SHADER_FRAGMENT, false, 1, true, false);
+   check_direct_descriptor(MESA_SHADER_FRAGMENT, false, 2, true, true);
+   check_direct_descriptor(MESA_SHADER_FRAGMENT, true, 0, true, false);
+   check_direct_descriptor(MESA_SHADER_FRAGMENT, false, 0, false, false);
    assert(hk_buffer_addr_format(
              VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT, false) ==
           nir_address_format_64bit_global_32bit_offset);
@@ -57,7 +114,7 @@ main(void)
       .vertex_inputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT,
       .images = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DISABLED_EXT,
    };
-   assert(hk_nir_lower_descriptors(b.shader, AGX_CHIP_G15S, false, &robustness, 0, NULL));
+   assert(hk_nir_lower_descriptors(b.shader, AGX_CHIP_G15S, false, false, &robustness, 0, NULL));
 
    /* Reproduce an assertion inserted by texture lowering after the first
     * descriptor pass. The late driver-sysval pass must resolve it too. */
