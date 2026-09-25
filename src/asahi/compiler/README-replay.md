@@ -7,6 +7,10 @@ and a versioned manifest. Successful compilations publish nothing by default. Se
 `AGX_COMPILER_CAPTURE_SUCCESS=fragment` to retain successful fragment inputs;
 optionally set `AGX_COMPILER_CAPTURE_BINARY_HASH=12345678,abcdef01` to select
 executables by the eight-digit lowercase hash reported by HK_M4_SHADER_PROFILE.
+To retain the same source before and after a transform, use
+`AGX_COMPILER_CAPTURE_SOURCE_HASH` with the 64-digit source BLAKE3 printed by
+NIR shader bisection. Unlike the executable hash, this survives code-generation
+changes; both filters may be combined. This only filters successful captures.
 This filters diagnostic publication only; failures remain eligible and the
 32-bundle quota still applies. Normal rendering leaves these options unset. Capturing does not change rejection behavior.
 

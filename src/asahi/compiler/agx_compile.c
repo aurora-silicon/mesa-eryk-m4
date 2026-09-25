@@ -7251,6 +7251,12 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
     * before the large shader being profiled is compiled. Failures are still
     * captured regardless of this successful-capture filter. */
    if (save_success) {
+      const char *source_hash = getenv("AGX_COMPILER_CAPTURE_SOURCE_HASH");
+      if (source_hash) {
+         char hex[65];
+         _mesa_blake3_format(hex, nir->info.source_blake3);
+         save_success = !strcmp(hex, source_hash);
+      }
       unsigned minimum = debug_get_num_option("AGX_COMPILER_CAPTURE_MIN_INSTRUCTIONS", 0);
       unsigned instructions = 0;
       if (minimum) {
@@ -7258,7 +7264,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
             nir_foreach_block(block, impl)
                nir_foreach_instr(instr, block)
                   ++instructions;
-         save_success = instructions >= minimum;
+         save_success &= instructions >= minimum;
       }
    }
    struct blob input;
