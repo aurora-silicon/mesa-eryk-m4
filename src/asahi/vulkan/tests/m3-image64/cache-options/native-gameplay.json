@@ -1,0 +1,69 @@
+{
+  "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+  "mesa_sha256": {
+    "libvulkan_asahi.so": "17b613cabb1a7948e2a2e7b9522ab2a4a395a050070b97f7b029e0b16bc70f53"
+  },
+  "kernel": {
+    "release": "7.1.9-dirtyroom-asahi1+",
+    "module_sha256": "4cb9731c612cef37201ee3839c8c3868f7c76a52decaaed2fb536e3930191fff"
+  },
+  "boot_id": "eebd1f68-2e92-4f8b-b745-d8dcfe9fce78",
+  "success": true,
+  "measured_frames": 30,
+  "watchdog_verified": true,
+  "thermal_guard_passed": true,
+  "correctness": "pass",
+  "review": {
+    "static_menu": false,
+    "static_menu_reason": "",
+    "images_sha256": {
+      "results/satisfactory-vulkan-gameplay/m3/20260925T145613857273Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png": "1a64611e848924792e7164342f9924b1ec4be34ee9fa4fd2dbbe49472e9136ef",
+      "results/satisfactory-vulkan-gameplay/m3/20260925T145613857273Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png": "802f526f45721b0e056ca37e9660ac29d8782caa1e7f8df8f09eb2fbb118fadf",
+      "results/satisfactory-vulkan-gameplay/m3/20260925T145613857273Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png": "c75befe394b46696118a81605b379606a69ee14b110e0f74b3a09bbecf2e3c33"
+    },
+    "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+    "limitation": "Adapted native Vulkan capture disables depth-bounds AO and distance/height-field shadows; not unmodified game qualification. This explicitly supersedes the old buggy vertex-input reference, whose comparison is retained in provenance/satisfactory-image64-20260925/native-gameplay-old-reference-comparison.json.",
+    "origin": "results/satisfactory-vulkan-gameplay/m4/20260925T142209177101Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+    "reference_sha256": "2debf1cbfdd4a3b097c39365eee673ffcbb8f3c01718e38ee3c2ca7000358fdf",
+    "comparisons": [
+      {
+        "maximum_error": 0,
+        "mean_absolute_error": 0.0,
+        "changed_pixels_fraction": 0.0,
+        "out_of_tolerance_fraction": 0.0
+      },
+      {
+        "maximum_error": 0,
+        "mean_absolute_error": 0.0,
+        "changed_pixels_fraction": 0.0,
+        "out_of_tolerance_fraction": 0.0
+      },
+      {
+        "maximum_error": 0,
+        "mean_absolute_error": 0.0,
+        "changed_pixels_fraction": 0.0,
+        "out_of_tolerance_fraction": 0.0
+      }
+    ],
+    "tolerance": 0,
+    "edge_max": 0,
+    "edge_fraction": 0,
+    "tolerance_reason": "",
+    "channels": "RGB"
+  },
+  "memory_before_kib": {
+    "MemTotal": 18026736,
+    "MemAvailable": 14102944,
+    "SwapTotal": 0,
+    "SwapFree": 0,
+    "Shmem": 1024960
+  },
+  "memory_after_kib": {
+    "MemTotal": 18026736,
+    "MemAvailable": 14104832,
+    "SwapTotal": 0,
+    "SwapFree": 0,
+    "Shmem": 1025072
+  },
+  "scope": "Adapted captured native Vulkan gameplay, screenshot-inclusive correctness only; not unmodified game or benchmark timing"
+}

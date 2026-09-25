@@ -11,3 +11,5 @@ Before: all three settings yield identical UUIDs on M3 (driver 764f636a1b401eed2
 Rendering regression: the retained indirect Satisfactory shadow draw completes on both GPUs; their depth readbacks are byte-identical, have 72 covered pixels, and match lavapipe coverage with maximum depth error 2.4281689547933638e-08. Game assets remain in the local private benchmark repository. The M4 outer report expected the wrong text marker ('nonzero') and reports missing_success_evidence; its guarded child exited zero with DRAW_COMPLETED, and the independent depth comparison supplies the actual validation. No raw guard record was rewritten.
 
 This change fixes cache identity. It does not claim to resolve the outstanding temporal DX12 image differences.
+
+Final original-capture regression: M3 completed all 30 measured native Vulkan gameplay frames with this cache fix and the VM retirement fix. All three saved 4K RGB images remain exactly equal to the corrected M4 baseline (zero channel tolerance). Native capture depth-bounds/shadow adaptations remain; see native-gameplay.json. RAM returned to baseline and Plasma remained active.
