@@ -33,7 +33,9 @@ libasahi_agx_files = files(
   'agx3_isel_core.c',
   'agx3_iadd_core.c',
   'agx3_pack_binary.c',
+  'agx3_g15g_stalls.c',
   'agx3_compose/agx3_compose.c',
+  'agx3_compose/agx3_decompose.c',
   'agx3_compose/agx3b_tables.c',
   'agx3_compose/agx3c_tables.c',
   'agx3_binder.c',
@@ -181,6 +183,25 @@ if with_tests
         'agx3_compose/agx3b_tables.c',
         'agx3_compose/agx3c_tables.c',
         'test/test-agx3-atomic-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_g15g_stalls',
+    executable(
+      'agx3_g15g_stalls_test',
+      files(
+        'agx3_g15g_stalls.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3_decompose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'test/test-agx3-g15g-stalls.c',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',

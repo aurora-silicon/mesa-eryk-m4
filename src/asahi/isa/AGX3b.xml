@@ -2,7 +2,8 @@
   AGX3b.xml : Apple G15 (M3) / G16 (M4) native GPU instruction set,
   encoding group A3-b == Apple encoder GPU variant 0.
   Applies to: applegpu_g15s, g15d, g16g, g16p, g16s, g17p, and
-  (with G15G-only 2-byte `06 xx` scheduling stalls inserted) g15g.
+  (with G15G-only 8-byte scheduling stalls `06 xx 06 00 06 00 06 00`
+  inserted, see compiler/README-g15g-scheduling-stalls.md) g15g.
 
   Transcribed mechanically from the llvm::AGX3 packed encoder tables
   inside Apple's MetalToolchain libapplegpu-nt.dylib.  See

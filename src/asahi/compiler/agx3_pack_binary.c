@@ -35,6 +35,7 @@
 #include "agx3_falu_mod_core.h"
 #include "agx3_fltnorm_core.h"
 #include "agx3_funop_core.h"
+#include "agx3_g15g_stalls.h"
 #include "agx3_iadd_core.h"
 #include "agx3_isel_core.h"
 #include "agx3_local_tps_core.h"
@@ -56,6 +57,7 @@
 #include "agx_debug.h"
 
 #include <limits.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -4431,8 +4433,8 @@ agx3_post_ra_hint(agx_index index)
           index.cache ? AGX3_ALU_HINT_CACHE : AGX3_ALU_HINT_NONE;
 }
 
-bool
-agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
+static bool
+agx3_pack_binary_unscheduled(agx_context *ctx, struct util_dynarray *emission)
 {
    const enum agx_isa_encoding enc = ctx->key->dev.encoding;
    const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
@@ -7798,4 +7800,62 @@ fail:
    emission->size = initial_size;
    util_dynarray_fini(&fixups);
    return false;
+}
+
+/*
+ * G15G (M3 base) needs Apple's scheduling stalls in front of every consumer
+ * of an outstanding register-file producer; see agx3_g15g_stalls.h and
+ * README-g15g-scheduling-stalls.md. The pass rewrites the finished part as
+ * bytes, so every emitter above -- including the hand-assembled EOT
+ * programs -- is covered, and it recomputes each b/bn displacement over the
+ * padded stream. Offsets recorded into the shader info are remapped.
+ */
+static bool
+agx3_apply_scheduling_stalls(agx_context *ctx, struct util_dynarray *emission,
+                             unsigned initial_size)
+{
+   const size_t size = emission->size - initial_size;
+   uint32_t *map = calloc(size / 2 + 1, sizeof(*map));
+   uint8_t *code = NULL;
+   size_t code_size = 0;
+   const int stalls = map ?
+      agx3_g15g_insert_stalls((const uint8_t *)emission->data + initial_size,
+                              size, &code, &code_size, map) : -1;
+   if (stalls < 0) {
+      fprintf(stderr, "agx3: G15G scheduling-stall pass could not decode "
+                      "the emitted shader; refusing it\n");
+      free(map);
+      emission->size = initial_size;
+      return false;
+   }
+
+   if (ctx->agx3_colour_link.entry_emitted) {
+      const uint32_t entry = ctx->agx3_colour_link.entry_offset;
+      if ((entry & 1) || entry > size) {
+         free(code);
+         free(map);
+         emission->size = initial_size;
+         return false;
+      }
+      ctx->agx3_colour_link.entry_offset = map[entry / 2];
+   }
+
+   emission->size = initial_size;
+   memcpy(util_dynarray_grow_bytes(emission, 1, code_size), code, code_size);
+   free(code);
+   free(map);
+   return true;
+}
+
+bool
+agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
+{
+   const unsigned initial_size = emission->size;
+   if (!agx3_pack_binary_unscheduled(ctx, emission))
+      return false;
+
+   if (!ctx->key->dev.scheduling_stalls)
+      return true;
+
+   return agx3_apply_scheduling_stalls(ctx, emission, initial_size);
 }
