@@ -1291,6 +1291,13 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
       native_schedule |= agx_native_select_uniforms_enabled() << 8;
    }
    _mesa_blake3_update(&blake3_ctx, &native_schedule, sizeof(native_schedule));
+   /* G15G scheduling stalls are a code-generation switch that
+    * ASAHI_G15G_UNSCHEDULED can turn off at runtime; keep the two kinds of
+    * binaries in separate caches so an A/B run never reuses the other. */
+   const uint8_t scheduling_stalls =
+      agx_gather_device_key(&pdev->dev).scheduling_stalls;
+   _mesa_blake3_update(&blake3_ctx, &scheduling_stalls,
+                       sizeof(scheduling_stalls));
 
    /* Driconf and HK_PERFTEST affect shader lowering (notably custom borders).
     * They must partition imported binaries and the on-disk shader cache too.
