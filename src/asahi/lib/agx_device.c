@@ -775,10 +775,11 @@ agx_open_device(void *memctx, struct agx_device *dev)
     * published by the M3 runtime's J613 board record. Exact identity only.
     *
     * UNMEASURED: no Mesa-generated command stream or shader has executed on
-    * a G15G yet. Apple's compiler pads G15G code with standalone 2-byte
-    * scheduling stalls (agx_chip_needs_scheduling_stalls) and this compiler
-    * does not emit them, so shader results may be wrong or the GPU may hang.
-    * Admission therefore needs a second, G15G-specific acknowledgement. */
+    * a G15G yet. Apple's compiler pads G15G code with 8-byte scheduling
+    * stalls; the compiler now reproduces Apple's placement byte-for-byte on
+    * its corpus (agx3_g15g_stalls.c, README-g15g-scheduling-stalls.md), so
+    * admission needs only the M3 opt-in. ASAHI_G15G_UNSCHEDULED=1 disables
+    * the stall pass for A/B diagnosis. */
    const bool m3_g15g_identity = dev->chip == AGX_CHIP_G15G &&
       dev->params.chip_id == 0x8122 && dev->params.num_dies == 1 &&
       dev->params.num_clusters_total == 1 &&
@@ -787,17 +788,22 @@ agx_open_device(void *memctx, struct agx_device *dev)
       dev->params.usc_generation == 3 &&
       dev->params.gpu_hal_generation == DRM_ASAHI_GPU_HAL_LEGACY;
    const bool m3_g15g_experimental = m3_g15g_identity &&
-      debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false) &&
+      debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false);
+   dev->g15g_unscheduled = m3_g15g_experimental &&
       debug_get_bool_option("ASAHI_G15G_UNSCHEDULED", false);
    if (m3_g15g_identity && !m3_g15g_experimental) {
       fprintf(stderr,
               "Apple G15G (T8122) is recognised but not admitted: set "
-              "ASAHI_M3_EXPERIMENTAL=1 and ASAHI_G15G_UNSCHEDULED=1 to run "
-              "without the G15G scheduling-stall pass (UNMEASURED)\n");
+              "ASAHI_M3_EXPERIMENTAL=1 to run it (UNMEASURED on hardware)\n");
+   } else if (dev->g15g_unscheduled) {
+      fprintf(stderr,
+              "WARNING: experimental G15G/T8122 admission with "
+              "ASAHI_G15G_UNSCHEDULED=1: shaders are emitted WITHOUT G15G "
+              "scheduling stalls (UNMEASURED)\n");
    } else if (m3_g15g_experimental) {
       fprintf(stderr,
-              "WARNING: experimental G15G/T8122 admission; shaders are "
-              "emitted without G15G scheduling stalls (UNMEASURED)\n");
+              "WARNING: experimental G15G/T8122 admission; shaders carry "
+              "Apple-placed G15G scheduling stalls (UNMEASURED on hardware)\n");
    }
    if (!m3_experimental && !m3_g15g_experimental && !m4_experimental &&
        !agx_params_driver_supported(&dev->params)) {
@@ -1672,6 +1678,7 @@ agx_gather_device_key(struct agx_device *dev)
       .encoding = agx_chip_isa_encoding(dev->chip),
       .needs_g13x_coherency = u_tristate_make(g13x_coh),
       .soft_fault = agx_has_soft_fault(dev),
-      .scheduling_stalls = agx_chip_needs_scheduling_stalls(dev->chip),
+      .scheduling_stalls = agx_chip_needs_scheduling_stalls(dev->chip) &&
+                           !dev->g15g_unscheduled,
    };
 }
