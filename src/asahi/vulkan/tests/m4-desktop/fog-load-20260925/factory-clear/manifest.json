@@ -1,0 +1,71 @@
+{
+  "float_controls2": false,
+  "exact_fragment_spirv": false,
+  "barycentric": false,
+  "interlock": null,
+  "instances": 1,
+  "sample_shading": false,
+  "format": "rgba8",
+  "samples": 1,
+  "rgba": [
+    32,
+    32,
+    32,
+    0
+  ],
+  "right_rgba": null,
+  "occlusion_query": false,
+  "transform_feedback": false,
+  "transform_feedback_resume": false,
+  "rasterizer_discard": false,
+  "discard_load": false,
+  "discard_store_diagnostic": false,
+  "allow_unadvertised_samples": false,
+  "host_compile_only": false,
+  "record_command_buffer": false,
+  "front_face": "ccw",
+  "indexed": false,
+  "extent": [
+    32,
+    32
+  ],
+  "geometry": false,
+  "storage_stage": null,
+  "reference_host": false,
+  "fixture_sha256": "d9948e46fcd1efff8070505d8df6a9111492099b78772c1d994f6a74643360bc",
+  "commands": [
+    [
+      "glslangValidator",
+      "-V",
+      "--target-env",
+      "vulkan1.1",
+      "--vn",
+      "g17p_wsi_triangle_frag_spv",
+      "-o",
+      "/home/council/dev/dirtyroom_m4/_provenance/satisfactory-20260925/fog-load-oracles/factory-clear/g17p_wsi_triangle_frag.h",
+      "/home/council/dev/dirtyroom_m4/_provenance/satisfactory-20260925/fog-load-oracles/factory-clear/probe.frag"
+    ],
+    [
+      "clang",
+      "--target=aarch64-linux-gnu",
+      "--sysroot=/home/council/omarchy/graphics-build/sysroot",
+      "--gcc-install-dir=/home/council/omarchy/graphics-build/sysroot/usr/lib/gcc/aarch64-unknown-linux-gnu/16.1.1",
+      "-fuse-ld=lld",
+      "-DTEST_DEVICE_ID=0x8132",
+      "-DG17P_MSAA_SAMPLES=1",
+      "-I/home/council/dev/dirtyroom_m4/mesa/m3m4-merged/src/asahi/vulkan/tests",
+      "/home/council/dev/dirtyroom_m4/_provenance/satisfactory-20260925/fog-load-oracles/factory-clear/probe.c",
+      "-o",
+      "/home/council/dev/dirtyroom_m4/_provenance/satisfactory-20260925/fog-load-oracles/factory-clear/probe-arm64",
+      "-ldl"
+    ]
+  ],
+  "sha256": {
+    "probe.frag": "3e6038270e7c617c76fbae7d09710f4b2425064cdba3ba11bf56dc4601234028",
+    "probe.c": "99c411e08ef708e90bbbcfb9abe12f7a293949b204744de4f533c95fc97890da",
+    "build.log": "b85f5ff702a9b4af998b5d5eedb96a64ed34b7a5a00a483f9e03d4378c53a5f4",
+    "g17p_wsi_triangle_frag.h": "4d9139987c5d012bd1fd0afe0b6f36eec34ea5c73e6bd6dd09db6bfea98e990b",
+    "probe-arm64": "bce49a16f2f84fb779370be942cd3e2c4dbc247f5314d7824c870b92b79055e3"
+  },
+  "limitation": "Adapted diagnostic fixture; not an application capture or hardware qualification."
+}

@@ -23,6 +23,7 @@ struct hk_instance {
    bool fake_minmax;
    bool image_view_min_lod;
    bool vertex_stores;
+   bool dont_care_as_load;
 };
 
 VK_DEFINE_HANDLE_CASTS(hk_instance, vk.base, VkInstance,

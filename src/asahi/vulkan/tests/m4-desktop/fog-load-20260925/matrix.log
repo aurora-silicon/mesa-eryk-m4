@@ -1,0 +1,13 @@
+CASE default-load
+g17p-offscreen-triangle: device Apple M4 (G16G B0), queue 0
+g17p-offscreen-triangle: retired 1 submissions
+g17p-offscreen-triangle: PASS — 32x32 RGBA8, checksum 64c262ddb526c325
+CASE factory-discard
+g17p-offscreen-triangle: device Apple M4 (G16G B0), queue 0
+g17p-offscreen-triangle: retired 1 submissions
+g17p-offscreen-triangle: PASS — 32x32 RGBA8, checksum 64c262ddb526c325
+CASE factory-clear
+g17p-offscreen-triangle: device Apple M4 (G16G B0), queue 0
+g17p-offscreen-triangle: retired 1 submissions
+g17p-offscreen-triangle: PASS — 32x32 RGBA8, checksum 5574b2761efb6325
+FOG_LOAD_MATRIX_PASS

@@ -38,6 +38,7 @@
 #include "hk_g17p_draw_state_upload.h"
 #include "hk_agx3_vdm_decode.h"
 #include "hk_physical_device.h"
+#include "hk_instance.h"
 #include "hk_private.h"
 #include "hk_shader.h"
 #include "hk_sampler.h"
@@ -1000,6 +1001,38 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_rendering_state *render = &cmd->state.gfx.render;
+
+   /* Some applications blend with existing contents after asking to discard
+    * them. Use Mesa's opt-in tiler compatibility workaround, preserving CLEAR
+    * and NONE semantics and leaving the application's structures untouched.
+    * Render-pass emulation also reaches this dynamic-rendering entry point.
+    */
+   VkRenderingInfo load_info;
+   VkRenderingAttachmentInfo load_color[HK_MAX_RTS], load_depth, load_stencil;
+   if (unlikely(hk_physical_device_instance(hk_device_physical(dev))
+                   ->dont_care_as_load)) {
+      load_info = *pRenderingInfo;
+      assert(load_info.colorAttachmentCount <= HK_MAX_RTS);
+      for (unsigned i = 0; i < load_info.colorAttachmentCount; ++i) {
+         load_color[i] = pRenderingInfo->pColorAttachments[i];
+         if (load_color[i].loadOp == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+            load_color[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      }
+      load_info.pColorAttachments = load_color;
+      if (pRenderingInfo->pDepthAttachment) {
+         load_depth = *pRenderingInfo->pDepthAttachment;
+         if (load_depth.loadOp == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+            load_depth.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+         load_info.pDepthAttachment = &load_depth;
+      }
+      if (pRenderingInfo->pStencilAttachment) {
+         load_stencil = *pRenderingInfo->pStencilAttachment;
+         if (load_stencil.loadOp == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+            load_stencil.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+         load_info.pStencilAttachment = &load_stencil;
+      }
+      pRenderingInfo = &load_info;
+   }
 
    memset(render, 0, sizeof(*render));
 

@@ -1,0 +1,97 @@
+{
+  "snapshot_renderpass": 50065,
+  "original_matching_calls": [
+    {
+      "index": 551177,
+      "function": {
+        "name": "vkCreateRenderPass2KHR",
+        "thread": 21,
+        "return": "VK_SUCCESS",
+        "args": {
+          "device": 23,
+          "pCreateInfo": {
+            "sType": "VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2",
+            "flags": "0x00000000",
+            "attachmentCount": 2,
+            "pAttachments": [
+              {
+                "sType": "VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2",
+                "flags": "0x00000000",
+                "format": "VK_FORMAT_R16G16B16A16_SFLOAT",
+                "samples": "VK_SAMPLE_COUNT_1_BIT",
+                "loadOp": "VK_ATTACHMENT_LOAD_OP_DONT_CARE",
+                "storeOp": "VK_ATTACHMENT_STORE_OP_STORE",
+                "stencilLoadOp": "VK_ATTACHMENT_LOAD_OP_DONT_CARE",
+                "stencilStoreOp": "VK_ATTACHMENT_STORE_OP_DONT_CARE",
+                "initialLayout": "VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL",
+                "finalLayout": "VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL",
+                "pNext": null
+              },
+              {
+                "sType": "VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2",
+                "flags": "0x00000000",
+                "format": "VK_FORMAT_D32_SFLOAT_S8_UINT",
+                "samples": "VK_SAMPLE_COUNT_1_BIT",
+                "loadOp": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                "storeOp": "VK_ATTACHMENT_STORE_OP_STORE",
+                "stencilLoadOp": "VK_ATTACHMENT_LOAD_OP_LOAD",
+                "stencilStoreOp": "VK_ATTACHMENT_STORE_OP_STORE",
+                "initialLayout": "VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL",
+                "finalLayout": "VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL",
+                "pNext": {
+                  "sType": "VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT",
+                  "stencilInitialLayout": "VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL",
+                  "stencilFinalLayout": "VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL",
+                  "pNext": null
+                }
+              }
+            ],
+            "subpassCount": 1,
+            "pSubpasses": [
+              {
+                "sType": "VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2",
+                "flags": "0x00000000",
+                "pipelineBindPoint": "VK_PIPELINE_BIND_POINT_GRAPHICS",
+                "viewMask": 0,
+                "inputAttachmentCount": 0,
+                "pInputAttachments": null,
+                "colorAttachmentCount": 1,
+                "pColorAttachments": [
+                  {
+                    "sType": "VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2",
+                    "attachment": 0,
+                    "layout": "VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL",
+                    "aspectMask": "0x00000000",
+                    "pNext": null
+                  }
+                ],
+                "pResolveAttachments": null,
+                "pDepthStencilAttachment": {
+                  "sType": "VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2",
+                  "attachment": 1,
+                  "layout": "VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL",
+                  "aspectMask": "0x00000000",
+                  "pNext": {
+                    "sType": "VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT",
+                    "stencilLayout": "VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL",
+                    "pNext": null
+                  }
+                },
+                "preserveAttachmentCount": 0,
+                "pPreserveAttachments": null,
+                "pNext": null
+              }
+            ],
+            "dependencyCount": 0,
+            "pDependencies": null,
+            "correlatedViewMaskCount": 0,
+            "pCorrelatedViewMasks": null,
+            "pNext": null
+          },
+          "pAllocator": null,
+          "pRenderPass": 50065
+        }
+      }
+    }
+  ]
+}
