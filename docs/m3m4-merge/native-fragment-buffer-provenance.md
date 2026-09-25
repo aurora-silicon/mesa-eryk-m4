@@ -62,3 +62,12 @@ controlled measurement of the optimization. The stated completed-frame times
 and exact image checks remain observations from those runs. Normal-boot,
 matched measurements are required before quoting an M3 speedup. M4's runs
 were not changed by this M3-only diagnostic boot.
+
+
+Matched normal-boot qualification subsequently gave 9.501662592 seconds
+(3.1573 FPS) for the prior compiler and 7.563313765 seconds (3.9665 FPS) for
+fragment UBO/SSBO provenance, each the median of three complete 30-frame runs.
+That is a 25.63% M3 speedup. Both sets used module
+`4402c97997564589654344b0217acf1aadb36fb18d7c671e2bdc1dc30d985f94`,
+only `m3_early_tiling=1` and `m3_render_batch_size=16`, and exact RGB checks.
+The benchmark now includes actual module-load options in its kernel identity.

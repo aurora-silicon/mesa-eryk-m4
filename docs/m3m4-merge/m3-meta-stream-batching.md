@@ -49,3 +49,9 @@ An isolated build containing this fix and compute GCM without value numbering
 matched Satisfactory's three RGB references exactly on M3. That motion experiment
 had no measured benefit and is not enabled. A separate compute constant-program
 experiment changed later images and was rejected. Neither supplies a new score.
+
+## Later native visibility qualification
+
+The original visibility limitation above is superseded for G15S by
+[native M3 compute visibility](native-m3-compute-visibility.md). Complete
+attachment ledgers and timestamp/reset boundaries remain required.

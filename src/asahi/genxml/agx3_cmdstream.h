@@ -89,9 +89,10 @@ struct agx3_cdm_barrier_info {
    /* G17 Gen7 drives bits 12, 11, 10 and 1 from flags 0..3.  Earlier
     * inspected emitters expose only canonical flag sets 0 and 0b0101. */
    uint8_t flags;
-   /* G16G CommandEncodingNext::encodeBarrier, nonzero visibility enum.
-    * Native 0x2f01f8..0x2f0238 emits 0x600201fe / 0x600215fe instead of
-    * 0x60000160 / 0x60001560. Other identities remain unqualified. */
+   /* G15S and G16G CommandEncodingNext::encodeBarrier, nonzero visibility.
+    * G15X_M1 0x2aa7a8..0x2aa7bc and G16G 0x2f01f8..0x2f0238 emit
+    * 0x600201fe / 0x600215fe instead of 0x60000160 / 0x60001560.
+    * Other identities remain unqualified. */
    bool wide_visibility;
 };
 
@@ -607,7 +608,8 @@ agx3_cdm_barrier_pack(const struct agx3_cdm_barrier_info *info,
 
    memset(packed, 0, AGX3_CDM_BARRIER_SIZE);
    if (!info || !agx3_cdm_barrier_flags_grounded(info->chip, info->flags) ||
-       (info->wide_visibility && info->chip != AGX_CHIP_G16G))
+       (info->wide_visibility && info->chip != AGX_CHIP_G16G &&
+        info->chip != AGX_CHIP_G15S))
       return false;
 
    agx3_cmdstream_store_le32(packed, agx3_cdm_barrier_word(info->flags) |
@@ -630,7 +632,7 @@ agx3_cdm_barrier_unpack(enum agx_chip chip, const void *packed,
    uint32_t word = agx3_cmdstream_load_le32((const uint8_t *)packed);
    const bool wide_visibility = (word & UINT32_C(0x20000)) != 0;
    if (wide_visibility) {
-      if (chip != AGX_CHIP_G16G ||
+      if ((chip != AGX_CHIP_G16G && chip != AGX_CHIP_G15S) ||
           (word != UINT32_C(0x600201fe) && word != UINT32_C(0x600215fe)))
          return false;
       word &= ~UINT32_C(0x2009e);
