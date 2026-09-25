@@ -1427,7 +1427,7 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
                debug_get_bool_option("HK_M4_COMPUTE_EARLY_TILING", false);
             const bool early_tiling = dev->dev.chip == AGX_CHIP_G16G ?
                debug_get_bool_option("HK_M4_EARLY_TILING", true) :
-               (dev->dev.chip == AGX_CHIP_G15S &&
+               (agx_chip_is_m3_runtime(dev->dev.chip) &&
                 debug_get_bool_option("HK_M3_EARLY_TILING", false));
             if (early_tiling &&
                 (dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY) &&

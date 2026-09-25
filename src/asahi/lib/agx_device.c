@@ -771,7 +771,36 @@ agx_open_device(void *memctx, struct agx_device *dev)
       dev->params.num_clusters_total == 2 && dev->params.usc_generation == 3 &&
       dev->params.gpu_hal_generation == 0 &&
       debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false);
-   if (!m3_experimental && !m4_experimental && !agx_params_driver_supported(&dev->params)) {
+   /* J613 (MacBook Air M3): T8122 / G15G C0, one cluster of ten cores, as
+    * published by the M3 runtime's J613 board record. Exact identity only.
+    *
+    * UNMEASURED: no Mesa-generated command stream or shader has executed on
+    * a G15G yet. Apple's compiler pads G15G code with standalone 2-byte
+    * scheduling stalls (agx_chip_needs_scheduling_stalls) and this compiler
+    * does not emit them, so shader results may be wrong or the GPU may hang.
+    * Admission therefore needs a second, G15G-specific acknowledgement. */
+   const bool m3_g15g_identity = dev->chip == AGX_CHIP_G15G &&
+      dev->params.chip_id == 0x8122 && dev->params.num_dies == 1 &&
+      dev->params.num_clusters_total == 1 &&
+      dev->params.num_cores_per_cluster == 10 &&
+      dev->params.core_masks[0] == 0x3ff &&
+      dev->params.usc_generation == 3 &&
+      dev->params.gpu_hal_generation == DRM_ASAHI_GPU_HAL_LEGACY;
+   const bool m3_g15g_experimental = m3_g15g_identity &&
+      debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false) &&
+      debug_get_bool_option("ASAHI_G15G_UNSCHEDULED", false);
+   if (m3_g15g_identity && !m3_g15g_experimental) {
+      fprintf(stderr,
+              "Apple G15G (T8122) is recognised but not admitted: set "
+              "ASAHI_M3_EXPERIMENTAL=1 and ASAHI_G15G_UNSCHEDULED=1 to run "
+              "without the G15G scheduling-stall pass (UNMEASURED)\n");
+   } else if (m3_g15g_experimental) {
+      fprintf(stderr,
+              "WARNING: experimental G15G/T8122 admission; shaders are "
+              "emitted without G15G scheduling stalls (UNMEASURED)\n");
+   }
+   if (!m3_experimental && !m3_g15g_experimental && !m4_experimental &&
+       !agx_params_driver_supported(&dev->params)) {
       if (dev->chip == AGX_CHIP_UNKNOWN) {
          fprintf(stderr,
                  "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
@@ -1162,7 +1191,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    /* The M3 owned parameter pool and render graph occupy the first 128 MiB.
     * Reserve the portion above the common 8 MiB alias start before allocating
     * command streams, matching m3_runtime::new_vm. */
-   if (dev->chip == AGX_CHIP_G15S &&
+   if (agx_chip_is_m3_runtime(dev->chip) &&
        !util_vma_heap_alloc_addr(&dev->g17p_vdm_alias_heap,
                                 AGX_G17P_VDM_ALIAS_BASE,
                                 UINT64_C(0x08000000) - AGX_G17P_VDM_ALIAS_OFFSET_START)) {
@@ -1171,7 +1200,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    }
 
    /* Experimental M3 owns a fixed parameter-page list in this aperture. */
-   if (dev->chip == AGX_CHIP_G15S &&
+   if (agx_chip_is_m3_runtime(dev->chip) &&
        !util_vma_heap_alloc_addr(&dev->g17p_vdm_alias_heap,
                                 UINT64_C(0x1074000000), 0x28000)) {
       fprintf(stderr, "Failed to reserve M3 parameter page list\n");
@@ -1188,7 +1217,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    const char *usc_low_env = getenv("ASAHI_G17P_USC_LOW");
    const bool usc_low = usc_low_env != NULL && usc_low_env[0] == '1' &&
                         usc_low_env[1] == '\0';
-   if (usc_low || dev->chip == AGX_CHIP_G16G || dev->chip == AGX_CHIP_G15S)
+   if (usc_low || dev->chip == AGX_CHIP_G16G || agx_chip_is_m3_runtime(dev->chip))
       dev->usc_heap.alloc_high = false;
 
    if (dev->chip == AGX_CHIP_G17P) {
@@ -1352,7 +1381,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
       }
 
       struct agx_bo *usc_base = agx_create_fixed_bo(
-         dev, usc_base_size, (dev->chip == AGX_CHIP_G16G || dev->chip == AGX_CHIP_G15S) ? 0 : AGX_BO_WRITEBACK, dev->shader_base,
+         dev, usc_base_size, (dev->chip == AGX_CHIP_G16G || agx_chip_is_m3_runtime(dev->chip)) ? 0 : AGX_BO_WRITEBACK, dev->shader_base,
          DRM_ASAHI_BIND_READ, "HAL200 USC window base");
       if (usc_base == NULL) {
          fprintf(stderr, "Failed to bind the USC window base page\n");

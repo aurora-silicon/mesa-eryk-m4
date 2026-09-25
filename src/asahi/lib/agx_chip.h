@@ -149,8 +149,22 @@ static inline bool
 agx_chip_uses_hal200_ioto(enum agx_chip chip)
 {
    /* G15S uses the same IOTO/AGX3b shader loading convention. Its kernel
-    * firmware ABI remains distinct and its device admission is opt-in. */
-   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G || chip == AGX_CHIP_G17P;
+    * firmware ABI remains distinct and its device admission is opt-in.
+    * G15G is the same generation, encoder table and IOTO target family
+    * (every agx_ioto_* target table already lists it next to G15S); its
+    * admission is a separate, stricter opt-in in agx_open_device. */
+   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G15G ||
+          chip == AGX_CHIP_G16G || chip == AGX_CHIP_G17P;
+}
+
+/* The M3 parts driven by the M3 kernel runtime (RTKit 2419 legacy G15 HAL):
+ * G15S (T6030/J514S, qualified) and G15G (T8122/J613, UNMEASURED on
+ * hardware). Both kernels publish the same VM layout, owned render-graph
+ * aperture and legacy CDM launch layout from the same m3_runtime code. */
+static inline bool
+agx_chip_is_m3_runtime(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G15G;
 }
 
 /* G15S and G16G share AGX3b shader encodings, native sample-loop ABI and
@@ -159,7 +173,11 @@ agx_chip_uses_hal200_ioto(enum agx_chip chip)
 static inline bool
 agx_chip_uses_g15_g16_shader_abi(enum agx_chip chip)
 {
-   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G;
+   /* G15G executes the same AGX3b ISA as G15S. Its extra scheduling stalls
+    * are a codegen obligation tracked by agx_chip_needs_scheduling_stalls,
+    * not a different shader ABI. */
+   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G15G ||
+          chip == AGX_CHIP_G16G;
 }
 
 #ifdef __cplusplus

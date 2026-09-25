@@ -2101,7 +2101,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
        !HK_PERF(dev, NOBORDER)) {
       NIR_PASS(_, nir, agx_nir_lower_custom_border,
                dev->dev.chip == AGX_CHIP_G16G, features & HK_FEAT_IMAGE_VIEW_MIN_LOD,
-               dev->dev.chip == AGX_CHIP_G15S);
+               agx_chip_is_m3_runtime(dev->dev.chip));
    }
 
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip))
