@@ -33,8 +33,12 @@ Validation:
 Evidence: dirtyroom_m4/_provenance/experiments/
 20260925T015148805204Z-satisfactory-capture-address-reduction and
 20260925T015313856192Z-satisfactory-capture-address-canonical-view.
-Full application/replay validation is recorded separately; this initial commit
-claims only the reproducer validation. M3 hardware was not touched.
+Full startup replay `20260925T015340982759Z-satisfactory-full-canonical-views`
+completed all 1100 frames with original shaders and no feature removal or
+memory rebind. A descriptor dump verified the formerly hanging dispatch's
+exact result (255,256,0x45779244,0). Peak temperature was 95 C. Its splash frame
+is regression evidence, not a menu/gameplay benchmark. Live scene recording
+is a separate qualification. M3 hardware was not touched.
 
 ## Compiler capture diagnostic
 
