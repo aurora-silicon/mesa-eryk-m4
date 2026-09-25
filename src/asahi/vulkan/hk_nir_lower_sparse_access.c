@@ -76,6 +76,23 @@ canonical_address(nir_builder *b, const struct sparse_map *map,
    return nir_if_phi(b, canonical, fallback);
 }
 
+/* A tagged buffer descriptor names an ordinary allocation's canonical backing.
+ * It cannot acquire sparse holes or per-page aliases during its lifetime.
+ * Keep raw/BDA and sparse buffer pointers on the full translation path. */
+static nir_def *
+descriptor_address(nir_builder *b, const struct sparse_map *map, nir_def *address)
+{
+   nir_def *direct = nir_ine_imm(
+      b, nir_iand_imm(b, address, HK_BUFFER_ADDRESS_DIRECT_BIT), 0);
+   nir_if *nif = nir_push_if(b, direct);
+   nif->control = nir_selection_control_dont_flatten;
+   nir_def *backing = nir_iand_imm(b, address, ~HK_BUFFER_ADDRESS_DIRECT_BIT);
+   nir_push_else(b, NULL);
+   nir_def *canonical = canonical_address(b, map, address);
+   nir_pop_if(b, NULL);
+   return nir_if_phi(b, backing, canonical);
+}
+
 /* Only the first two levels of the alias table are driver-owned memory.
  * Entries in a leaf are application addresses, and dereferencing those still
  * requires residency checks. Do not treat arbitrary pointers loaded from
@@ -219,7 +236,7 @@ lower_memory_alias(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    b->cursor = nir_before_instr(&intr->instr);
    const struct sparse_map map = load_map(b);
    if (atomic) {
-      nir_src_rewrite(&intr->src[0], canonical_address(b, &map, address));
+      nir_src_rewrite(&intr->src[0], descriptor_address(b, &map, address));
       return true;
    }
 
@@ -235,7 +252,7 @@ lower_memory_alias(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
     */
    if (components * bytes <= MIN2(nir_intrinsic_align(intr), 16384)) {
       nir_src_rewrite(&intr->src[store ? 1 : 0],
-                      canonical_address(b, &map, address));
+                      descriptor_address(b, &map, address));
       return true;
    }
    /* A vector or misaligned scalar may span independently mapped pages.
@@ -249,7 +266,7 @@ lower_memory_alias(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
       nir_def *value = store ? nir_channel(b, intr->src[0].ssa, c)
                              : nir_imm_intN_t(b, 0, bits);
       for (unsigned offset = 0; offset < bytes; offset += piece) {
-         nir_def *addr = canonical_address(
+         nir_def *addr = descriptor_address(
             b, &map, nir_iadd_imm(b, address, c * bytes + offset));
          if (store) {
             nir_def *part =

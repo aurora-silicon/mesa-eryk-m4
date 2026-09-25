@@ -318,11 +318,52 @@ static int run_suite(void)
    return 0;
 }
 
+static void
+check_direct_access(bool direct, unsigned operation)
+{
+   alias_leaf_present = true;
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+                                                  &options, "direct constant pointer");
+   const uint64_t address = base + 16388;
+   nir_def *pointer = nir_imm_int64(&b, address |
+      (direct ? HK_BUFFER_ADDRESS_DIRECT_BIT : 0));
+   nir_intrinsic_instr *load;
+   if (operation == 2) {
+      load = nir_store_global(&b, nir_imm_int(&b, 1), pointer, .align_mul = 4);
+   } else {
+      nir_def *value = operation == 0
+         ? nir_load_global_constant(&b, 1, 32, pointer, .align_mul = 4)
+         : operation == 1 ? nir_load_global(&b, 1, 32, pointer, .align_mul = 4)
+         : nir_global_atomic(&b, 32, pointer, nir_imm_int(&b, 1),
+                             .atomic_op = nir_atomic_op_iadd);
+      load = nir_instr_as_intrinsic(nir_def_instr(value));
+   }
+   CHECK(hk_nir_lower_memory_aliases(b.shader));
+   /* Observe the generated address, leaving the application load itself out
+    * of this independent metadata evaluator. */
+   b.cursor = nir_after_impl(b.impl);
+   nir_intrinsic_instr *store = nir_store_global(
+      &b, load->src[operation == 2 ? 1 : 0].ssa,
+      nir_imm_int64(&b, 0x4000), .align_mul = 8);
+   nir_instr_remove(&load->instr);
+   fold(b.shader);
+   nir_validate_shader(b.shader, "direct constant address");
+   CHECK(nir_src_is_const(store->src[0]));
+   CHECK(nir_src_as_uint(store->src[0]) ==
+         (direct ? address : 0x60000000 + 16388));
+   ralloc_free(b.shader);
+   alias_leaf_present = false;
+}
+
 int main(void)
 {
    for (unsigned i = 0; i < 2; ++i) {
       specialize_geometry = i;
       run_suite();
+      for (unsigned operation = 0; operation < 4; ++operation) {
+         check_direct_access(false, operation);
+         check_direct_access(true, operation);
+      }
    }
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
                                                   &options, "window specialization");

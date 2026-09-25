@@ -180,6 +180,7 @@ hk_prefetch_buffer_address(const struct hk_descriptor_state *state,
        sizeof(*address) > size - load->descriptor_offset_B)
       return false;
    memcpy(address, data + load->descriptor_offset_B, sizeof(*address));
+   address->base_addr &= ~HK_BUFFER_ADDRESS_DIRECT_BIT;
    return true;
 }
 

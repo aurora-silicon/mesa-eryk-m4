@@ -76,6 +76,10 @@ struct hk_storage_image_descriptor {
 static_assert(sizeof(struct hk_storage_image_descriptor) == 64,
               "maximum storage descriptor has no holes");
 
+/* Private descriptor tag: an ordinary buffer names its canonical backing.
+ * Strip it in native memory lowering before issuing any GPU access. */
+#define HK_BUFFER_ADDRESS_DIRECT_BIT BITFIELD64_BIT(63)
+
 /* This has to match nir_address_format_64bit_bounded_global */
 struct hk_buffer_address {
    uint64_t base_addr;
