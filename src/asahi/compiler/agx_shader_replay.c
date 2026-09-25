@@ -127,8 +127,9 @@ int main(int argc, char **argv)
    }
    if (argc == 3 && !strcmp(argv[2], "--native-preamble")) {
       if (key.dev.encoding != AGX_ISA_ENCODING_AGX3B || key.secondary ||
-          nir->info.stage != MESA_SHADER_FRAGMENT) {
-         fprintf(stderr, "Native preamble diagnostic requires a main AGX3b fragment shader\n");
+          (nir->info.stage != MESA_SHADER_FRAGMENT &&
+           nir->info.stage != MESA_SHADER_COMPUTE)) {
+         fprintf(stderr, "Native preamble diagnostic requires a main AGX3b fragment or compute shader\n");
          return 2;
       }
       key.no_preamble = false;
