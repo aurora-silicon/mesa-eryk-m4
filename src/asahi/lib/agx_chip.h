@@ -268,6 +268,11 @@ bool agx_chip_has_hardware_ray_tracing(enum agx_chip chip);
  * shares the agx3b encoder table with every other variant-0 part. It is a
  * codegen obligation, so it is only meaningful for a chip this driver can
  * generate code for.
+ *
+ * Each stall is 8 bytes: `06 (W << 2)` (a nop whose wait field is W) and
+ * three `06 00`, placed in front of every instruction whose scoreboard wait
+ * covers a slot that may still owe a general-register result, with W that
+ * subset; `end` drains any such slot. agx3_g15g_stalls.c implements it.
  */
 bool agx_chip_needs_scheduling_stalls(enum agx_chip chip);
 
