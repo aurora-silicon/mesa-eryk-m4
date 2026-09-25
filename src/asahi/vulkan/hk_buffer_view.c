@@ -30,7 +30,7 @@ hk_get_buffer_format_features(struct hk_physical_device *pdev,
    if (p_format == PIPE_FORMAT_NONE)
       return 0;
 
-   if (pdev->dev.chip == AGX_CHIP_G16G &&
+   if (agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip) &&
        hk_storage_image_format(p_format) != p_format)
       return VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
              VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT |
@@ -87,7 +87,7 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    enum pipe_format format = hk_format_to_pipe_format(view->vk.format);
-   if (device->dev.chip == AGX_CHIP_G16G)
+   if (agx_chip_uses_g15_g16_shader_abi(device->dev.chip))
       format = hk_storage_image_format(format);
    const struct util_format_description *desc = util_format_description(format);
 

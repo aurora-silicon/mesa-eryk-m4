@@ -367,6 +367,13 @@ int main(int argc, char **argv) {
   check(vkEnumeratePhysicalDevices(instance, &physical_count, physical_devices),
         "vkEnumeratePhysicalDevices(list)");
 
+  /* Keep the original M4 default; M3 qualification opts in explicitly. */
+  const char *target_device = getenv("M4_ORACLE_DEVICE");
+  if (!target_device)
+    target_device = "M4";
+  if (strcmp(target_device, "M3") && strcmp(target_device, "M4"))
+    die("M4_ORACLE_DEVICE must be M3 or M4");
+  const uint32_t target_id = !strcmp(target_device, "M3") ? 0x6030 : 0x8132;
   VkPhysicalDevice physical = VK_NULL_HANDLE;
   VkPhysicalDeviceProperties properties;
   const bool software = getenv("M4_ORACLE_SOFTWARE") &&
@@ -375,8 +382,8 @@ int main(int argc, char **argv) {
     vkGetPhysicalDeviceProperties(physical_devices[i], &properties);
     if (software ? (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU &&
                     strstr(properties.deviceName, "llvmpipe")) :
-                   (properties.deviceID == 0x8132 &&
-                    strstr(properties.deviceName, "M4"))) {
+                   (properties.deviceID == target_id &&
+                    strstr(properties.deviceName, target_device))) {
       physical = physical_devices[i];
       break;
     }
@@ -384,7 +391,7 @@ int main(int argc, char **argv) {
   free(physical_devices);
   if (physical == VK_NULL_HANDLE)
     die(software ? "lavapipe CPU device was not found" :
-                   "M4 Vulkan device was not found");
+                   "Requested Apple Vulkan device was not found");
 
   printf("device: %s (%#x)\n", properties.deviceName, properties.deviceID);
   if (texel_format_option) {

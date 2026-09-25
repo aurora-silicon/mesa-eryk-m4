@@ -645,9 +645,9 @@ hk_get_device_features(
       .fragmentShaderSampleInterlock =
          agx_chip_uses_g15_g16_shader_abi(dev->chip),
 
-      /* VK_EXT_shader_image_atomic_int64 */
-      .shaderImageInt64Atomics = dev->chip == AGX_CHIP_G16G,
-      .sparseImageInt64Atomics = dev->chip == AGX_CHIP_G16G,
+      /* R64 images use RG32 descriptors and the shared striped-lock lowering. */
+      .shaderImageInt64Atomics = agx_chip_uses_g15_g16_shader_abi(dev->chip),
+      .sparseImageInt64Atomics = agx_chip_uses_g15_g16_shader_abi(dev->chip),
 
       /* VK_EXT_shader_module_identifier */
       .shaderModuleIdentifier = true,
@@ -1427,7 +1427,7 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    supported_extensions.KHR_shader_atomic_int64 |=
       agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
    supported_extensions.EXT_shader_image_atomic_int64 |=
-      pdev->dev.chip == AGX_CHIP_G16G;
+      agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);
 
    supported_extensions.EXT_fragment_shader_interlock =
       agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip);

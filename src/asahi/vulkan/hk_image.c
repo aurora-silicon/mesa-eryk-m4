@@ -74,7 +74,7 @@ hk_get_image_plane_format_features(struct hk_physical_device *pdev,
    if (p_format == PIPE_FORMAT_NONE)
       return 0;
 
-   if (pdev->dev.chip == AGX_CHIP_G16G &&
+   if (agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip) &&
        hk_storage_image_format(p_format) != p_format) {
       if (tiling != VK_IMAGE_TILING_OPTIMAL)
          return 0;
