@@ -23,6 +23,7 @@
 #include "libagx_shaders.h"
 #include "asahi/genxml/agx3_cmdstream.h"
 #include "util/log.h"
+#include "util/hash_table.h"
 #include "util/u_debug.h"
 #include "pool.h"
 
@@ -766,13 +767,14 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       fprintf(stderr, "G17P compute-record: cdm=%" PRIx64
               " program=%" PRIx64 " shader=%" PRIx64
               " root=%" PRIx64 " set0=%" PRIx64
-              " size=%zu gprs=%u scratch=%u grid=%u,%u,%u local=%u,%u,%u\n",
+              " size=%zu gprs=%u scratch=%u grid=%u,%u,%u local=%u,%u,%u code=%08x\n",
               hk_cs_current_addr(cs), program_va,
               linked->b.bo->va->addr + linked->b.entry_offset,
               root_ptr, (uint64_t)cmd->state.cs.descriptors.root.sets[0],
               linked->b.size, linked->b.nr_gprs, linked->b.scratch_size,
               grid.count[0], grid.count[1], grid.count[2],
-              local_size.x, local_size.y, local_size.z);
+              local_size.x, local_size.y, local_size.z,
+              _mesa_hash_data(s->b.binary, s->b.info.binary_size));
    }
 
    /* One-shot ground truth for the GMMU fault forensics: the fault bank only
