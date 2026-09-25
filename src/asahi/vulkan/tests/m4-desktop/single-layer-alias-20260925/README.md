@@ -55,3 +55,13 @@ Native Vulkan's separate dark-lighting problem remains (093919319726Z).
 Host native-descriptor and descriptor-root tests pass. No M3 execution claim.
 Tested DSO SHA256: 17327a953baefafca5e35f6931c27d0c273d49ea9d4d555558f4c9c785ddb1be.
 Live application qualification follows separately.
+
+Live DX12 gameplay validation completed in
+20260925T095346452539Z-satisfactory-dx12-alias-live-gameplay-warm2. Actual
+Rocky Desert save at original Ultra/custom settings, 3840x2160 output and
+TSR75%. Terrain, clouds, creatures and HUD render correctly after dismissing
+the welcome overlay. The process loaded the hash recorded above. The guarded
+run completed with 500 thermal samples, peak107.75C, no new GPU fault.
+Two earlier launches stopped at the mandatory GPU-idle gate during PSO
+compilation; the third completed using the accumulated cache. The earlier
+replay qualification is therefore backed by an actual gameplay run.
