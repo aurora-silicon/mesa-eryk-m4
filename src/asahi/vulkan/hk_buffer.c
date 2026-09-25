@@ -369,6 +369,8 @@ hk_BindBufferMemory2(VkDevice device, uint32_t bindInfoCount,
       VK_FROM_HANDLE(hk_device_memory, mem, pBindInfos[i].memory);
       VK_FROM_HANDLE(hk_buffer, buffer, pBindInfos[i].buffer);
 
+      buffer->bound_address = mem->bo->va->addr + pBindInfos[i].memoryOffset;
+
       if (buffer->va) {
          VK_FROM_HANDLE(hk_device, dev, device);
          /* The VA allocation includes an overread guard, not backed by this

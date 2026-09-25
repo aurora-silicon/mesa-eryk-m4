@@ -118,6 +118,15 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
    uint64_t head_offset_B = view->vk.offset & ~0xf;
    uint64_t rw_base = hk_buffer_address_rw(buffer, 0) + head_offset_B;
    uint64_t ro_base = hk_buffer_address_ro(buffer, 0) + head_offset_B;
+   /* Native image and global-atomic caches must use the same address. Global
+    * accesses canonicalize capture/replay aliases in NIR. A non-sparse view
+    * has one fixed backing range, so use it for both texture and PBE access
+    * while preserving the application's replayable device address. */
+   if (agx_chip_uses_g15_g16_shader_abi(device->dev.chip) &&
+       !(buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) {
+      assert(buffer->bound_address);
+      rw_base = ro_base = buffer->bound_address + head_offset_B;
+   }
    const unsigned generation =
       agx_chip_descriptor_generation(device->dev.chip);
    const unsigned blocksize_B = util_format_get_blocksize(format);

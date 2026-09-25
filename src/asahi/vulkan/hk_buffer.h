@@ -18,8 +18,11 @@ struct hk_physical_device;
 struct hk_buffer {
    struct vk_buffer vk;
 
-   /** Reserved VA for sparse buffers, NULL otherwise. */
+   /** Reserved VA for sparse or device-address capture/replay buffers. */
    struct agx_va *va;
+   /* Canonical backing for ordinary buffers, including capture/replay VA
+    * aliases. Sparse buffers retain per-page addressing instead. */
+   uint64_t bound_address;
    /* One CPU-updated residency word per 16 KiB virtual page. Linear texture
     * reads use zero/scratch mappings and cannot report these holes natively. */
    struct agx_bo *residency;
