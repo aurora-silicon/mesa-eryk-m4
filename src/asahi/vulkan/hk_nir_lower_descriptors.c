@@ -267,9 +267,7 @@ try_lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    /* Without sparse binding every buffer descriptor names canonical backing,
     * even if the buffer also has a distinct capture/replay BDA. Make that
     * invariant visible to alias lowering. Raw BDA reads retain translation. */
-   if (ctx->stage != MESA_SHADER_FRAGMENT ||
-       desc_type == nir_descriptor_type_uniform_buffer)
-      desc = mark_direct_buffer_descriptor(b, desc, ctx);
+   desc = mark_direct_buffer_descriptor(b, desc, ctx);
 
    nir_def_rewrite_uses(&intrin->def, desc);
 
@@ -1083,8 +1081,7 @@ lower_load_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
       UNREACHABLE("Unknown address mode");
    }
 
-   if (ctx->stage != MESA_SHADER_FRAGMENT)
-      desc = mark_direct_buffer_descriptor(b, desc, ctx);
+   desc = mark_direct_buffer_descriptor(b, desc, ctx);
    nir_def_rewrite_uses(&intrin->def, desc);
 
    return true;
@@ -1158,8 +1155,8 @@ hk_nir_lower_descriptors(nir_shader *nir, enum agx_chip chip, bool view_min,
       }
    }
    struct lower_descriptors_ctx ctx = {
-      /* Compute descriptors and eligible fragment UBOs have qualified static
-       * provenance. Fragment SSBOs retain the runtime translation path. */
+      /* Compute and eligible fragment descriptors have qualified static
+       * provenance. Other stages retain runtime translation. */
       .direct_buffers = direct_buffers && agx_chip_uses_g15_g16_shader_abi(chip) &&
                         (nir->info.stage == MESA_SHADER_COMPUTE ||
                          (nir->info.stage == MESA_SHADER_FRAGMENT &&

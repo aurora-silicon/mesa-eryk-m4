@@ -87,7 +87,8 @@ main(void)
    check_direct_descriptor(MESA_SHADER_FRAGMENT, false, 0, true, true);
    check_direct_descriptor(MESA_SHADER_FRAGMENT, false, 1, true, false);
    check_direct_descriptor(MESA_SHADER_FRAGMENT, false, 2, true, true);
-   check_direct_descriptor(MESA_SHADER_FRAGMENT, true, 0, true, false);
+   check_direct_descriptor(MESA_SHADER_FRAGMENT, true, 0, true, true);
+   check_direct_descriptor(MESA_SHADER_FRAGMENT, true, 1, true, false);
    check_direct_descriptor(MESA_SHADER_FRAGMENT, false, 0, false, false);
    assert(hk_buffer_addr_format(
              VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT, false) ==

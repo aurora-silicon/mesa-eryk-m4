@@ -37,3 +37,18 @@ here. Qualified library SHA256:
 M4 also passes all 80 pinned fragment UBO robustness2 cases, including dynamic
 uniform buffers and null descriptors, under the guarded CTS runner. Selection
 SHA256: `60afa523046f83bcdf9cc00b503669424f5f9a065c4838689af4ccf69af397a1`.
+
+## Storage-buffer extension
+
+The same proof also qualifies for fragment SSBOs. The reciprocal-product
+eligibility check remains shared by both descriptor types. Three repeats with
+exact images at frames 1/16/31 give 7.623448853 seconds (3.9352 FPS) on M3 Pro
+and 10.075577957 seconds (2.9775 FPS) on M4. Library SHA256:
+`5c97628cb80272aab4b9c9d5eee7fc6def480ccf088a1a54250a39e83e97a2a0`.
+
+A separate vertex-stage extension changed pixels on both machines and is not
+enabled. The fragment SSBO change does not depend on experimental preambles.
+
+All 80 selected fragment SSBO robustness2 CTS cases pass on M4, including
+read/write, dynamic bindings and null descriptors. Selection SHA256:
+`ef8fc8537fdbc344f91586d1378f96f7039d25074c2470b38782fcf13bbdf1ea`.
