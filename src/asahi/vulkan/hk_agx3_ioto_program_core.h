@@ -74,7 +74,10 @@ struct hk_agx3_g17p_graphics_program_desc {
    struct agx3_ioto_uniform_template *uniform_template;
 };
 
-#define HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE 6144u
+/* 128 GPU0 load chunks at the conservative 78-byte bound, plus the
+ * 90-byte graphics envelope. This is a host workspace bound, not a hardware
+ * program-length limit; the encoder checks the final stream independently. */
+#define HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE (128u * 78u + 90u)
 /* VBO bases/clamps, draw parameters/ID, texture heaps, root/sets, constants. */
 /* Plus up to 32 disjoint descriptor spans (or eight legacy set spans). */
 #define HK_AGX3_G17P_GRAPHICS_MAX_RANGES (2u + 2u + 1u + 1u + 1u + 32u + 128u)

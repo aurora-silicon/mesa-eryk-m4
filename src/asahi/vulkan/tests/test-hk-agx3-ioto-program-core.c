@@ -961,6 +961,32 @@ test_g17p_basic_graphics_program(void)
                                                ARRAY_SIZE(full_vertex), &untouched));
    CHECK(untouched == 123);
 
+   /* The admitted chunk count must fit even when each scalar comes from a
+    * different cache line. Dense UBO/descriptor prefetch shaders can exceed
+    * the old 6 KiB byte bound without exceeding the loader's chunk budget. */
+   struct agx3_ioto_uniform_range scattered[129];
+   for (unsigned i = 0; i < ARRAY_SIZE(scattered); ++i) {
+      scattered[i] = (struct agx3_ioto_uniform_range){
+         .start_halfs = i * 2, .size_halfs = 2,
+         .address = 0x1000 + i * 64,
+      };
+   }
+   const enum agx_chip prefetch_chips[] = {AGX_CHIP_G15S, AGX_CHIP_G16G};
+   for (unsigned i = 0; i < ARRAY_SIZE(prefetch_chips); ++i) {
+      resource = fragment;
+      resource.uniform_ranges = scattered;
+      resource.uniform_range_count = 128;
+      CHECK(hk_agx3_g17p_graphics_program_bound(
+         prefetch_chips[i], scattered, 128, &bound));
+      CHECK(hk_agx3_g17p_basic_graphics_program_generate(
+         prefetch_chips[i], &resource, &program));
+      CHECK(program.length <= bound);
+      untouched = 123;
+      CHECK(!hk_agx3_g17p_graphics_program_bound(
+         prefetch_chips[i], scattered, 129, &untouched));
+      CHECK(untouched == 123);
+   }
+
    struct hk_agx3_g17p_graphics_program_desc boundary = vertex;
    static const struct {
       uint32_t size;
