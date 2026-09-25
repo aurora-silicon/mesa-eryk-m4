@@ -35,3 +35,17 @@ independent Vulkan conformance or blanket application qualification.
 
 Separate compute+fragment and compute+vertex descriptor specialization
 experiments both changed RGB values at zero tolerance, so neither is enabled.
+
+## Atomic-loop compiler validation follow-up
+
+A retained compute input exposed native retry-loop backoff being inserted after
+an existing logical BREAK. Its ordinary SSA immediate must precede the logical
+terminator, while the execution jump/pop remain afterwards. The debug compiler
+rejected the previous order at IR translation; moving the insertion cursor makes
+that same input compile with validation enabled (60,538 bytes). All 296 host
+compiler tests pass. The private input hash begins `10fe357e9ecdc845`.
+
+An isolated build containing this fix and compute GCM without value numbering
+matched Satisfactory's three RGB references exactly on M3. That motion experiment
+had no measured benefit and is not enabled. A separate compute constant-program
+experiment changed later images and was rejected. Neither supplies a new score.

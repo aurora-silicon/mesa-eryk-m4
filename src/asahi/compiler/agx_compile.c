@@ -5083,10 +5083,13 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    loop_header->loop_header = true;
    agx_block *start_block = emit_cf_list(ctx, &nloop->body);
 
-   _b.cursor = agx_after_block(ctx->current_block);
+   /* The backoff has ordinary SSA operands, so it must precede the block's
+    * logical terminators, including a break at the end of the loop body. */
+   _b.cursor = agx_after_block_logical(ctx->current_block);
    if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        ctx->stage == MESA_SHADER_COMPUTE && loop_has_global_atomic(nloop))
       agx_yield_agx3(&_b, agx_mov_imm(&_b, 16, 8));
+   _b.cursor = agx_after_block(ctx->current_block);
    agx_jmp_exec_any(&_b, start_block);
    agx_pop_exec(&_b, 1);
    agx_block_add_successor(ctx->current_block, loop_header);
