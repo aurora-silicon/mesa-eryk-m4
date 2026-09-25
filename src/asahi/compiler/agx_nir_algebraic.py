@@ -85,6 +85,21 @@ lower_pack = [
       ('isub', 32, 'bits'))),
 ]
 
+# A fixed signed field needs only a left alignment and arithmetic shift.
+# Extracting an unsigned field first is redundant: the left shift already
+# discards both the lower offset bits and every bit above the field. In the
+# top-aligned case the left shift is zero, leaving just one arithmetic shift.
+# Restrict this to valid 32-bit fields; zero/dynamic widths retain the rules
+# above and undefined out-of-range fields are not used as assumptions.
+signed_fixed_extracts = []
+for width in range(1, 33):
+    for offset in range(33 - width):
+        aligned = ('ishl', a, 32 - width - offset) if width + offset < 32 else a
+        result = ('ishr', aligned, 32 - width) if width < 32 else aligned
+        signed_fixed_extracts.append(
+            (('ibitfield_extract', 'a@32', offset, width), result))
+lower_pack = signed_fixed_extracts + lower_pack
+
 lower_selects = []
 for T, sizes, one in [('f', [16, 32], 1.0),
                       ('i', [8, 16, 32], 1),
