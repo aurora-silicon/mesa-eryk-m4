@@ -76,12 +76,81 @@ canonical_address(nir_builder *b, const struct sparse_map *map,
    return nir_if_phi(b, canonical, fallback);
 }
 
+static bool
+has_direct_high_bit(nir_scalar s)
+{
+   s = nir_scalar_resolved(s.def, s.comp);
+   if (nir_scalar_is_const(s))
+      return nir_scalar_as_uint(s) & BITFIELD_BIT(31);
+   if (nir_def_instr(s.def)->type != nir_instr_type_alu)
+      return false;
+   nir_alu_instr *alu = nir_instr_as_alu(nir_def_instr(s.def));
+   if (alu->op != nir_op_ior)
+      return false;
+   for (unsigned i = 0; i < 2; ++i) {
+      nir_scalar x = nir_scalar_chase_alu_src(s, i);
+      if (nir_scalar_is_const(x) && (nir_scalar_as_uint(x) & BITFIELD_BIT(31)))
+         return true;
+   }
+   return false;
+}
+
+static bool
+is_direct_buffer_address(nir_def *address, unsigned depth)
+{
+   if (!depth)
+      return false;
+   nir_scalar s = nir_scalar_resolved(address, 0);
+   if (nir_scalar_is_const(s)) {
+      uint64_t value = nir_scalar_as_uint(s);
+      return (value & HK_BUFFER_ADDRESS_DIRECT_BIT) ||
+             value == AGX_ZERO_PAGE_ADDRESS;
+   }
+   if (nir_def_instr(s.def)->type != nir_instr_type_alu)
+      return false;
+   nir_alu_instr *alu = nir_instr_as_alu(nir_def_instr(s.def));
+   if (alu->op == nir_op_ior) {
+      for (unsigned i = 0; i < 2; ++i)
+         if (nir_src_is_const(alu->src[i].src) &&
+             (nir_src_as_uint(alu->src[i].src) & HK_BUFFER_ADDRESS_DIRECT_BIT))
+            return true;
+   } else if (alu->op == nir_op_pack_64_2x32) {
+      return has_direct_high_bit(nir_get_scalar(alu->src[0].src.ssa,
+                                               alu->src[0].swizzle[1]));
+   } else if (alu->op == nir_op_bcsel) {
+      return is_direct_buffer_address(alu->src[1].src.ssa, depth - 1) &&
+             is_direct_buffer_address(alu->src[2].src.ssa, depth - 1);
+   } else if (alu->op == nir_op_iadd) {
+      for (unsigned i = 0; i < 2; ++i) {
+         nir_def *offset = alu->src[i].src.ssa;
+         nir_instr *instr = nir_def_instr(offset);
+         bool offset32 = nir_src_is_const(alu->src[i].src) &&
+                         nir_src_as_uint(alu->src[i].src) <= UINT32_MAX;
+         if (instr->type == nir_instr_type_alu) {
+            nir_alu_instr *cast = nir_instr_as_alu(instr);
+            offset32 |= cast->op == nir_op_u2u64 &&
+                        cast->src[0].src.ssa->bit_size <= 32;
+         }
+         if (offset32 && is_direct_buffer_address(alu->src[1 - i].src.ssa,
+                                                  depth - 1))
+            return true;
+      }
+   }
+   return false;
+}
+
 /* A tagged buffer descriptor names an ordinary allocation's canonical backing.
  * It cannot acquire sparse holes or per-page aliases during its lifetime.
  * Keep raw/BDA and sparse buffer pointers on the full translation path. */
 static nir_def *
 descriptor_address(nir_builder *b, const struct sparse_map *map, nir_def *address)
 {
+   /* Buffer offsets are 32-bit; adding a valid buffer offset cannot carry out
+    * of the device VA bits into the private top-bit tag. Preserve this proof
+    * through robustness's zero-page selection, but stop at arbitrary loads so
+    * a BDA fetched from a canonical buffer still gets its own translation. */
+   if (is_direct_buffer_address(address, 16))
+      return nir_iand_imm(b, address, ~HK_BUFFER_ADDRESS_DIRECT_BIT);
    nir_def *direct = nir_ine_imm(
       b, nir_iand_imm(b, address, HK_BUFFER_ADDRESS_DIRECT_BIT), 0);
    nir_if *nif = nir_push_if(b, direct);

@@ -402,6 +402,7 @@ bool hk_lower_uvs_index(nir_shader *s, mesa_shader_stage sw_stage,
 
 bool
 hk_nir_lower_descriptors(nir_shader *nir, enum agx_chip chip, bool view_min,
+                         bool direct_buffers,
                          const struct vk_pipeline_robustness_state *rs,
                          uint32_t set_layout_count,
                          struct vk_descriptor_set_layout *const *set_layouts);

@@ -28,6 +28,7 @@ struct lower_descriptors_ctx {
    const struct hk_descriptor_set_layout *set_layouts[HK_MAX_SETS];
 
    bool clamp_desc_array_bounds;
+   bool direct_buffers;
    nir_address_format ubo_addr_format;
    nir_address_format ssbo_addr_format;
    unsigned descriptor_generation;
@@ -230,6 +231,23 @@ load_descriptor_for_idx_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
    return load_descriptor(b, 4, 32, set, binding, index, 0, ctx);
 }
 
+static nir_def *
+mark_direct_buffer_descriptor(nir_builder *b, nir_def *desc,
+                              const struct lower_descriptors_ctx *ctx)
+{
+   if (!ctx->direct_buffers)
+      return desc;
+
+   /* A compile-time marker for the canonical descriptor address. Offset and
+    * range are unchanged; raw BDA values loaded through this descriptor do not
+    * inherit the marker. Alias lowering removes it before memory operations. */
+   nir_def *address = nir_pack_64_2x32(b, nir_trim_vector(b, desc, 2));
+   address = nir_ior_imm(b, address, HK_BUFFER_ADDRESS_DIRECT_BIT);
+   return nir_vec4(b, nir_unpack_64_2x32_split_x(b, address),
+                   nir_unpack_64_2x32_split_y(b, address),
+                   nir_channel(b, desc, 2), nir_channel(b, desc, 3));
+}
+
 static bool
 try_lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
                                  const struct lower_descriptors_ctx *ctx)
@@ -245,6 +263,11 @@ try_lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    }
 
    nir_def *desc = load_descriptor_for_idx_intrin(b, idx_intrin, ctx);
+
+   /* Without sparse binding every buffer descriptor names canonical backing,
+    * even if the buffer also has a distinct capture/replay BDA. Make that
+    * invariant visible to alias lowering. Raw BDA reads retain translation. */
+   desc = mark_direct_buffer_descriptor(b, desc, ctx);
 
    nir_def_rewrite_uses(&intrin->def, desc);
 
@@ -1058,6 +1081,7 @@ lower_load_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
       UNREACHABLE("Unknown address mode");
    }
 
+   desc = mark_direct_buffer_descriptor(b, desc, ctx);
    nir_def_rewrite_uses(&intrin->def, desc);
 
    return true;
@@ -1082,11 +1106,15 @@ lower_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intr, void *_data)
 
 bool
 hk_nir_lower_descriptors(nir_shader *nir, enum agx_chip chip, bool view_min,
+                         bool direct_buffers,
                          const struct vk_pipeline_robustness_state *rs,
                          uint32_t set_layout_count,
                          struct vk_descriptor_set_layout *const *set_layouts)
 {
    struct lower_descriptors_ctx ctx = {
+      /* Static provenance is currently qualified for native compute. */
+      .direct_buffers = direct_buffers && agx_chip_uses_g15_g16_shader_abi(chip) &&
+                        nir->info.stage == MESA_SHADER_COMPUTE,
       .stage = nir->info.stage,
       /* Gen4 has no sampler bias field. HAL200 deliberately leaves its field
        * zero to combine biases before quantization. Gen5 retains hardware bias.

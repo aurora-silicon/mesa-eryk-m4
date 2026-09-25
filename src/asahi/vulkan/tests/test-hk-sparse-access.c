@@ -355,8 +355,49 @@ check_direct_access(bool direct, unsigned operation)
    alias_leaf_present = false;
 }
 
+static void
+check_direct_proof(unsigned form)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+                                                  &options, "direct address proof");
+   nir_def *x = nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0);
+   nir_def *address = nir_ior_imm(&b, nir_u2u64(&b, x),
+                                 HK_BUFFER_ADDRESS_DIRECT_BIT);
+   if (form == 1) {
+      nir_def *high = nir_ior_imm(&b, x, BITFIELD_BIT(31));
+      address = nir_pack_64_2x32(&b, nir_vec2(&b, x, high));
+   } else if (form == 2) {
+      address = nir_bcsel(&b, nir_ine_imm(&b, x, 0), address,
+                          nir_imm_int64(&b, AGX_ZERO_PAGE_ADDRESS));
+   } else if (form == 3) {
+      address = nir_iadd(&b, address, nir_u2u64(&b, x));
+   } else if (form == 4) {
+      /* A BDA fetched from direct backing is not itself known canonical. */
+      address = nir_load_global(&b, 1, 64, address, .align_mul = 8);
+   } else if (form == 5) {
+      address = nir_iadd(&b, address, nir_pack_64_2x32(&b, nir_vec2(&b, x, x)));
+   }
+   nir_global_atomic(&b, 32, address, nir_imm_int(&b, 1),
+                     .atomic_op = nir_atomic_op_iadd);
+   CHECK(hk_nir_lower_memory_aliases(b.shader));
+   nir_opt_dce(b.shader);
+   nir_validate_shader(b.shader, "direct address provenance");
+   unsigned lookups = 0;
+   nir_foreach_block(block, b.impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type == nir_instr_type_intrinsic &&
+             nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_global_constant)
+            ++lookups;
+      }
+   }
+   CHECK((lookups == 0) == (form < 4));
+   ralloc_free(b.shader);
+}
+
 int main(void)
 {
+   for (unsigned form = 0; form < 6; ++form)
+      check_direct_proof(form);
    for (unsigned i = 0; i < 2; ++i) {
       specialize_geometry = i;
       run_suite();
