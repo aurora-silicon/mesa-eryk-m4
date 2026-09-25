@@ -1,0 +1,2 @@
+Renderer: zink Vulkan 1.4(Apple M4 (G16G B0) (MESA_HONEYKRISP))
+PASS: half-float framebuffer finite overflow and special values; bad=0/128

@@ -1,0 +1,24 @@
+{
+  "id": "20260925T085104385123Z-fp16-framebuffer-policy-before-complete",
+  "verdict": "readback_mismatch",
+  "transport_returncode": 1,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260925T085104385123Z-fp16-framebuffer-policy-before-complete",
+  "observations": {
+    "pixel_results": [
+      "FAIL: half-float framebuffer finite overflow and special values; bad=56/128"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 2,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 66.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 66.25,
+      "Ta000m": 66.25,
+      "Te000m": 62.0,
+      "Te001m": 59.75,
+      "Tp000m": 63.5,
+      "Tp001m": 58.75
+    }
+  }
+}

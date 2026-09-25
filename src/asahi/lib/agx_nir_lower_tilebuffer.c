@@ -364,6 +364,29 @@ pass(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       /* Trim to format as required by hardware */
       value = nir_trim_vector(b, intr->src[0].ssa, comps);
 
+      /* Choose finite overflow for half-float framebuffer conversions. Vulkan
+       * permits either finite saturation or infinity here. Keeping finite
+       * scene-depth values finite avoids invalid bilateral filter weights in
+       * applications which store depth alongside normals in RGBA16F.
+       *
+       * Preserve actual infinities, NaNs and signed zero. Integer tests keep
+       * these format-conversion rules independent of shader fast-math modes.
+       * Apply after blending and before either tile or spilled-image storage.
+       */
+      const struct util_format_description *desc =
+         util_format_description(logical_format);
+      unsigned channel = util_format_get_first_non_void_channel(logical_format);
+      if (value->bit_size == 32 && util_format_is_float(logical_format) &&
+          desc->channel[channel].size == 16) {
+         nir_def *magnitude = nir_iand_imm(b, value, 0x7fffffff);
+         nir_def *overflow = nir_iand(
+            b, nir_ult(b, nir_imm_int(b, 0x477fe000), magnitude),
+            nir_ult(b, magnitude, nir_imm_int(b, 0x7f800000)));
+         nir_def *saturated = nir_ior_imm(
+            b, nir_iand_imm(b, value, 0x80000000), 0x477fe000);
+         value = nir_bcsel(b, overflow, saturated, value);
+      }
+
       if (tib->spilled[rt]) {
          enum pipe_format memory_format = logical_format;
          if (ctx->lower_srgb && util_format_is_srgb(logical_format)) {
