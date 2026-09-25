@@ -624,7 +624,9 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
       /* A timestamp-only command immediately before a render measures the
        * same ordered boundary as that render's tiling-start timestamp. The
        * native runtime completes all preceding commands before starting TA.
-       * M4 can optionally use a following compute's start in the same way.
+       * G15S/G16G can optionally use a following compute's start in the same
+       * way. Both kernels expose native compute start/end timestamps; this
+       * does not require the separate timestamp-copy capability.
        * Preserve resets and dependency boundaries, and never discard work
        * that was subsequently appended to the no-op stream. A reset successor
        * must not overwrite a query result just published at its start. Query
@@ -638,7 +640,7 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
           !last->ends_timestamp_reset && !last->ends_memory_dependency &&
           !cs->timestamp.start.handle &&
           (cs->type == HK_CS_VDM ||
-           (hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+           (agx_chip_uses_g15_g16_shader_abi(hk_cmd_buffer_device(cmd)->dev.chip) &&
             debug_get_bool_option("HK_M4_COMPUTE_START_TIMESTAMP", false) &&
             cs->type == HK_CS_CDM && cs->stats.cmds > 0 &&
             !cs->ends_timestamp_reset && !cs->stats.query_copies))) {
