@@ -3658,6 +3658,26 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
    agx_foreach_instr_global_safe(ctx, I) {
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
       if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          (I->op == AGX_OPCODE_ROUNDEVEN || I->op == AGX_OPCODE_FLOOR ||
+           I->op == AGX_OPCODE_CEIL || I->op == AGX_OPCODE_TRUNC ||
+           I->op == AGX_OPCODE_DFDX || I->op == AGX_OPCODE_DFDY ||
+           I->op == AGX_OPCODE_RCP || I->op == AGX_OPCODE_RSQRT ||
+           I->op == AGX_OPCODE_SRSQRT || I->op == AGX_OPCODE_LOG2 ||
+           I->op == AGX_OPCODE_EXP2) &&
+          I->src[0].type == AGX_INDEX_IMMEDIATE) {
+         /* Unary math has register-only native forms. Late image-format
+          * lowering and copy propagation can expose minifloats even when
+          * NIR constant folding ran earlier. Preserve their floating value
+          * and sign modifiers, including signed zero, before RA. */
+         agx_index src = I->src[0];
+         float value = agx_minifloat_decode(src.value);
+         if (src.abs)
+            value = fabsf(value);
+         if (src.neg)
+            value = -value;
+         I->src[0] = agx_mov_imm(&b, 32, fui(value));
+      }
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
           I->op == AGX_OPCODE_PACK_RGB10A2_AGX3) {
          /* The pack consumes plain F32 lanes; blend arithmetic can leave
           * negation or absolute-value modifiers on any component. */

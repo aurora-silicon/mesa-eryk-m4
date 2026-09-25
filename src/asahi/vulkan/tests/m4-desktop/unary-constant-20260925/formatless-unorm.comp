@@ -1,0 +1,11 @@
+#version 450
+layout(local_size_x=64) in;
+layout(set=0,binding=0) uniform coherent writeonly image2D target;
+layout(set=0,binding=0,rgba8) uniform coherent readonly image2D source;
+layout(set=0,binding=1,std430) buffer Out { uint data[]; } dst;
+void main() {
+ uint i=gl_GlobalInvocationID.x; ivec2 p=ivec2(i%16,i/16);
+ imageStore(target,p,vec4(float(i)/255.0,0.0,0.5,1.0));
+ memoryBarrierImage();
+ dst.data[i]=packUnorm4x8(imageLoad(source,p));
+}
