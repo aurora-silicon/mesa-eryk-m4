@@ -10,6 +10,33 @@
 #include <stdlib.h>
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr,"VBO FAIL line%d: %s\n",__LINE__,#x); abort(); } } while (0)
+static void
+check_sparse_vertex_locations(void)
+{
+   struct agx_velem_key api[32] = {0}, compact[AGX_MAX_ATTRIBS];
+   const unsigned locations[] = {0, 3, 4, 9, 14, 15, 16, 31};
+   uint32_t read = 0;
+   for (unsigned i = 0; i < ARRAY_SIZE(locations); ++i) {
+      api[locations[i]] = (struct agx_velem_key){
+         .format = PIPE_FORMAT_R32_UINT, .stride = 4 * i,
+         .instanced = i == 6, .divisor = 1,
+      };
+      read |= 1u << locations[i];
+   }
+   /* An unused declaration must not overwrite its following live slot. */
+   api[30] = (struct agx_velem_key){.format=PIPE_FORMAT_R8_UNORM,.stride=999};
+   CHECK(agx_compact_velem_keys(compact, ARRAY_SIZE(compact), api, 32, read));
+   for (unsigned i = 0; i < ARRAY_SIZE(locations); ++i) {
+      CHECK(compact[i].format == PIPE_FORMAT_R32_UINT);
+      CHECK(compact[i].stride == 4 * i);
+      CHECK(compact[i].instanced == (i == 6));
+   }
+   CHECK(compact[8].format == PIPE_FORMAT_NONE);
+   CHECK(!agx_compact_velem_keys(compact, 7, api, 32, read));
+   CHECK(!agx_compact_velem_keys(compact, ARRAY_SIZE(compact), api, 16, read));
+   CHECK(!agx_compact_velem_keys(compact, ARRAY_SIZE(compact), api, 32, 1u << 2));
+}
+
 static const nir_shader_compiler_options options = {0};
 static void check_format(enum pipe_format format, unsigned stride, unsigned count,
                          unsigned words, const uint32_t raw[2], const float expected[4])
@@ -226,6 +253,7 @@ int main(void)
    check_instance_divisor_compiles(2);
    check_instance_divisor_compiles(3);
    check_instance_divisor_compiles(UINT32_MAX);
+   check_sparse_vertex_locations();
    glsl_type_singleton_decref();
    puts("Native packed VBO: formats and instance divisors 0/1/3/UINT32_MAX PASS");
    return 0;

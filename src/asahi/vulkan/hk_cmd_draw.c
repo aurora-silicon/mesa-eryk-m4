@@ -4047,7 +4047,7 @@ void
 agx_fill_velem_keys(const struct vk_vertex_input_state *vi,
                     uint64_t attribs_read, struct agx_velem_key *keys)
 {
-   u_foreach_bit(a, vi->attributes_valid) {
+   u_foreach_bit(a, vi->attributes_valid & attribs_read) {
       struct vk_vertex_attribute_state attr = vi->attributes[a];
 
       assert(vi->bindings_valid & BITFIELD_BIT(attr.binding));
@@ -4237,7 +4237,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          agx_fill_velem_keys(dyn->vi, sw_vs->info.vs.attribs_read,
                              key.prolog.attribs);
 
-         u_foreach_bit(a, dyn->vi->attributes_valid) {
+         u_foreach_bit(a, dyn->vi->attributes_valid & sw_vs->info.vs.attribs_read) {
             unsigned slot =
                util_bitcount64(sw_vs->info.vs.attribs_read & BITFIELD_MASK(a));
 

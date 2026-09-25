@@ -3363,13 +3363,14 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                NIR_PASS(_, clone, agx_nir_lower_vs_input_to_prolog);
             } else {
                struct agx_velem_key attribs[AGX_MAX_ATTRIBS];
-               for (unsigned a = 0; a < AGX_MAX_ATTRIBS; ++a) {
-                  if (key->vs.attribs[a].format) {
-                     unsigned slot = util_bitcount64(
-                        shader->info.vs.attribs_read & BITFIELD_MASK(a));
-
-                     attribs[slot] = key->vs.attribs[a];
-                  }
+               if (!agx_compact_velem_keys(
+                      attribs, ARRAY_SIZE(attribs), key->vs.attribs,
+                      ARRAY_SIZE(key->vs.attribs), shader->info.vs.attribs_read)) {
+                  ralloc_free(clone);
+                  if (!last)
+                     ralloc_free(nir);
+                  hk_api_shader_destroy(&dev->vk, &obj->vk, pAllocator);
+                  return VK_ERROR_FEATURE_NOT_PRESENT;
                }
 
                struct agx_robustness agx_rs = {

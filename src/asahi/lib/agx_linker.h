@@ -83,6 +83,28 @@ struct agx_velem_key {
    bool instanced;
 };
 
+/* API locations and compacted hardware inputs have distinct bounds. Iterate
+ * the source location mask, including sparse high locations, then validate
+ * the number of live hardware slots. Ignore unused declarations entirely. */
+static inline bool
+agx_compact_velem_keys(struct agx_velem_key *dst, unsigned dst_count,
+                      const struct agx_velem_key *src, unsigned src_count,
+                      uint32_t inputs_read)
+{
+   for (unsigned i = 0; i < dst_count; ++i)
+      dst[i] = (struct agx_velem_key){0};
+
+   unsigned slot = 0;
+   while (inputs_read) {
+      unsigned location = __builtin_ctz(inputs_read);
+      inputs_read &= inputs_read - 1;
+      if (location >= src_count || slot >= dst_count || !src[location].format)
+         return false;
+      dst[slot++] = src[location];
+   }
+   return true;
+}
+
 struct agx_vs_prolog_key {
    struct agx_velem_key attribs[AGX_MAX_VBUFS];
 
