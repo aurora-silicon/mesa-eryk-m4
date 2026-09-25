@@ -592,11 +592,11 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
       debug_get_bool_option("HK_M4_BATCH_DISJOINT_CLEARS", false);
    const bool batch_fills =
-      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+      agx_chip_uses_g15_g16_shader_abi(hk_cmd_buffer_device(cmd)->dev.chip) &&
       debug_get_bool_option("HK_M4_BATCH_META_FILLS",
          debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", true));
    const bool batch_copies =
-      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+      agx_chip_uses_g15_g16_shader_abi(hk_cmd_buffer_device(cmd)->dev.chip) &&
       debug_get_bool_option("HK_M4_BATCH_META_COPIES", true);
    const bool batch_queries =
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
@@ -772,7 +772,7 @@ hk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
    for (unsigned i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++)
       destinations |= pDependencyInfo->pImageMemoryBarriers[i].dstStageMask;
 
-   if (dev->dev.chip == AGX_CHIP_G16G) {
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip)) {
       VkAccessFlags2 writes = 0;
       for (unsigned i = 0; i < pDependencyInfo->memoryBarrierCount; i++) {
          const VkMemoryBarrier2 *b = &pDependencyInfo->pMemoryBarriers[i];
