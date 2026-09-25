@@ -160,6 +160,10 @@ asahi_fill_cdm_command(struct hk_device *dev, struct hk_cs *cs,
 {
    size_t len = cs->stream_linked ? 65536 /* XXX */ : (cs->current - cs->start);
 
+   if (debug_get_bool_option("HK_G17P_COMPUTE_TRACE", false))
+      fprintf(stderr, "HK_COMPUTE_SUBMIT cs=%" PRIx64 " end=%" PRIx64
+              " linked=%u\n", cs->addr, cs->addr + len, cs->stream_linked);
+
    *cmd = (struct drm_asahi_cmd_compute){
       .cdm_ctrl_stream_base = cs->addr,
       .cdm_ctrl_stream_end = cs->addr + len,

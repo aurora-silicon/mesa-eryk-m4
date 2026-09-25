@@ -835,6 +835,9 @@ hk_cmd_buffer_get_cs_general(struct hk_cmd_buffer *cmd, struct hk_cs **ptr,
          .end = root.cpu + initial_size,
       };
 
+      if (compute && debug_get_bool_option("HK_G17P_COMPUTE_TRACE", false))
+         fprintf(stderr, "HK_COMPUTE_BEGIN cs=%" PRIx64 "\n", cs->addr);
+
       list_inithead(&cs->node);
       hk_drm_attachment_set_init(&cs->compute_attachments);
       hk_drm_attachment_set_init(&cs->clear_destinations);

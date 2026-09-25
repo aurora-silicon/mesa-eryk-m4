@@ -52,3 +52,13 @@ enabled. The fragment SSBO change does not depend on experimental preambles.
 All 80 selected fragment SSBO robustness2 CTS cases pass on M4, including
 read/write, dynamic bindings and null descriptors. Selection SHA256:
 `ef8fc8537fdbc344f91586d1378f96f7039d25074c2470b38782fcf13bbdf1ea`.
+
+### Timing provenance correction
+
+The M3 boot used for the fragment measurements above had both pass summaries
+and per-slot timing enabled (`debug_flags=50331648`). The older M3 baseline
+was not recorded with the same instrumentation, so their ratio is not a
+controlled measurement of the optimization. The stated completed-frame times
+and exact image checks remain observations from those runs. Normal-boot,
+matched measurements are required before quoting an M3 speedup. M4's runs
+were not changed by this M3-only diagnostic boot.
