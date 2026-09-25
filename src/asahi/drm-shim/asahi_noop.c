@@ -81,6 +81,32 @@ static const struct drm_asahi_params_global params_g16g = {
    .gpu_hal_generation = DRM_ASAHI_GPU_HAL_200,
 };
 
+/* J613 / MacBook Air M3 as published by the M3 kernel runtime's J613 board
+ * record (m3_drm.rs params, file.rs get_params): T8122 G15G C0, one cluster
+ * of ten cores, USC 3, legacy HAL. max_frequency_khz is the J613 InitData
+ * top p-state (1338 MHz). Features are left clear: the shim implements
+ * neither VM_STATUS nor scheduled queues. For offline compile/submit smoke
+ * only; nothing here has run on G15G hardware. */
+static const struct drm_asahi_params_global params_g15g_j613 = {
+   .gpu_generation = 15,
+   .gpu_variant = 'G',
+   .gpu_revision = 0x20, /* C0, UABI enum. */
+   .chip_id = 0x8122,
+   .num_dies = 1,
+   .num_clusters_total = 1,
+   .num_cores_per_cluster = 10,
+   .core_masks = {0x3ff},
+   .vm_start = 0x4000,
+   .vm_end = 0x2ffffff8000ull,
+   .vm_kernel_min_size = 0x20000000,
+   .max_commands_per_submission = 64,
+   .max_attachments = 16,
+   .max_frequency_khz = 1338000,
+   .command_timestamp_frequency_hz = 1000000000,
+   .usc_generation = 3,
+   .gpu_hal_generation = DRM_ASAHI_GPU_HAL_LEGACY,
+};
+
 static const struct drm_asahi_params_global *
 shim_params(void)
 {
@@ -90,6 +116,8 @@ shim_params(void)
       return &params_g17p;
    if (chip && !strcmp(chip, "g16g"))
       return &params_g16g;
+   if (chip && !strcmp(chip, "g15g"))
+      return &params_g15g_j613;
 
    return &params_g13g;
 }
