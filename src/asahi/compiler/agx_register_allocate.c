@@ -1618,10 +1618,13 @@ agx_ra(agx_context *ctx)
    /* Determine maximum possible registers. We won't exceed this! */
    unsigned max_possible_regs = AGX_NUM_REGS;
 
-   /* Compute shaders need to have their entire workgroup together, so our
-    * register usage is bounded by the workgroup size.
+   /* AGX2 needs a whole workgroup to fit its statically partitioned register
+    * file. AGX3B dynamically allocates register/threadgroup/stack storage from
+    * a shared cache; the G13 occupancy table is not a register admission limit
+    * there. Keep the native instruction-encoding limit below.
     */
-   if (mesa_shader_stage_is_compute(ctx->stage)) {
+   if (mesa_shader_stage_is_compute(ctx->stage) &&
+       ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B) {
       unsigned threads_per_workgroup;
 
       /* If we don't know the workgroup size, worst case it. TODO: Optimize
@@ -1691,10 +1694,11 @@ agx_ra(agx_context *ctx)
    bool remat = false;
    const unsigned full_budget = max_possible_regs;
 
-   /* If we need multiple waves, see if we can rematerialize constants to save
-    * waves. If we only have a single wave regardless, this is pointless.
+   /* Rematerialize to cross a static occupancy threshold only where that
+    * model applies. AGX3B occupancy is selected dynamically by the hardware.
     */
-   if (effective_demand > agx_round_registers(1) && !spilling) {
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B &&
+       effective_demand > agx_round_registers(1) && !spilling) {
       unsigned effective_demand_remat = agx_calc_register_demand(ctx, true);
 
       /* Worst-case assume we need 6 16-bit registers for constants, for a
