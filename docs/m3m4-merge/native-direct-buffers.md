@@ -1,5 +1,9 @@
 # Canonical ordinary buffer descriptors
 
+Current default changed after full-suite regression testing: see
+[buffer-address-regression-20260926.md](buffer-address-regression-20260926.md).
+The measurements below are historical and do not qualify the current default.
+
 Native ordinary UBO/SSBO descriptors now name their allocation's immutable
 backing address with a private bit-63 tag. Memory lowering strips that tag and
 skips the software alias-table walk. Sparse descriptors, raw device addresses

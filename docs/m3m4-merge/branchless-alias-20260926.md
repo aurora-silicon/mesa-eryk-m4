@@ -1,5 +1,9 @@
 # Safe buffer alias lookup without a leaf branch
 
+Current default changed after full-suite regression testing: see
+[buffer-address-regression-20260926.md](buffer-address-regression-20260926.md).
+The measurements below are historical and do not qualify the current default.
+
 An absent buffer-alias leaf means identity mapping. Select the permanent zero
 page and offset zero for its metadata read instead of branching around that
 read. Preserve the original fallback for addresses outside the application VA

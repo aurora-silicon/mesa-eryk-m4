@@ -1,5 +1,9 @@
 # Canonical fragment uniform-buffer addresses
 
+Current default changed after full-suite regression testing: see
+[buffer-address-regression-20260926.md](buffer-address-regression-20260926.md).
+The measurements below are historical and do not qualify the current default.
+
 Extend the native G15/G16 compute descriptor proof to fragment uniform-buffer
 reads. These descriptors name canonical backing when sparse binding and
 buffer descriptors are disabled, including buffers with a distinct replay BDA.
