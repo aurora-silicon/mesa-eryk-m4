@@ -4984,6 +4984,9 @@ emit_block(agx_context *ctx, nir_block *block)
    }
 
    agx_block *blk = ctx->current_block;
+   if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       (ctx->stage == MESA_SHADER_COMPUTE || ctx->stage == MESA_SHADER_FRAGMENT))
+      blk->divergent = block->divergent;
    list_addtail(&blk->link, &ctx->blocks);
    list_inithead(&blk->instructions);
 
@@ -7053,6 +7056,11 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
       nir->options = original_options;
 
    NIR_PASS(_, nir, agx_nir_export_at_exit);
+
+   /* Register-cache discards need execution divergence, not simply syntactic
+    * nesting: descriptor and preamble-controlled branches can be uniform. */
+   if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B)
+      nir_divergence_analysis(nir);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       info->varyings.fs.nr_cf = key->fs.cf_base;
