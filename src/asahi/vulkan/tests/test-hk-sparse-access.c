@@ -36,6 +36,7 @@ fold(nir_shader *s)
                uint64_t addr = nir_src_as_uint(intr->src[0]);
                if (addr == 0x1000 + hk_root_descriptor_offset(sparse_residency_map)) value = map;
                else if (addr == 0x1000 + hk_root_descriptor_offset(buffer_alias_table)) value = 0x8000;
+               else if (addr == AGX_ZERO_PAGE_ADDRESS) value = 0;
                else if (addr >= 0x8000 && addr < 0x9000) value = alias_leaf_present ? 0x10000 : 0;
                else if (addr >= 0x10000 && addr < 0x18000) value = 0x60000000 + (addr - 0x10000) * 2048;
                else if (addr == 0x1000 + hk_root_descriptor_offset(sparse_va_base)) value = base;

@@ -62,18 +62,20 @@ canonical_address(nir_builder *b, const struct sparse_map *map,
                nir_ishl_imm(b, nir_ushr_imm(b, safe_offset, 26), 3)),
       .align_mul = 8);
    nir_def *fallback = nir_bcsel(b, inside, primary, address);
-   nir_push_if(b, nir_iand(b, inside, nir_ine_imm(b, leaf, 0)));
+   /* Absent leaves are identity mappings. Redirect their metadata read to
+    * the permanent zero page, including its offset, instead of opening an
+    * execution-mask branch around every lookup. Real leaves are 32 KiB;
+    * their upper half must never become an offset into the 16-KiB zero page. */
+   nir_def *has_leaf = nir_iand(b, inside, nir_ine_imm(b, leaf, 0));
+   nir_def *safe_leaf = nir_bcsel(b, has_leaf, leaf,
+                                 nir_imm_int64(b, AGX_ZERO_PAGE_ADDRESS));
+   nir_def *entry_offset = nir_bcsel(b, has_leaf,
+      nir_iand_imm(b, nir_ushr_imm(b, safe_offset, 11), 32760),
+      nir_imm_int64(b, 0));
    nir_def *mapped = nir_load_global_constant(
-      b, 1, 64,
-      nir_iadd(b, leaf,
-               nir_iand_imm(b, nir_ushr_imm(b, safe_offset, 11), 32760)),
-      .align_mul = 8);
-   nir_def *canonical =
-      nir_bcsel(b, nir_ine_imm(b, mapped, 0),
-                nir_iadd(b, mapped, nir_iand_imm(b, address, 16383)), primary);
-   nir_push_else(b, NULL);
-   nir_pop_if(b, NULL);
-   return nir_if_phi(b, canonical, fallback);
+      b, 1, 64, nir_iadd(b, safe_leaf, entry_offset), .align_mul = 8);
+   return nir_bcsel(b, nir_iand(b, has_leaf, nir_ine_imm(b, mapped, 0)),
+                   nir_iadd(b, mapped, nir_iand_imm(b, address, 16383)), fallback);
 }
 
 static bool
@@ -204,6 +206,13 @@ alias_table_level(nir_def *address)
    nir_instr *instr = nir_def_instr(address);
    if (instr->type == nir_instr_type_alu) {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
+      if (alu->op == nir_op_bcsel) {
+         for (unsigned i = 1; i <= 2; ++i) {
+            if (nir_src_is_const(alu->src[i].src) &&
+                nir_src_as_uint(alu->src[i].src) == AGX_ZERO_PAGE_ADDRESS)
+               return alias_table_level(alu->src[3 - i].src.ssa);
+         }
+      }
       return alu->op == nir_op_iadd
                 ? MAX2(alias_table_level(alu->src[0].src.ssa),
                        alias_table_level(alu->src[1].src.ssa))
