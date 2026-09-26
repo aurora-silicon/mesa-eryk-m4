@@ -1,0 +1,39 @@
+{
+  "machine": "m4",
+  "catalog": {
+    "schema": 1,
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "source": "/home/council/dev/dirtyroom_m4/build/cts-1.4-baseline/mustpass/mustpass.txt",
+    "source_sha256": "fe29a62a97e128542b3c6cf46c892ba168d7856f3e57f130b40b82f25cfb40a6",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "count": 3206030,
+    "source_count": 3247552,
+    "excluded_count": 41522,
+    "order": "ASCII lexicographic (LC_ALL=C)",
+    "linux_only": true,
+    "exclusion_rule": "win32 or .android. in case name",
+    "capability_filter": false,
+    "result_filter": false,
+    "index_convention": "zero-based; start inclusive, end exclusive"
+  },
+  "environment": {
+    "VK_DRIVER_FILES": "/opt/asahi-m3m4-buffer-diagnostic-complete/asahi.json",
+    "VK_ICD_FILENAMES": "/opt/asahi-m3m4-buffer-diagnostic-complete/asahi.json",
+    "LD_LIBRARY_PATH": "/opt/asahi-m3m4-buffer-diagnostic-complete/lib",
+    "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-buffer-diagnostic-complete/share/drirc.d",
+    "ASAHI_M3_EXPERIMENTAL": "1",
+    "ASAHI_M4_EXPERIMENTAL": "1",
+    "ASAHI_MESA_DEBUG": "nocompress",
+    "HK_DEBUG_LOG": "0",
+    "AGX_MESA_DEBUG": "",
+    "MESA_SHADER_CACHE_DIR": "/root/cts-paired-cache/mesa",
+    "VK_LAYER_PATH": "/var/empty",
+    "VK_IMPLICIT_LAYER_PATH": "/var/empty"
+  },
+  "binary": "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit",
+  "runner_sha256": "060aad45bbfbc9f1d5156cfbe950584fe86d1ec77e81b609a568bb519f4b6b85",
+  "case_timeout": 60,
+  "jobs": 1,
+  "mesa_commit": "3c7ec4838f232f77dd9d4ce77c7c077ecf5e5d0d",
+  "note": "Default compiler settings; no Satisfactory opt-in profile. No result/capability filtering."
+}

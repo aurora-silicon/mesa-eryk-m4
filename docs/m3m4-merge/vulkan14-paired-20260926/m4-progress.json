@@ -1,0 +1,17 @@
+{
+  "state": "running",
+  "machine": "m4",
+  "total": 3206030,
+  "completed": 80000,
+  "counts": {
+    "NotSupported": 40333,
+    "Pass": 39667
+  },
+  "updated_unix": 1790453695.9288118,
+  "active": {
+    "segment": "0080000-0090000",
+    "start": 80000,
+    "end": 90000,
+    "headless": false
+  }
+}

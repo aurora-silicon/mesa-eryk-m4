@@ -12,6 +12,7 @@ import hashlib
 import json
 from pathlib import Path
 import shlex
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -84,6 +85,8 @@ def main():
         assert reason.strip() and db.execute('SELECT 1 FROM segments WHERE path=?',(path,)).fetchone()
         db.execute('INSERT OR REPLACE INTO reviews VALUES (?,?)',(path,reason))
     db.commit()
+    history_path=ROOT/'build/cts-full-confirm3-20260920/results.sqlite3'
+    history=sqlite3.connect('file:'+str(history_path)+'?mode=ro',uri=True) if a.machine=='m3' else None
     def report(state, active=None):
         counts = dict(db.execute('SELECT status,COUNT(*) FROM outcomes GROUP BY status'))
         save(a.output/'progress.json', dict(state=state, machine=a.machine, total=len(names),
@@ -130,6 +133,8 @@ print(json.dumps(dict(kernel=os.uname().release,files={p:hashlib.sha256(Path(p).
         if len(done)==len(names): report('complete'); return 0
         if not a.run: report('ready'); return 0
         if (a.output/'STOP').exists(): report('stopped-at-boundary'); return 0
+        if shutil.disk_usage(a.output).free < 2*1024**3:
+            report('host-disk-reserve'); return 3
         pin()
         start=next(i for i in range(len(names)) if i not in done)
         wsi=names[start].startswith('dEQP-VK.wsi.')
@@ -146,16 +151,29 @@ print(json.dumps(dict(kernel=os.uname().release,files={p:hashlib.sha256(Path(p).
                     n=prior['selected'];elapsed=max(.1,prior['runner_seconds'])
                     size=max(1,min(4096,n*2,int(n*15/elapsed)))
         indices=[]
+        historical_seconds={idx:json.loads(detail).get('seconds') or 0 for idx,detail in
+            history.execute('SELECT idx,detail FROM outcomes WHERE idx>=? AND idx<?',(start,start+size))} if history else {}
+        estimated=0.0
         for i in range(start,min(len(names),start+size)):
             if names[i].startswith('dEQP-VK.wsi.')!=wsi:break
             if a.machine=='m3' and family(names[i]) != family(names[start]):break
-            if i not in done:indices.append(i)
+            if i not in done:
+                # Prior durations affect grouping only, never coverage or verdict.
+                # Leave room for slower M3 uncached sparse-VA scans; one long
+                # case remains a singleton with the original case/guard bounds.
+                cost=max(.001,historical_seconds.get(i,0))*4
+                if history and indices and estimated+cost>15:break
+                indices.append(i);estimated+=cost
         key=f'{start:07d}-{indices[-1]+1:07d}'
         attempt=0
         while (a.output/'segments'/key).exists():
             attempt+=1;key=f'{start:07d}-{indices[-1]+1:07d}-attempt{attempt}'
         segment=a.output/'segments'/key;segment.mkdir(parents=True)
         raw,metadata=selection(names,indices,catalog)
+        if history:
+            metadata['scheduling']=dict(historical_campaign=str(history_path.parent),
+                estimated_seconds=estimated,budget_seconds=15,scale=4,
+                scope='Grouping only; all original indices and outcomes retained')
         (segment/'cases.txt').write_bytes(raw);save(segment/'cases.meta.json',metadata)
         report('running',dict(segment=key,start=start,end=indices[-1]+1,headless=wsi))
         if a.machine=='m4':

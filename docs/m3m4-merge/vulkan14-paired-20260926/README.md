@@ -12,13 +12,13 @@ No CTS source or tolerance changes were made for this run.
 Both use merged Mesa3c7ec4838f2, Vulkan library372e6351a85b681e7d42731f4dd1c988e0fc7a640a6859a82ebcfc07c791999f,
 with default compiler settings and no Satisfactory opt-in flags. Exact driver
 environment, kernel/module identities and every indexed outcome are retained
-under `build/cts-paired-20260926/{m3-full,m4-full}` in the workspace.
+under `build/cts-paired-20260926/{m3-pte-fix,m4-full}` in the workspace.
 Each has progress.json, failures.tsv, results.sqlite3, and immutable segments.
 
 The retained tools mirror workspace-root tools. Run from that workspace:
 
 ```sh
-python3 tools/cts-paired.py --machine m3 --output build/cts-paired-20260926/m3-full --run
+python3 tools/cts-paired.py --machine m3 --output build/cts-paired-20260926/m3-pte-fix --run
 python3 tools/cts-paired.py --machine m4 --output build/cts-paired-20260926/m4-full --run
 ```
 
@@ -47,3 +47,31 @@ correction retains the existing guard thresholds.
 
 Offline selection regression and Python compilation checks passed. Hardware
 qualification and status snapshots will be recorded as the campaign advances.
+
+## First regression and current continuation
+
+M3 sparse-buffer creation spent about 95% of a task-clock profile in uncached
+PTE scans. Acquiring every PTE serialized host-only page-table inspection.
+Kernel `efd38da3d7c7` (development commit `5bd273f6a511`) keeps the same ownership
+and permission checks but uses Relaxed reads in three scans of exclusively
+host-owned M3 DMA tables. Shared roots retain Acquire. The isolated 3,255-check
+sparse-buffer case passes in 11.30 s; the original isolated diagnostic was
+still running when interrupted at 26.1 s for investigation, so no exact
+speedup is claimed. See the kernel's `tests/m3-sparse-pte-20260926/` evidence.
+
+The earlier corrected `m3-full/` campaign remains stopped with its original
+failed guard evidence; `m3-pte-fix/` starts the entire catalog again at zero.
+M4's original corrected campaign continues unchanged. The sparse tests remain
+selected and fully exercised; no limits or capabilities were reduced.
+
+M3 grouping also consults prior per-case durations from the frozen September 20
+full campaign with a 4x time allowance and 15 s aggregate target. A long case
+is isolated, not skipped. Prior outcomes never affect selection or verdicts.
+The controller stops before a new segment if host free space falls below 2 GiB.
+Obsolete generated ELF object files were removed to reclaim space; captures,
+all test evidence, source trees, libraries and executable artifacts remain.
+
+The committed progress files are dated snapshots, not live or final results.
+`build/cts-paired-20260926/active.json` identifies the live campaign directories.
+The new kernel has passed the isolated check; broader CTS qualification is
+ongoing. There is no claim of a complete passing suite yet.
