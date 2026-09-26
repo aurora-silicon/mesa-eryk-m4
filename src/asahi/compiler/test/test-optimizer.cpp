@@ -650,9 +650,9 @@ TEST_F(Optimizer, G16SampleLodConstantsAreFloatingPoint)
 
 /* GLES mediump derivatives and trigonometric lowering used to fold away the
  * f16 -> f32 conversion and create instructions the AGX3b packer rejects. */
-TEST_F(Optimizer, AGX3BPreservesWideningBeforeDerivativesAndFMA)
+TEST_F(Optimizer, AGX3BPreservesWideningBeforeDerivatives)
 {
-   for (unsigned op : {AGX_OPCODE_DFDX, AGX_OPCODE_DFDY, AGX_OPCODE_FFMA}) {
+   for (unsigned op : {AGX_OPCODE_DFDX, AGX_OPCODE_DFDY}) {
       agx_builder *actual = agx_test_builder(mem_ctx);
       agx_builder *expected = agx_test_builder(mem_ctx);
       struct agx_shader_key key = {};
@@ -669,6 +669,30 @@ TEST_F(Optimizer, AGX3BPreservesWideningBeforeDerivativesAndFMA)
             agx_dfdy_to(b, result, wide);
          else
             agx_ffma_to(b, result, agx_neg(wide), wy, agx_immediate(0x30));
+         agx_unit_test(b, result);
+      }
+      agx_optimize_and_dce(actual->shader);
+      ASSERT_SHADER_EQUAL(actual->shader, expected->shader);
+   }
+}
+
+TEST_F(Optimizer, AGX3BMixedFMAFoldsExactWidening)
+{
+   for (unsigned slot = 0; slot < 3; ++slot) {
+      agx_builder *actual = agx_test_builder(mem_ctx);
+      agx_builder *expected = agx_test_builder(mem_ctx);
+      struct agx_shader_key key = {};
+      key.dev.encoding = AGX_ISA_ENCODING_AGX3B;
+      actual->shader->key = &key;
+      expected->shader->key = &key;
+      for (agx_builder *b : {actual, expected}) {
+         agx_index wide = agx_temp(b->shader, AGX_SIZE_32);
+         if (b == actual)
+            agx_fmov_to(b, wide, hx);
+         agx_index result = agx_temp(b->shader, AGX_SIZE_32);
+         agx_index src[] = {wx, wy, wz};
+         src[slot] = agx_neg(b == actual ? wide : hx);
+         agx_ffma_to(b, result, src[0], src[1], src[2]);
          agx_unit_test(b, result);
       }
       agx_optimize_and_dce(actual->shader);

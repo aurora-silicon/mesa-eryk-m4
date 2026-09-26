@@ -347,7 +347,11 @@ agx3_try_float_modifier(struct util_dynarray *emission,
 
    const bool narrow_fma = is_fma && enc == AGX_ISA_ENCODING_AGX3B &&
                            I->dest[0].size == AGX_SIZE_16;
-   bool has_mod = I->saturate || narrow_fma;
+   unsigned half_mask = 0;
+   if (is_fma && enc == AGX_ISA_ENCODING_AGX3B)
+      for (unsigned s = 0; s < I->nr_srcs; ++s)
+         half_mask |= (I->src[s].size == AGX_SIZE_16) << s;
+   bool has_mod = I->saturate || narrow_fma || half_mask;
    for (unsigned s = 0; s < I->nr_srcs; ++s)
       has_mod |= I->src[s].abs || I->src[s].neg;
    if (!has_mod)
@@ -360,7 +364,9 @@ agx3_try_float_modifier(struct util_dynarray *emission,
        I->dest[0].value >= 256 || I->nr_srcs != want)
       return -1;
    for (unsigned s = 0; s < want; ++s)
-      if (!agx3_mod_src_ok(I->src[s]))
+      if (!agx3_mod_src_ok(I->src[s]) &&
+          !((half_mask & (1u << s)) && agx3_src_is_register(I->src[s]) &&
+            I->src[s].value < 256 && agx_channels(I->src[s]) == 1))
          return -1;
 
    struct agx3_falu_mods m = {
@@ -408,7 +414,8 @@ agx3_try_float_modifier(struct util_dynarray *emission,
             runtime.cache[i] = I->src[i].cache;
             runtime.discard[i] = I->src[i].discard;
          }
-         ok = agx3_falu_fma_mod_runtime(enc, d, narrow_fma, s0, s1, I->src[2].value,
+         ok = agx3_falu_fma_mixed_mod_runtime(enc, d, narrow_fma, half_mask,
+                                            s0, s1, I->src[2].value,
                                        &m, &runtime, bytes, &len);
       } else {
          ok = agx3_falu_fma_mod(enc, d, s0, s1, I->src[2].value,

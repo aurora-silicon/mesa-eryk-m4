@@ -14,6 +14,59 @@
 #include <string.h>
 
 static unsigned
+mixed_fma_vectors(void)
+{
+   const struct mixed_vector { unsigned mask; uint16_t a,b,c; uint8_t bytes[8]; } vectors[] = {
+      {0,4,0,8,{0x09,0x01,0x1e,0x05,0x81,0x08,0x02,0xc0}},
+      {2,0,8,4,{0x09,0x08,0x1e,0x01,0x81,0x04,0x02,0xc0}},
+      {1,8,0,4,{0x09,0x01,0x1e,0x08,0x81,0x04,0x02,0xc0}},
+      {3,5,4,0,{0x09,0x04,0x1e,0x04,0x81,0x00,0x12,0xc0}},
+      {4,4,0,8,{0x09,0x01,0x1e,0x05,0x81,0x08,0x00,0xc0}},
+      {6,0,4,5,{0x09,0x04,0x1e,0x01,0x81,0x05,0x00,0xc0}},
+      {5,4,0,5,{0x09,0x01,0x1e,0x04,0x81,0x05,0x00,0xc0}},
+      {7,1,0,4,{0x09,0x00,0x1e,0x00,0x81,0x04,0x10,0xc0}},
+      {3,1,0,4,{0x09,0x00,0x1e,0x00,0x81,0x04,0x12,0xc0}},
+   };
+   const struct agx3_falu_mods mods = {0};
+   struct agx3_falu_runtime rt = {.discard={true,true,true}, .wait_mask=32};
+   unsigned fail = 0;
+   for (unsigned i=0; i<sizeof(vectors)/sizeof(vectors[0]); ++i) {
+      uint8_t out[16], length=0;
+      const struct mixed_vector *v=&vectors[i];
+      if (!agx3_falu_fma_mixed_mod_runtime(AGX_ISA_ENCODING_AGX3B,
+             0,false,v->mask,v->a,v->b,v->c,&mods,&rt,out,&length) ||
+          length!=8 || memcmp(out,v->bytes,8)) {
+         fprintf(stderr,"mixed FMA Apple vector %u failed\n",i);
+         ++fail;
+      }
+   }
+   uint8_t out[16], length = 0;
+   rt = (struct agx3_falu_runtime){.wait_mask = 63};
+   fail += !agx3_falu_fma_mixed_mod_runtime(AGX_ISA_ENCODING_AGX3B,
+      254, false, 7, 255, 255, 255, &mods, &rt, out, &length);
+   fail += agx3_falu_fma_mixed_mod_runtime(AGX_ISA_ENCODING_AGX3B,
+      0, false, 8, 0, 0, 0, &mods, &rt, out, &length);
+   fail += agx3_falu_fma_mixed_mod_runtime(AGX_ISA_ENCODING_AGX3B,
+      0, false, 7, 256, 0, 0, &mods, &rt, out, &length);
+   for (unsigned s = 0; s < 3; ++s) {
+      unsigned src[3] = {0};
+      src[s] = 1;
+      fail += agx3_falu_fma_mixed_mod_runtime(AGX_ISA_ENCODING_AGX3B,
+         0, false, 7 ^ (1u << s), src[0], src[1], src[2],
+         &mods, &rt, out, &length);
+      rt.cache[s] = rt.discard[s] = true;
+      fail += agx3_falu_fma_mixed_mod_runtime(AGX_ISA_ENCODING_AGX3B,
+         0, false, 7, 0, 0, 0, &mods, &rt, out, &length);
+      rt.cache[s] = rt.discard[s] = false;
+   }
+   rt.wait_mask = 64;
+   fail += agx3_falu_fma_mixed_mod_runtime(AGX_ISA_ENCODING_AGX3B,
+      0, false, 7, 0, 0, 0, &mods, &rt, out, &length);
+   printf("native mixed FMA: 9 Apple vectors and invalid operands, %u failures\n",fail);
+   return fail;
+}
+
+static unsigned
 narrow_runtime_vectors(void)
 {
    const struct {
@@ -395,7 +448,7 @@ fma_two_vectors(void)
 int
 main(void)
 {
-   unsigned pass = 0, fail = runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors() + fma_two_vectors();
+   unsigned pass = 0, fail = mixed_fma_vectors() + runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors() + fma_two_vectors();
    for (size_t i = 0; i < mod_vec_count; ++i) {
       const struct mod_vec *v = &mod_vecs[i];
       const enum agx_isa_encoding e =

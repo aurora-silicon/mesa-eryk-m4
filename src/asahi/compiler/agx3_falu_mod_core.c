@@ -248,23 +248,32 @@ agx3_falu_fma_mod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src0,
  * This keeps fog subtraction fused while waiting only on its dependencies.
  */
 bool
-agx3_falu_fma_mod_runtime(enum agx_isa_encoding enc, uint16_t dest, bool dest_16,
-                          uint16_t src0, uint16_t src1, uint16_t addend,
+agx3_falu_fma_mixed_mod_runtime(enum agx_isa_encoding enc, uint16_t dest, bool dest_16,
+                          unsigned half_mask, uint16_t src0, uint16_t src1, uint16_t addend,
                           const struct agx3_falu_mods *m,
                           const struct agx3_falu_runtime *runtime,
                           uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || m == NULL || runtime == NULL ||
-       out == NULL || len == NULL || dest >= 256 || (!dest_16 && (dest & 1)) || !regs_ok(0, src0, src1) ||
-       (addend & 1) || addend >= 256 || runtime->wait_mask > 0x3f)
+       out == NULL || len == NULL || dest >= 256 || (!dest_16 && (dest & 1)) ||
+       half_mask > 7 || runtime->wait_mask > 0x3f)
       return false;
+   const uint16_t sources[] = {src0, src1, addend};
+   for (unsigned i = 0; i < 3; ++i)
+      if (sources[i] >= 256 || (!(half_mask & (1u << i)) && (sources[i] & 1)))
+         return false;
    for (unsigned i = 0; i < 3; ++i)
       if (runtime->cache[i] && runtime->discard[i])
          return false;
 
-   struct agx3_field_kv ov[25];
+   struct agx3_field_kv ov[28];
    unsigned n = common_mods(dest, src0, src1, m, ov);
    ov[n++] = (struct agx3_field_kv)KV(10, dest_16 ? 1 : 2);
+   /* Source widths are independent of the F32 operation/result rounding.
+    * Apple emits every combination, including odd half-register sources. */
+   ov[n++] = (struct agx3_field_kv)KV(43, (half_mask & 1) ? 1 : 2);
+   ov[n++] = (struct agx3_field_kv)KV(26, (half_mask & 2) ? 1 : 2);
+   ov[n++] = (struct agx3_field_kv)KV(60, (half_mask & 4) ? 1 : 2);
    ov[n++] = (struct agx3_field_kv)KV(52, addend);
    ov[n++] = (struct agx3_field_kv)KV(64, m->addend_abs);
    ov[n++] = (struct agx3_field_kv)KV(65, m->addend_neg);
@@ -289,6 +298,17 @@ agx3_falu_fma_mod_runtime(enum agx_isa_encoding enc, uint16_t dest, bool dest_16
       }
    }
    return false;
+}
+
+bool
+agx3_falu_fma_mod_runtime(enum agx_isa_encoding enc, uint16_t dest, bool dest_16,
+                          uint16_t src0, uint16_t src1, uint16_t addend,
+                          const struct agx3_falu_mods *m,
+                          const struct agx3_falu_runtime *runtime,
+                          uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_falu_fma_mixed_mod_runtime(enc, dest, dest_16, 0, src0, src1,
+                                         addend, m, runtime, out, len);
 }
 
 /* Native FMA has a minifloat addend form: keep a*b+c fused without a

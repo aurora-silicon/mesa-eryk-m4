@@ -81,6 +81,12 @@ bool agx3_falu_narrow_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src
                          bool saturate, const struct agx3_falu_runtime *runtime,
                          uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len);
 
+bool agx3_falu_fma_mixed_mod_runtime(
+   enum agx_isa_encoding enc, uint16_t dest, bool dest_16,
+   unsigned half_mask, uint16_t src0, uint16_t src1, uint16_t addend,
+   const struct agx3_falu_mods *m, const struct agx3_falu_runtime *runtime,
+   uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len);
+
 bool agx3_falu_fma_mod_runtime(enum agx_isa_encoding enc, uint16_t dest, bool dest_16,
                               uint16_t src0, uint16_t src1, uint16_t addend,
                               const struct agx3_falu_mods *m,

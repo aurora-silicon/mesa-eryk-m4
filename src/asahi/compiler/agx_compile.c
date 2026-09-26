@@ -3248,6 +3248,26 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
             value = -value;
          I->src[0] = agx_mov_imm(&b, 32, fui(value));
       }
+      bool half_fma_source = false;
+      agx_foreach_src(I, s)
+         half_fma_source |= I->src[s].size == AGX_SIZE_16 &&
+                            I->src[s].type != AGX_INDEX_IMMEDIATE &&
+                            I->src[s].type != AGX_INDEX_NULL;
+      if (half_fma_source && I->dest[0].size == AGX_SIZE_32 && !I->saturate) {
+         /* Native F32 FMA widens each half operand independently while
+          * preserving its ordinary F32 arithmetic. Keep the half registers;
+          * materialize minifloats to use the qualified three-register form. */
+         agx_foreach_src(I, s) {
+            if (I->src[s].type != AGX_INDEX_IMMEDIATE)
+               continue;
+            agx_index src = I->src[s];
+            float value = agx_minifloat_decode(src.value);
+            if (src.abs) value = fabsf(value);
+            if (src.neg) value = -value;
+            I->src[s] = agx_mov_imm(&b, 32, fui(value));
+         }
+         continue;
+      }
       if (I->dest[0].size == AGX_SIZE_16) {
          /* Native F32 FMA can round directly to half. Keep that single
           * operation and make its full-width register operands explicit. */
