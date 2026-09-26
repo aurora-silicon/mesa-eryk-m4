@@ -47,10 +47,15 @@ def_size_32(nir_def *def, unsigned *size, unsigned *align,
 {
    def_size(def, size, align, class);
    /* AGX3B currently has grounded uniform writes only for 32-bit values.
+    * Boolean exports use one such word per component, normalized below.
     * Oversized candidates cannot be exported, but may still be calculated
     * inside the preamble as dependencies of exportable 32-bit values. */
-   if (*class == nir_preamble_class_general && def->bit_size != 32)
+   if (*class == nir_preamble_class_general && def->bit_size == 1) {
+      *size = 2 * def->num_components;
+      *align = 2;
+   } else if (*class == nir_preamble_class_general && def->bit_size != 32) {
       *size = 512;
+   }
 }
 
 struct native_preamble_options {
@@ -499,6 +504,37 @@ lower_preamble(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
+/* Preserve Boolean semantics while using the qualified 32-bit uniform copy.
+ * The allocator must reserve the widened size before selecting candidates. */
+static bool
+native_preamble_bool(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
+{
+   if ((intr->intrinsic != nir_intrinsic_store_preamble &&
+        intr->intrinsic != nir_intrinsic_load_preamble) ||
+       nir_intrinsic_preamble_class(intr) != nir_preamble_class_general)
+      return false;
+   if (intr->intrinsic == nir_intrinsic_store_preamble &&
+       intr->src[0].ssa->bit_size == 1) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def *word = nir_b2i32(b, intr->src[0].ssa);
+      nir_store_preamble(b, word, .base = nir_intrinsic_base(intr),
+                         .preamble_class = nir_preamble_class_general);
+      nir_instr_remove(&intr->instr);
+      return true;
+   }
+   if (intr->intrinsic == nir_intrinsic_load_preamble && intr->def.bit_size == 1) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def *word = nir_load_preamble(b, intr->def.num_components, 32,
+         .base = nir_intrinsic_base(intr),
+         .preamble_class = nir_preamble_class_general);
+      nir_def *value = nir_ine_imm(b, word, 0);
+      nir_def_rewrite_uses(&intr->def, value);
+      nir_instr_remove(&intr->instr);
+      return true;
+   }
+   return false;
+}
+
 bool
 agx_nir_opt_preamble(nir_shader *nir, unsigned *sizes, bool uniform_32bit_only)
 {
@@ -514,6 +550,10 @@ agx_nir_opt_preamble(nir_shader *nir, unsigned *sizes, bool uniform_32bit_only)
       options.cb_data = &native;
    }
    NIR_PASS(progress, nir, nir_opt_preamble, &options, sizes);
+
+   if (uniform_32bit_only && progress)
+      NIR_PASS(_, nir, nir_shader_intrinsics_pass, native_preamble_bool,
+               nir_metadata_control_flow, NULL);
 
    int16_t heap[512];
    memset(heap, ~0, sizeof(heap));

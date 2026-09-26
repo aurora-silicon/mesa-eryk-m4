@@ -7301,3 +7301,45 @@ TEST_F(AGX3PackBinary, StreamedVertexExportsRetireBeforeRegisterReuse)
       cursor += wait_len;
    }
 }
+
+TEST_F(AGX3PackBinary, NativePreambleExportsBooleanAsWord)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL,
+                                                 "native-preamble-bool");
+   nir_def *uniform = nir_load_preamble(&b, 1, 32, .base = 0);
+   nir_def *value = uniform;
+   for (unsigned i = 0; i < 12; ++i)
+      value = nir_ixor(&b, nir_imul_imm(&b, value, 1664525),
+                      nir_ushr_imm(&b, value, 7));
+   nir_def *condition = nir_ult(&b, value, uniform);
+   nir_push_if(&b, condition);
+   nir_store_global(&b, nir_imm_int(&b, 42), nir_imm_int64(&b, 0x100000),
+                    .align_mul = 4);
+   nir_pop_if(&b, NULL);
+
+   unsigned sizes[] = {8, 0, 0};
+   ASSERT_TRUE(agx_nir_opt_preamble(b.shader, sizes, true));
+   nir_validate_shader(b.shader, "native Boolean preamble export");
+   unsigned exports = 0, bool_to_word = 0;
+   nir_foreach_function_impl(impl, b.shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_store_preamble)
+               continue;
+            exports++;
+            EXPECT_EQ(intr->src[0].ssa->bit_size, 32u);
+            EXPECT_EQ(nir_intrinsic_base(intr) % 2, 0u);
+            nir_instr *src = nir_def_instr(intr->src[0].ssa);
+            if (src->type == nir_instr_type_alu &&
+                nir_instr_as_alu(src)->op == nir_op_b2i32)
+               bool_to_word++;
+         }
+      }
+   }
+   EXPECT_GT(exports, 0u);
+   EXPECT_GT(bool_to_word, 0u);
+   ralloc_free(b.shader);
+}
