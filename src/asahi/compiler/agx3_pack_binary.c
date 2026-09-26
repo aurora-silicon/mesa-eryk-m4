@@ -6683,6 +6683,33 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IADD &&
+             I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate && !I->shift &&
+             I->dest[0].size == AGX_SIZE_64 && agx_channels(I->dest[0]) == 1 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
+             I->src[1].neg && !I->src[1].abs) {
+            bool zero = agx3_tex_imm(I->src[0], 0);
+            struct agx3_isub64_desc d = {
+               .dest = I->dest[0].value, .zero_a = zero,
+               .dest_cache = I->dest[0].cache, .wait_mask = wait,
+            };
+            bool ok = true;
+            for (unsigned s = zero ? 1 : 0; s < 2; ++s) {
+               agx_index x = I->src[s];
+               ok &= agx3_src_is_register(x) && !x.memory && !x.kill &&
+                     x.size == AGX_SIZE_64 && agx_channels(x) == 1 &&
+                     !x.abs && (s == 1 || !x.neg);
+               d.src[s] = x.value;
+               d.cache[s] = x.cache;
+               d.discard[s] = x.discard;
+            }
+            uint8_t bytes[AGX3_IADD_MAX_LENGTH], len;
+            if (!ok || !agx3_isub64_encode(enc, &d, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          /* Unshifted register arithmetic shares the original canonical
           * form, but its native source hints come from post-RA lifetime. */
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IADD &&

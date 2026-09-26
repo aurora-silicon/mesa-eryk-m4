@@ -44,6 +44,16 @@ extern "C" {
 
 #define AGX3_IADD_MAX_LENGTH 12u
 
+/* Full-width native subtraction, including the witnessed #0 - reg form. */
+struct agx3_isub64_desc {
+   uint16_t dest, src[2];
+   bool zero_a, dest_cache, cache[2], discard[2];
+   uint16_t wait_mask;
+};
+bool agx3_isub64_encode(enum agx_isa_encoding encoding,
+                       const struct agx3_isub64_desc *desc,
+                       uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len);
+
 struct agx3_iadd_desc {
    /*
     * Slot A is normally the immediate below. Set this to add a REGISTER

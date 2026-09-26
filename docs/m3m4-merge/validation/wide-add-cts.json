@@ -1,0 +1,37 @@
+{
+  "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+  "cases": [
+    {
+      "catalog_index": 2768269,
+      "case": "dEQP-VK.subgroups.arithmetic.compute.subgroupadd_i64vec2"
+    },
+    {
+      "catalog_index": 2768284,
+      "case": "dEQP-VK.subgroups.arithmetic.compute.subgroupadd_int64_t"
+    },
+    {
+      "catalog_index": 2768301,
+      "case": "dEQP-VK.subgroups.arithmetic.compute.subgroupadd_u64vec2"
+    },
+    {
+      "catalog_index": 2768316,
+      "case": "dEQP-VK.subgroups.arithmetic.compute.subgroupadd_uint64_t"
+    },
+    {
+      "catalog_index": 2774647,
+      "case": "dEQP-VK.subgroups.arithmetic.graphics.subgroupadd_i64vec2"
+    },
+    {
+      "catalog_index": 2774655,
+      "case": "dEQP-VK.subgroups.arithmetic.graphics.subgroupadd_int64_t"
+    },
+    {
+      "catalog_index": 2774663,
+      "case": "dEQP-VK.subgroups.arithmetic.graphics.subgroupadd_u64vec2"
+    },
+    {
+      "catalog_index": 2774671,
+      "case": "dEQP-VK.subgroups.arithmetic.graphics.subgroupadd_uint64_t"
+    }
+  ]
+}

@@ -3533,16 +3533,13 @@ agx_lower_agx3_half_iadd_constants(agx_context *ctx)
    return progress;
 }
 
-/* No grounded AGX3 form adds two 64-bit registers (address forms take one
- * 64-bit base). Split a plain 64-bit add into a low 32-bit add, a carry from
- * an unsigned compare and a high 32-bit add, then recombine the pair
- * (float_controls.fp32.input_args.rounding_rte_conv_from_{int,uint}64_*). */
+/* The native full-width subtract replaces the carry chain. Addition uses
+ * a - (-b), modulo 64 bits, with no signed-overflow assumption. */
 static bool
 agx_lower_agx3_wide_iadd(agx_context *ctx)
 {
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
       return false;
-
    bool progress = false;
    agx_foreach_instr_global_safe(ctx, I) {
       if (I->op != AGX_OPCODE_IADD || I->nr_dests != 1 || I->nr_srcs != 2 ||
@@ -3551,31 +3548,18 @@ agx_lower_agx3_wide_iadd(agx_context *ctx)
          continue;
       bool wide_regs = true;
       agx_foreach_src(I, s) {
-         if (I->src[s].type != AGX_INDEX_NORMAL || I->src[s].size != AGX_SIZE_64 ||
-             I->src[s].abs || I->src[s].neg || agx_channels(I->src[s]) != 1)
+         if ((I->src[s].type != AGX_INDEX_NORMAL &&
+              I->src[s].type != AGX_INDEX_UNIFORM) ||
+             I->src[s].size != AGX_SIZE_64 || I->src[s].abs ||
+             (s == 0 && I->src[s].neg) || agx_channels(I->src[s]) != 1)
             wide_regs = false;
       }
-      if (!wide_regs)
+      if (!wide_regs || I->src[1].neg)
          continue;
-
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
-      agx_index lo[2], hi[2];
-      for (unsigned s = 0; s < 2; ++s) {
-         lo[s] = agx_temp(ctx, AGX_SIZE_32);
-         hi[s] = agx_temp(ctx, AGX_SIZE_32);
-         agx_subdivide_to(&b, lo[s], I->src[s], 0);
-         agx_subdivide_to(&b, hi[s], I->src[s], 1);
-      }
-      agx_index sum_lo = agx_iadd(&b, lo[0], lo[1], 0);
-      agx_index carry =
-         agx_icmpsel(&b, sum_lo, lo[0], agx_mov_imm(&b, 32, 1),
-                     agx_mov_imm(&b, 32, 0), AGX_ICOND_ULT);
-      agx_index sum_hi =
-         agx_iadd(&b, agx_iadd(&b, hi[0], hi[1], 0), carry, 0);
-      /* Two 32-bit halves collect straight into the 64-bit value, as
-       * nir_op_pack_64_2x32_split does. */
-      agx_emit_collect_to(&b, I->dest[0], 2, (agx_index[]){sum_lo, sum_hi});
-      agx_remove_instruction(I);
+      agx_index neg = agx_temp(ctx, AGX_SIZE_64);
+      agx_iadd_to(&b, neg, agx_zero(), agx_neg(I->src[1]), 0);
+      I->src[1] = agx_neg(neg);
       progress = true;
    }
    return progress;
@@ -6206,10 +6190,9 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    /* RA correctness depends on DCE */
    AGX_PASS(ctx, agx_dce, true);
-   if (agx_optimize_g17p_imul_high_div3(ctx)) {
-      agx_validate(ctx, "agx_optimize_g17p_imul_high_div3");
-      AGX_PASS(ctx, agx_dce, true);
-   }
+   /* Full-width native IMAD now handles the division-by-three product.
+    * The old fixed-form shortcut only accepts wait slot 1 and rejects
+    * internal geometry helpers whose operands have another dependency. */
 
 
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
@@ -6922,7 +6905,6 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
 
    /* Record API/source arithmetic before backend lowering introduces its own
     * 64-bit address and invocation-ID calculations. */
-   const bool source_iadd64 = agx_nir_has_alu64(nir, nir_op_iadd);
    const bool source_imul64 = agx_nir_has_alu64(nir, nir_op_imul) ||
                               agx_nir_has_alu64(nir, nir_op_umul_2x32_64) ||
                               agx_nir_has_alu64(nir, nir_op_imul_2x32_64);
@@ -7024,8 +7006,8 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
    const bool is_g17p = key->dev.encoding == AGX_ISA_ENCODING_AGX3B;
 
    /* AGX2 has native 64-bit add and 32x32->64 multiply forms, so the shared
-    * compiler options preserve them. AGX3B has grounded wide multiplication,
-    * but still lowers full-width addition and 64x64 products. Keep the override local to this
+    * compiler options preserve them. AGX3B has grounded wide multiplication and subtraction,
+    * but still decomposes 64x64 products. Keep the override local to this
     * compile so the other encodings retain their paths and frontends continue
     * sharing agx_nir_options. */
    const nir_shader_compiler_options *original_options = nir->options;
@@ -7036,8 +7018,7 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
       agx3_options.lower_iadd_sat = true;
       agx3_options.lower_uadd_sat = true;
       agx3_options.lower_usub_sat = true;
-      if (source_iadd64)
-         agx3_options.lower_int64_options |= nir_lower_iadd64;
+      agx3_options.lower_int64_options &= ~nir_lower_iadd64;
       if (source_imul64)
          agx3_options.lower_int64_options &= ~nir_lower_imul64;
       nir->options = &agx3_options;

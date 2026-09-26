@@ -10,6 +10,40 @@
 #define KV(f, v) {(uint16_t)(f), (uint64_t)(v)}
 
 bool
+agx3_isub64_encode(enum agx_isa_encoding encoding,
+                  const struct agx3_isub64_desc *d,
+                  uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len)
+{
+   if (!d || !out || !len || encoding != AGX_ISA_ENCODING_AGX3B ||
+       (d->dest & 1) || d->dest + 4 > 192 || (d->wait_mask & ~0x3f))
+      return false;
+   for (unsigned s = 0; s < 2; ++s) {
+      if (s == 0 && d->zero_a) {
+         if (d->src[s] || d->cache[s] || d->discard[s])
+            return false;
+      } else if ((d->src[s] & 1) || d->src[s] + 4 > 192 ||
+                 (d->cache[s] && d->discard[s])) {
+         return false;
+      }
+   }
+   const struct agx3_field_kv base[] = {
+      KV(9,2), KV(10,3), KV(23,d->zero_a ? 1 : 2),
+      KV(24,d->zero_a ? 1 : 3), KV(38,2), KV(39,3),
+   };
+   struct agx3_field_kv fields[16] = {
+      KV(2,d->dest), KV(11,d->dest_cache),
+      KV(16,d->src[0]), KV(31,d->src[1]),
+      KV(25,d->cache[0]), KV(27,d->discard[0]),
+      KV(40,d->cache[1]), KV(42,d->discard[1]),
+   };
+   unsigned n = 8;
+   for (unsigned s = 0; s < 6; ++s)
+      if (d->wait_mask & (1u << s))
+         fields[n++] = (struct agx3_field_kv)KV(45+s,1);
+   return agx3_bind_compose(encoding, "isub", 0, base, 6, fields, n, out, len);
+}
+
+bool
 agx3_imul_wide_encode(enum agx_isa_encoding encoding,
                      const struct agx3_imul_wide_desc *d,
                      uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len)

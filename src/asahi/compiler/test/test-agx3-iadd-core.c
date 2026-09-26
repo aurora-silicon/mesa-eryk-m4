@@ -472,6 +472,27 @@ main(void)
       }
    }
 
+   {
+      const uint8_t sub[] = {0x1f,0x01,0x56,0x00,0x02,0x00,0x10,0x50,0x17,0x05};
+      const uint8_t neg[] = {0x1f,0x01,0x56,0x00,0x02,0x00,0x00,0x10,0x15,0x04};
+      struct agx3_isub64_desc d = {
+         .src={0,4}, .discard={true,true}, .wait_mask=32,
+      };
+      CHECK(agx3_isub64_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(sub) && !memcmp(out,sub,len));
+      d.zero_a=true; d.src[1]=0; d.discard[0]=false;
+      CHECK(agx3_isub64_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(neg) && !memcmp(out,neg,len));
+      d.dest=190;
+      CHECK(!agx3_isub64_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      d.dest=0; d.src[1]=190;
+      CHECK(!agx3_isub64_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      d.src[1]=0; d.wait_mask=64;
+      CHECK(!agx3_isub64_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      d.wait_mask=0; d.cache[1]=true;
+      CHECK(!agx3_isub64_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   }
+
    test_apple_shift_witnesses();
    test_native_immediate_subtract();
    test_native_imad_immediate_addend();
