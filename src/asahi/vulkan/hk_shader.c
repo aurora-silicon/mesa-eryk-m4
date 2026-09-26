@@ -3082,12 +3082,33 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    if (agx_get_compiler_debug())
       lock = &hk_device_physical(dev)->debug_compile_lock;
 
+   /* Native constant programs have no scratch allocation. Keep an untouched
+    * shader so register spilling in an optional preamble cannot turn a valid
+    * pipeline into an unsupported bind at command-buffer finalization. */
+   nir_shader *without_preamble = native_preamble ? nir_shader_clone(NULL, nir) : NULL;
+   if (native_preamble && !without_preamble) {
+      ralloc_free(nir);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
+
    if (lock)
       simple_mtx_lock(lock);
 
    assert(nir->info.io_lowered);
-   const bool compiled =
-      agx_compile_shader_nir(nir, &backend_key, &shader->b);
+   bool compiled = agx_compile_shader_nir(nir, &backend_key, &shader->b);
+   if (compiled && native_preamble && shader->b.info.preamble_scratch_size) {
+      mesa_logw("Native %s preamble needs %u bytes of scratch; recompiling without it",
+                _mesa_shader_stage_to_string(nir->info.stage),
+                shader->b.info.preamble_scratch_size);
+      free(shader->b.binary);
+      memset(&shader->b, 0, sizeof(shader->b));
+      ralloc_free(nir);
+      nir = without_preamble;
+      without_preamble = NULL;
+      backend_key.no_preamble = true;
+      compiled = agx_compile_shader_nir(nir, &backend_key, &shader->b);
+   }
+   ralloc_free(without_preamble);
 
    if (lock)
       simple_mtx_unlock(lock);
