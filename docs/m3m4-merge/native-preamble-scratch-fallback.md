@@ -14,7 +14,10 @@ Validation on 2026-09-26 used an isolated experimental compiler that admits
 fragment preamble requiring 32 scratch bytes in the saved Satisfactory Vulkan
 capture. Both G15S and G16G rejected it at command-buffer finalization before
 the fallback. With the fallback, both log the recompilation and finish the
-capture; frames 1, 16 and 31 match the existing RGB references exactly.
+capture. Completed exact RGB comparisons subsequently rejected both builds.
+The 64-bit experiment is not correctness-qualified and received no timing
+approval. This establishes recovery from the submission refusal, not image
+correctness. The initial note claiming exact matches was premature.
 
 Before: M3 20260926T063500123739Z, M4 20260926T063530700865Z.
 After: M3 20260926T063843033532Z, M4 20260926T063821702538Z.
