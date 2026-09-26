@@ -278,6 +278,19 @@ static int run_suite(void)
          }
       }
    }
+   /* Whole-vector alignment must preserve resident/unbound values at both
+    * ends of a page. Contrast with the naturally aligned vector which spans
+    * an alternating resident/unbound boundary. */
+   for (unsigned bits = 8; bits <= 64; bits *= 2) {
+      for (unsigned c = 2; c <= 4; ++c) {
+         for (unsigned page = 0; page < 4; ++page) {
+            check_load(base + page * 16384, bits, c, 32); ++count;
+            check_load(base + (page + 1) * 16384 - 32, bits, c, 32); ++count;
+            check_load(base + (page + 1) * 16384 - bits / 8,
+                       bits, c, bits / 8); ++count;
+         }
+      }
+   }
    check_atomic(false); check_atomic(true);
    const uint64_t atomic_addresses[] = {base, base + 16388, base + size + 16388,
       base + (1u << 26) + 32772, 0, 0x4000};

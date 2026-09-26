@@ -289,12 +289,21 @@ lower_access(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    }
 
    nir_def *components[NIR_MAX_VEC_COMPONENTS];
+   /* The residency bit describes a whole 16-KiB page. If alignment proves
+    * that the complete vector stays in that page, share one lookup across
+    * all channels instead of rebuilding its address and loading it per word.
+    * Keep the piecewise path for vectors/scalars that can cross a boundary. */
+   nir_def *whole_valid = NULL;
+   if (bytes * intr->def.num_components <=
+       MIN2(nir_intrinsic_align(intr), 16384))
+      whole_valid = resident(b, &map, address);
    for (unsigned c = 0; c < intr->def.num_components; ++c) {
       nir_def *addr = nir_iadd_imm(b, address, c * bytes);
       nir_def *value = nir_channel(b, &intr->def, c);
       if (nir_intrinsic_align(intr) >= bytes) {
-         components[c] = nir_bcsel(b, resident(b, &map, addr), value,
-                                   nir_imm_intN_t(b, 0, intr->def.bit_size));
+         nir_def *valid = whole_valid ? whole_valid : resident(b, &map, addr);
+         components[c] = nir_bcsel(b, valid, value,
+                                  nir_imm_intN_t(b, 0, intr->def.bit_size));
       } else {
          /* A misaligned scalar can straddle a page boundary. Preserve each
           * resident byte rather than discarding the whole scalar/vector. */

@@ -1,0 +1,9 @@
+# Share residency for page-contained vector loads
+
+A 16 KiB residency bit applies to every byte in its page. When the intrinsic alignment proves the whole vector is in one page, reuse one residency test for its components. Keep existing per-component and per-byte handling for possible page crossings, and keep atomic behavior unchanged.
+
+Host tests check 352 byte/vector masks both with dynamic and specialized VA geometry, including vectors at both ends of resident/unbound pages and vectors crossing alternating page boundaries. Existing bounds and alias tests pass. Forty strict sparse buffer GPU configurations pass on M3 and M4, including load/store/atomic and read-only alias paths. The initial M4 attempt omitted its experimental-device enable variable and failed device enumeration; no GPU execution occurred. The corrected guarded run is 20260926T094129279377Z-dx12-vector-residency-sparse-enabled.
+
+M3 Satisfactory DX12 gameplay uses the unchanged 4K trace, 30 measured frames, no screenshots during timings. Check 20260926T093736366035Z passes the existing maximum 4/255 error in at most 32 pixels per image (frames 6/20/35). Timings 093902769533/093924443744/093946176497 are 3.4744376/3.4637902/3.4716728 FPS, median 3.4716728 versus preceding 3.3605272 (+3.31%). Both use explicit code-motion none, native integer/memory preambles and compact descriptor prefetch. This is capture regression validation, not a claim of complete API conformance.
+
+Candidate library SHA256: 4033cbb60e0f93ad6226b93f5942d6268ae36e35915e841445c6a57cc633c989. All hardware runs retain watchdog and thermal guards. Full binaries, oracle inputs/results, image comparisons and timings are retained in the local-only gpu-replay-bench provenance/satisfactory-dx12-optimization-20260926 directory. Desktop installation unchanged.
