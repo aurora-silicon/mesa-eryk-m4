@@ -1061,6 +1061,7 @@ void agx_opt_compact_constants(agx_context *ctx);
 void agx_opt_promote_constants(agx_context *ctx);
 void agx_dce(agx_context *ctx, bool partial);
 void agx_pressure_schedule(agx_context *ctx);
+void agx_schedule_native_loads(agx_context *ctx);
 /* UVSW has an eight-bit immediate destination. Its staging source is a
  * separate address space; large export streams must recycle staging slots. */
 #define AGX3_MAX_VERTEX_OUTPUTS 256u

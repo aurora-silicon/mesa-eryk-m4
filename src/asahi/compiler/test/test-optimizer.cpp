@@ -699,3 +699,98 @@ TEST_F(Optimizer, AGX3BMixedFMAFoldsExactWidening)
       ASSERT_SHADER_EQUAL(actual->shader, expected->shader);
    }
 }
+
+TEST_F(Optimizer, NativeLoadMovesAcrossIndependentMath)
+{
+   INSTRUCTION_CASE({
+      agx_fadd_to(b, wx, wy, wz);
+      agx_stack_load_to(b, agx_register(16, AGX_SIZE_32), agx_immediate(0), AGX_FORMAT_I32, 1);
+   }, {
+      agx_stack_load_to(b, agx_register(16, AGX_SIZE_32), agx_immediate(0), AGX_FORMAT_I32, 1);
+      agx_fadd_to(b, wx, wy, wz);
+   }, agx_schedule_native_loads);
+}
+
+TEST_F(Optimizer, NativeLoadPreservesRegisterHazards)
+{
+   for (unsigned dest : {0u, 2u, 4u}) {
+      INSTRUCTION_CASE({
+         agx_fadd_to(b, wx, wy, wz);
+         agx_stack_load_to(b, agx_register(dest, AGX_SIZE_32), agx_immediate(0), AGX_FORMAT_I32, 1);
+      }, {
+         agx_fadd_to(b, wx, wy, wz);
+         agx_stack_load_to(b, agx_register(dest, AGX_SIZE_32), agx_immediate(0), AGX_FORMAT_I32, 1);
+      }, agx_schedule_native_loads);
+   }
+   INSTRUCTION_CASE({
+      agx_mov_imm_to(b, wy, 0);
+      agx_device_load_to(b, wz, agx_uniform(0, AGX_SIZE_64), wy, AGX_FORMAT_I32, 1, 0, false);
+   }, {
+      agx_mov_imm_to(b, wy, 0);
+      agx_device_load_to(b, wz, agx_uniform(0, AGX_SIZE_64), wy, AGX_FORMAT_I32, 1, 0, false);
+   }, agx_schedule_native_loads);
+}
+
+TEST_F(Optimizer, NativeLoadPreservesHalfRegisterHazards)
+{
+   INSTRUCTION_CASE({
+      agx_mov_imm_to(b, hy, 7);
+      agx_stack_load_to(b, wx, agx_immediate(0), AGX_FORMAT_I32, 1);
+   }, {
+      agx_mov_imm_to(b, hy, 7);
+      agx_stack_load_to(b, wx, agx_immediate(0), AGX_FORMAT_I32, 1);
+   }, agx_schedule_native_loads);
+}
+
+TEST_F(Optimizer, NativeLoadPreservesMemoryOrder)
+{
+   INSTRUCTION_CASE({
+      agx_stack_store(b, wx, agx_immediate(0), AGX_FORMAT_I32, 1);
+      agx_fadd_to(b, wy, wx, wz);
+      agx_stack_load_to(b, agx_register(16, AGX_SIZE_32), agx_immediate(0), AGX_FORMAT_I32, 1);
+   }, {
+      agx_stack_store(b, wx, agx_immediate(0), AGX_FORMAT_I32, 1);
+      agx_stack_load_to(b, agx_register(16, AGX_SIZE_32), agx_immediate(0), AGX_FORMAT_I32, 1);
+      agx_fadd_to(b, wy, wx, wz);
+   }, agx_schedule_native_loads);
+}
+
+TEST_F(Optimizer, NativeLoadPreservesVectorRegisterHazards)
+{
+   agx_index vec = agx_register(0, AGX_SIZE_32);
+   vec.channels_m1 = 3;
+   INSTRUCTION_CASE({
+      agx_mov_imm_to(b, agx_register(7, AGX_SIZE_16), 1);
+      agx_stack_load_to(b, vec, agx_immediate(0), AGX_FORMAT_I32, 15);
+   }, {
+      agx_mov_imm_to(b, agx_register(7, AGX_SIZE_16), 1);
+      agx_stack_load_to(b, vec, agx_immediate(0), AGX_FORMAT_I32, 15);
+   }, agx_schedule_native_loads);
+}
+
+TEST_F(Optimizer, NativeLoadPreservesSystemReadOrder)
+{
+   INSTRUCTION_CASE({
+      agx_get_sr_to(b, wx, AGX_SR_THREAD_INDEX_IN_SUBGROUP);
+      agx_stack_load_to(b, wz, agx_immediate(0), AGX_FORMAT_I32, 1);
+   }, {
+      agx_get_sr_to(b, wx, AGX_SR_THREAD_INDEX_IN_SUBGROUP);
+      agx_stack_load_to(b, wz, agx_immediate(0), AGX_FORMAT_I32, 1);
+   }, agx_schedule_native_loads);
+}
+
+TEST_F(Optimizer, NativeTextureLoadMovesAcrossIndependentMath)
+{
+   agx_index dst = agx_register(16, AGX_SIZE_32);
+   agx_index coord = agx_register(24, AGX_SIZE_32);
+   coord.channels_m1 = 1;
+   INSTRUCTION_CASE({
+      agx_fadd_to(b, wx, wy, wz);
+      agx_texture_load_to(b, dst, coord, agx_zero(), agx_uniform(0, AGX_SIZE_64),
+         agx_zero(), agx_zero(), agx_zero(), AGX_DIM_2D, AGX_LOD_MODE_LOD_MIN, 1, false, false);
+   }, {
+      agx_texture_load_to(b, dst, coord, agx_zero(), agx_uniform(0, AGX_SIZE_64),
+         agx_zero(), agx_zero(), agx_zero(), AGX_DIM_2D, AGX_LOD_MODE_LOD_MIN, 1, false, false);
+      agx_fadd_to(b, wx, wy, wz);
+   }, agx_schedule_native_loads);
+}

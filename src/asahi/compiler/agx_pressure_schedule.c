@@ -269,3 +269,79 @@ agx_pressure_schedule(agx_context *ctx)
 
    ralloc_free(memctx);
 }
+
+/* Move a load across independent arithmetic after allocation, without changing
+ * memory order or extending a value over any physical-register hazard. The
+ * native packer assigns scoreboards after this pass. Cache hints must likewise
+ * be computed afterwards. No control flow, memory operation, or system-value
+ * read can be crossed. */
+static bool
+native_schedule_register_overlap(agx_index a, agx_index b)
+{
+   if (a.type != AGX_INDEX_REGISTER || b.type != AGX_INDEX_REGISTER)
+      return false;
+   return a.value < b.value + agx_index_size_16(b) &&
+          b.value < a.value + agx_index_size_16(a);
+}
+
+static bool
+native_schedule_can_cross(const agx_instr *load, const agx_instr *alu)
+{
+   if (alu->op == AGX_OPCODE_GET_SR || !agx_is_alu(alu) ||
+       agx_opcodes_info[alu->op].schedule_class != AGX_SCHEDULE_CLASS_NONE ||
+       !agx_opcodes_info[alu->op].can_reorder)
+      return false;
+
+   /* Keep uniform-file reads in place too; this pass only reorders loads
+    * across arithmetic whose operands are registers or immediates. */
+   agx_foreach_src(alu, s) {
+      if (alu->src[s].type == AGX_INDEX_UNIFORM)
+         return false;
+   }
+
+   agx_foreach_dest(load, d) {
+      agx_foreach_src(alu, s) {
+         if (native_schedule_register_overlap(load->dest[d], alu->src[s]))
+            return false;
+      }
+      agx_foreach_dest(alu, a) {
+         if (native_schedule_register_overlap(load->dest[d], alu->dest[a]))
+            return false;
+      }
+   }
+   agx_foreach_src(load, s) {
+      agx_foreach_dest(alu, d) {
+         if (native_schedule_register_overlap(load->src[s], alu->dest[d]))
+            return false;
+      }
+   }
+   return true;
+}
+
+void
+agx_schedule_native_loads(agx_context *ctx)
+{
+   agx_foreach_block(ctx, block) {
+      agx_foreach_instr_in_block_safe(block, I) {
+         if (I->op != AGX_OPCODE_DEVICE_LOAD &&
+             I->op != AGX_OPCODE_LOCAL_LOAD &&
+             I->op != AGX_OPCODE_STACK_LOAD &&
+             I->op != AGX_OPCODE_TEXTURE_LOAD &&
+             I->op != AGX_OPCODE_IMAGE_LOAD &&
+             I->op != AGX_OPCODE_TEXTURE_SAMPLE)
+            continue;
+         agx_instr *first = I;
+         for (unsigned distance = 0; distance < 32 &&
+              first->link.prev != &block->instructions; ++distance) {
+            agx_instr *prev = list_entry(first->link.prev, agx_instr, link);
+            if (!native_schedule_can_cross(I, prev))
+               break;
+            first = prev;
+         }
+         if (first != I) {
+            agx_remove_instruction(I);
+            list_addtail(&I->link, &first->link);
+         }
+      }
+   }
+}

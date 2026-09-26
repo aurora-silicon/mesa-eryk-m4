@@ -6269,6 +6269,11 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    agx_lower_pseudo(ctx);
 
+   if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       ctx->stage == MESA_SHADER_COMPUTE && !ctx->is_preamble &&
+       !nir->info.internal)
+      agx_schedule_native_loads(ctx);
+
    /* Set last-use bits after lowering pseudo for best results. */
    /* Causal control for the M4 vertex-fog reproducer. This changes only
     * register lifetime hints; it is not a production workaround. */
