@@ -99,14 +99,19 @@ native_preamble_instr(const nir_instr *instr, const void *data)
    const nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic == nir_intrinsic_load_preamble)
       return true;
-   /* Experimental native constant-program memory reads. NIR's preamble
-    * analysis must prove every address uniform; only explicitly speculatable
-    * constant loads may move ahead of their original control flow. Do not
-    * admit mutable storage, textures, or descriptor-state stores. */
-   return options->constant_loads &&
+   /* Keep narrow memory reads in the main shader: moving them still changes
+    * full-scene readback on G15S. NIR proves uniform addresses, reconstructs
+    * uniform control flow, and independently requires speculation permission
+    * when crossing nonuniform control flow. Bounded UBO lowering uses load_agx
+    * with NON_WRITEABLE and CAN_REORDER, not load_constant_agx. Admit that
+    * immutable path too, but never mutable storage or descriptor writes. */
+   return options->constant_loads && intr->def.bit_size >= 32 &&
           (intr->intrinsic == nir_intrinsic_load_global_constant ||
-           intr->intrinsic == nir_intrinsic_load_constant_agx) &&
-          (nir_intrinsic_access(intr) & ACCESS_CAN_SPECULATE);
+           intr->intrinsic == nir_intrinsic_load_constant_agx ||
+           ((intr->intrinsic == nir_intrinsic_load_agx ||
+             intr->intrinsic == nir_intrinsic_load_global) &&
+            (nir_intrinsic_access(intr) & ACCESS_NON_WRITEABLE) &&
+            (nir_intrinsic_access(intr) & ACCESS_CAN_REORDER)));
 }
 
 static bool

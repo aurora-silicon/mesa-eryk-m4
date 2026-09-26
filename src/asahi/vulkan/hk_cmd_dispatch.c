@@ -179,7 +179,10 @@ hk_g17p_compute_shader_supported(struct hk_shader *s,
            s->b.info.stage == MESA_SHADER_GEOMETRY) &&
           linked->b.bo && linked->b.bo->va && linked->b.size != 0 &&
           linked->b.size <= UINT32_MAX && linked->b.nr_gprs != 0 &&
-          !s->b.info.has_preamble && s->b.info.preamble_scratch_size == 0 &&
+          (!s->b.info.has_preamble ||
+           (s->b.info.stage == MESA_SHADER_COMPUTE &&
+            debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false))) &&
+          s->b.info.preamble_scratch_size == 0 &&
           s->b.info.agx3_staging_known &&
           s->b.info.local_size <= HK_MAX_INTERNAL_SHARED_SIZE &&
           s->b.info.texture_state_count == 0 &&
@@ -588,15 +591,30 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    if (s->b.info.rodata.size_16 != 0)
       hk_cmd_buffer_retain_bo(cmd, s->bo);
 
+   size_t preamble_size = 0;
+   size_t program_capacity = HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE;
+   if (s->b.info.has_preamble) {
+      const unsigned end = s->b.info.main_offset > s->b.info.preamble_offset
+         ? s->b.info.main_offset : s->b.info.binary_size;
+      if (end > s->b.info.binary_size || s->b.info.preamble_offset >= end ||
+          end - s->b.info.preamble_offset < 4 ||
+          end - s->b.info.preamble_offset > SIZE_MAX - program_capacity) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+      preamble_size = end - s->b.info.preamble_offset;
+      program_capacity += preamble_size;
+   }
+
    struct agx_bo *program_bo = NULL;
    struct agx_ptr upload = {0};
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
-       HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE <= HK_CMD_BO_SIZE) {
-      upload = hk_pool_usc_alloc(cmd, HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE,
+       program_capacity <= HK_CMD_BO_SIZE) {
+      upload = hk_pool_usc_alloc(cmd, program_capacity,
                                  AGX_IOTO_PROGRAM_ALIGNMENT);
    } else {
       program_bo = agx_bo_create(
-         &dev->dev, HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE,
+         &dev->dev, program_capacity,
          AGX_IOTO_PROGRAM_ALIGNMENT, AGX_BO_EXEC | AGX_BO_LOW_VA,
          "G17P compute Ioto program");
       if (!program_bo) {
@@ -662,8 +680,24 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return;
    }
 
+   size_t program_length = program.length;
    memcpy(program_map, program.bytes, program.length);
-   if (program_bo && agx_bo_sync_for_device(program_bo, 0, program.length)) {
+   if (preamble_size) {
+      /* Run the compiler's uniform arithmetic after the Ioto resource loader,
+       * replacing its terminal instruction just as for native fragments. */
+      const uint8_t stop[4] = {0x0e, 0, 0, 0};
+      if (program.length < sizeof(stop) ||
+          memcmp(program.bytes + program.length - sizeof(stop), stop, sizeof(stop)) ||
+          preamble_size > program_capacity - (program.length - sizeof(stop))) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+      memcpy((uint8_t *)program_map + program.length - sizeof(stop),
+             (const uint8_t *)s->b.binary + s->b.info.preamble_offset,
+             preamble_size);
+      program_length += preamble_size - sizeof(stop);
+   }
+   if (program_bo && agx_bo_sync_for_device(program_bo, 0, program_length)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
       return;
    }

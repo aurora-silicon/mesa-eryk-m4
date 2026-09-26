@@ -3044,7 +3044,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 #endif
 
    const bool native_preamble = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
-      nir->info.stage == MESA_SHADER_FRAGMENT &&
+      (nir->info.stage == MESA_SHADER_FRAGMENT ||
+       nir->info.stage == MESA_SHADER_COMPUTE) &&
       debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false);
 
    /* Ioto-populated inputs and native preamble outputs must not share the
