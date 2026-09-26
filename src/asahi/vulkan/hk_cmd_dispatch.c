@@ -256,19 +256,10 @@ hk_g17p_compute_uniform_ranges(
    if (!hk_agx3_g17p_root_range(root_uniform, s->info.set_count, root_ptr, &ranges[0]))
       return false;
 
-   /* Deliver the footprint the compiler finally settled on.
-    *
-    * `reserved_preamble = root + 4 * (1 + set_count)` (hk_shader.c:1255) is
-    * where the compiler STARTS; agx_opt_promote_constants() can raise
-    * `push_count` afterwards (agx_opt_promote_constants.c:149).  Measured on
-    * hardware this is currently a no-op -- push_count reads 8 for the probe,
-    * exactly 4 * (1 + 1) -- so this only matters for a shader whose constants
-    * were promoted.  Safe either way: push_count is in the same 16-bit
-    * uniform registers as size_halfs, and the bytes come from the root
-    * descriptor table, which is larger than the range.
-    */
-   if (s->b.info.push_count > root_uniform + ranges[0].size_halfs)
-      ranges[0].size_halfs = s->b.info.push_count - root_uniform;
+   /* Root input contains only the root pointer and descriptor-set pointers.
+    * Promoted constants have their own range below, and arithmetic preamble
+    * outputs are written by the constant program. Their uniform footprint
+    * does not authorize reading further bytes from the root upload. */
 
    size_t count = 1;
    if (texture_pointers) {
