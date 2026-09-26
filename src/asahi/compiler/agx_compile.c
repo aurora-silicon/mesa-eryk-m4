@@ -3678,6 +3678,16 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
    agx_foreach_instr_global_safe(ctx, I) {
       agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
       if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          I->op == AGX_OPCODE_IMAD && I->dest[0].size == AGX_SIZE_64) {
+         for (unsigned s = 0; s < 2; ++s) {
+            if (I->src[s].type == AGX_INDEX_IMMEDIATE) {
+               bool is_unsigned = I->src[s].abs;
+               I->src[s] = agx_mov_imm(&b, 32, I->src[s].value);
+               I->src[s].abs = is_unsigned;
+            }
+         }
+      }
+      if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
           (I->op == AGX_OPCODE_ROUNDEVEN || I->op == AGX_OPCODE_FLOOR ||
            I->op == AGX_OPCODE_CEIL || I->op == AGX_OPCODE_TRUNC ||
            I->op == AGX_OPCODE_DFDX || I->op == AGX_OPCODE_DFDY ||
@@ -5372,60 +5382,23 @@ agx_nir_lower_imul64_filter(const nir_instr *instr, const void *lower_full)
       return false;
 
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
-   if ((alu->op == nir_op_umul_high || alu->op == nir_op_imul_high) &&
-       alu->def.bit_size == 32)
-      return true;
-   return lower_full &&
-          (alu->op == nir_op_imul || alu->op == nir_op_umul_2x32_64 ||
-           alu->op == nir_op_imul_2x32_64) &&
+   return lower_full && alu->op == nir_op_imul &&
           alu->def.bit_size == 64;
-}
-
-static nir_def *
-agx_nir_umul_high32(nir_builder *b, nir_def *x, nir_def *y)
-{
-   nir_def *shift = nir_imm_int(b, 16);
-   nir_def *mask = nir_imm_int(b, 0xffff);
-
-   /* Hacker's Delight unsigned 16-bit partial-product expansion. */
-   nir_def *xl = nir_iand(b, x, mask);
-   nir_def *yl = nir_iand(b, y, mask);
-   nir_def *xh = nir_ushr(b, x, shift);
-   nir_def *yh = nir_ushr(b, y, shift);
-   nir_def *lo = nir_imul(b, xl, yl);
-   nir_def *m1 = nir_imul(b, xl, yh);
-   nir_def *m2 = nir_imul(b, xh, yl);
-   nir_def *hi = nir_imul(b, xh, yh);
-   nir_def *t = nir_iadd(b, m2, nir_ushr(b, lo, shift));
-   nir_def *w1 = nir_iadd(b, m1, nir_iand(b, t, mask));
-   nir_def *w2 = nir_ushr(b, t, shift);
-   return nir_iadd(b, hi, nir_iadd(b, nir_ushr(b, w1, shift), w2));
 }
 
 static nir_def *
 agx_nir_lower_imul64_instr(nir_builder *b, nir_instr *instr, void *_)
 {
    nir_alu_instr *alu = nir_instr_as_alu(instr);
+   assert(alu->op == nir_op_imul && alu->def.bit_size == 64);
    nir_def *x = nir_ssa_for_alu_src(b, alu, 0);
    nir_def *y = nir_ssa_for_alu_src(b, alu, 1);
-   if (alu->op == nir_op_umul_2x32_64 || alu->op == nir_op_imul_2x32_64 ||
-       alu->op == nir_op_umul_high || alu->op == nir_op_imul_high) {
-      nir_def *hi = agx_nir_umul_high32(b, x, y);
-      if (alu->op == nir_op_imul_2x32_64 || alu->op == nir_op_imul_high) {
-         /* Convert the unsigned high word to the signed product. */
-         hi = nir_isub(b, hi, nir_iand(b, nir_ishr_imm(b, x, 31), y));
-         hi = nir_isub(b, hi, nir_iand(b, nir_ishr_imm(b, y, 31), x));
-      }
-      if (alu->def.bit_size == 32)
-         return hi;
-      return nir_pack_64_2x32_split(b, nir_imul(b, x, y), hi);
-   }
    nir_def *xl = nir_unpack_64_2x32_split_x(b, x);
    nir_def *xh = nir_unpack_64_2x32_split_y(b, x);
    nir_def *yl = nir_unpack_64_2x32_split_x(b, y);
    nir_def *yh = nir_unpack_64_2x32_split_y(b, y);
    nir_def *hi = nir_iadd(
-      b, agx_nir_umul_high32(b, xl, yl),
+      b, nir_umul_high(b, xl, yl),
       nir_iadd(b, nir_imul(b, xl, yh), nir_imul(b, xh, yl)));
 
    return nir_pack_64_2x32_split(b, nir_imul(b, xl, yl), hi);
@@ -7051,9 +7024,8 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
    const bool is_g17p = key->dev.encoding == AGX_ISA_ENCODING_AGX3B;
 
    /* AGX2 has native 64-bit add and 32x32->64 multiply forms, so the shared
-    * compiler options preserve them.  G17P has neither form grounded: lower
-    * add to low/add, carry, high/add and lower multiply-high to the standard
-    * 16-bit partial-product sequence.  Keep the override local to this
+    * compiler options preserve them. AGX3B has grounded wide multiplication,
+    * but still lowers full-width addition and 64x64 products. Keep the override local to this
     * compile so the other encodings retain their paths and frontends continue
     * sharing agx_nir_options. */
    const nir_shader_compiler_options *original_options = nir->options;

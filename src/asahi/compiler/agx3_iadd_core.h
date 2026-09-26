@@ -151,6 +151,15 @@ bool agx3_imad_encode(enum agx_isa_encoding encoding,
                       const struct agx3_imad_desc *desc,
                       uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len);
 
+struct agx3_imul_wide_desc {
+   uint16_t dest, src[2], wait_mask;
+   bool dest_cache, sign_extend[2], cache[2], discard[2];
+};
+
+bool agx3_imul_wide_encode(enum agx_isa_encoding encoding,
+                          const struct agx3_imul_wide_desc *desc,
+                          uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len);
+
 #ifdef __cplusplus
 }
 #endif

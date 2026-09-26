@@ -10,6 +10,38 @@
 #define KV(f, v) {(uint16_t)(f), (uint64_t)(v)}
 
 bool
+agx3_imul_wide_encode(enum agx_isa_encoding encoding,
+                     const struct agx3_imul_wide_desc *d,
+                     uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len)
+{
+   if (!d || !out || !len || encoding != AGX_ISA_ENCODING_AGX3B ||
+       (d->dest & 1) || d->dest + 4 > 192 || (d->wait_mask & ~0x3f))
+      return false;
+   for (unsigned s = 0; s < 2; ++s)
+      if ((d->src[s] & 1) || d->src[s] + 2 > 192 ||
+          (d->cache[s] && d->discard[s]))
+         return false;
+
+   /* Apple ulong(uint)*uint and long(int)*int differ only in the two
+    * independent extension bits. The result occupies four register halves. */
+   const struct agx3_field_kv base[] = {
+      KV(9,2), KV(10,3), KV(23,2), KV(24,2),
+      KV(38,2), KV(39,2), KV(53,1), KV(54,1),
+   };
+   struct agx3_field_kv fields[16] = {
+      KV(2,d->dest), KV(11,d->dest_cache),
+      KV(16,d->src[0]), KV(31,d->src[1]),
+      KV(25,d->cache[0]), KV(27,d->discard[0]), KV(28,d->sign_extend[0]),
+      KV(40,d->cache[1]), KV(42,d->discard[1]), KV(43,d->sign_extend[1]),
+   };
+   unsigned n = 10;
+   for (unsigned s = 0; s < 6; ++s)
+      if (d->wait_mask & (1u << s))
+         fields[n++] = (struct agx3_field_kv)KV(60+s,1);
+   return agx3_bind_compose(encoding, "imadd", 0, base, 8, fields, n, out, len);
+}
+
+bool
 agx3_iadd_encode(enum agx_isa_encoding encoding,
                  const struct agx3_iadd_desc *d,
                  uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len)

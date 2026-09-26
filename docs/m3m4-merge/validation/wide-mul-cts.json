@@ -1,0 +1,109 @@
+{
+  "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+  "cases": [
+    {
+      "catalog_index": 770904,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.int_highp_compute"
+    },
+    {
+      "catalog_index": 770905,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.int_highp_fragment"
+    },
+    {
+      "catalog_index": 770909,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.int_highp_vertex"
+    },
+    {
+      "catalog_index": 770910,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec2_highp_compute"
+    },
+    {
+      "catalog_index": 770911,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec2_highp_fragment"
+    },
+    {
+      "catalog_index": 770915,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec2_highp_vertex"
+    },
+    {
+      "catalog_index": 770916,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec3_highp_compute"
+    },
+    {
+      "catalog_index": 770917,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec3_highp_fragment"
+    },
+    {
+      "catalog_index": 770921,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec3_highp_vertex"
+    },
+    {
+      "catalog_index": 770922,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec4_highp_compute"
+    },
+    {
+      "catalog_index": 770923,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec4_highp_fragment"
+    },
+    {
+      "catalog_index": 770927,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec4_highp_vertex"
+    },
+    {
+      "catalog_index": 770928,
+      "case": "dEQP-VK.glsl.builtin.function.integer.imulextended.ivec5_highp_compute"
+    },
+    {
+      "catalog_index": 770979,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uint_highp_compute"
+    },
+    {
+      "catalog_index": 770980,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uint_highp_fragment"
+    },
+    {
+      "catalog_index": 770984,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uint_highp_vertex"
+    },
+    {
+      "catalog_index": 770985,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec2_highp_compute"
+    },
+    {
+      "catalog_index": 770986,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec2_highp_fragment"
+    },
+    {
+      "catalog_index": 770990,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec2_highp_vertex"
+    },
+    {
+      "catalog_index": 770991,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec3_highp_compute"
+    },
+    {
+      "catalog_index": 770992,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec3_highp_fragment"
+    },
+    {
+      "catalog_index": 770996,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec3_highp_vertex"
+    },
+    {
+      "catalog_index": 770997,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec4_highp_compute"
+    },
+    {
+      "catalog_index": 770998,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec4_highp_fragment"
+    },
+    {
+      "catalog_index": 771002,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec4_highp_vertex"
+    },
+    {
+      "catalog_index": 771003,
+      "case": "dEQP-VK.glsl.builtin.function.integer.umulextended.uvec5_highp_compute"
+    }
+  ]
+}

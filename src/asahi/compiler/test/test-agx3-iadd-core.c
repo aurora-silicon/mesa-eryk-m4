@@ -240,6 +240,30 @@ test_native_imad_immediate_addend(void)
 int
 main(void)
 {
+   for (unsigned sign = 0; sign < 2; ++sign) {
+      struct agx3_imul_wide_desc d = {
+         .src = {0, 2}, .wait_mask = 32,
+         .sign_extend = {sign, sign}, .discard = {true, true},
+      };
+      uint8_t expected[] = {0x9f,0x00,0x56,0x00,0x02,0x00,0x08,0x00,
+                            0xe0,0x26,sign ? 0x1e : 0x0a,0x00};
+      uint8_t bytes[AGX3_IADD_MAX_LENGTH], len;
+      CHECK(agx3_imul_wide_encode(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+      CHECK(len == sizeof(expected) && !memcmp(bytes, expected, len));
+      d.dest = 190;
+      CHECK(!agx3_imul_wide_encode(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+      d.dest = 188;
+      CHECK(agx3_imul_wide_encode(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+      d.src[0] = 1;
+      CHECK(!agx3_imul_wide_encode(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+      d.src[0] = 192;
+      CHECK(!agx3_imul_wide_encode(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+      d.src[0] = 0; d.cache[0] = true;
+      CHECK(!agx3_imul_wide_encode(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+      d.cache[0] = false; d.wait_mask = 64;
+      CHECK(!agx3_imul_wide_encode(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+   }
+
    for (unsigned i = 0; i < sizeof(vectors) / sizeof(vectors[0]); ++i) {
       const struct vec *v = &vectors[i];
       uint8_t out[AGX3_IADD_MAX_LENGTH];

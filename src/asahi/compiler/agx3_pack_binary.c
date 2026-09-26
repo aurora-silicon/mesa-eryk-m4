@@ -6107,6 +6107,30 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * composer, which would have deposited the multiplier into a
           * register field.
           */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IMAD &&
+             I->nr_dests == 1 && I->nr_srcs == 3 && !I->shift && !I->saturate &&
+             I->dest[0].size == AGX_SIZE_64 && agx3_src_is_register(I->dest[0]) &&
+             agx_channels(I->dest[0]) == 1 && agx3_src_is_zero_imm(I->src[2])) {
+            struct agx3_imul_wide_desc d = {
+               .dest = I->dest[0].value, .dest_cache = I->dest[0].cache,
+               .wait_mask = wait,
+            };
+            for (unsigned s = 0; s < 2; ++s) {
+               if (!agx3_src_is_register(I->src[s]) || I->src[s].size != AGX_SIZE_32 ||
+                   agx_channels(I->src[s]) != 1 || I->src[s].neg)
+                  AGX3_REFUSE(I);
+               d.src[s] = I->src[s].value;
+               d.sign_extend[s] = !I->src[s].abs;
+               d.cache[s] = I->src[s].cache;
+               d.discard[s] = I->src[s].discard;
+            }
+            uint8_t bytes[AGX3_IADD_MAX_LENGTH], len;
+            if (!agx3_imul_wide_encode(enc, &d, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          if (I->op == AGX_OPCODE_IMAD && I->nr_dests == 1 && I->nr_srcs >= 3 &&
              I->shift == 0 && agx3_src_is_register(I->dest[0]) &&
              !I->dest[0].memory && I->dest[0].size == AGX_SIZE_32 &&
