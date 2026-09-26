@@ -542,6 +542,7 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->stream_linked |= linked || b->stream_linked;
 
    a->uses_sampler_heap |= b->uses_sampler_heap;
+   a->writes_memory |= b->writes_memory;
    a->scratch.cs.main |= b->scratch.cs.main;
    a->scratch.cs.preamble |= b->scratch.cs.preamble;
 

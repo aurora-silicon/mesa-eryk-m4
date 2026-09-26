@@ -1,0 +1,142 @@
+[
+  {
+    "catalog_index": 474869,
+    "case": "dEQP-VK.compute.pipeline.basic.atomic_barrier_sum_small",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.atomic_barrier_sum_small",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474869/result.qpa"
+    ]
+  },
+  {
+    "catalog_index": 474870,
+    "case": "dEQP-VK.compute.pipeline.basic.branch_past_barrier",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.branch_past_barrier",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474870/result.qpa"
+    ]
+  },
+  {
+    "catalog_index": 474873,
+    "case": "dEQP-VK.compute.pipeline.basic.copy_image_to_ssbo_small",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.copy_image_to_ssbo_small",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474873/result.qpa"
+    ]
+  },
+  {
+    "catalog_index": 474874,
+    "case": "dEQP-VK.compute.pipeline.basic.copy_ssbo_bounds",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.copy_ssbo_bounds",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474874/result.qpa"
+    ]
+  },
+  {
+    "catalog_index": 474875,
+    "case": "dEQP-VK.compute.pipeline.basic.copy_ssbo_multiple_groups",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.copy_ssbo_multiple_groups",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474875/result.qpa"
+    ]
+  },
+  {
+    "catalog_index": 474879,
+    "case": "dEQP-VK.compute.pipeline.basic.copy_ssbo_to_image_small",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.copy_ssbo_to_image_small",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474879/result.qpa"
+    ]
+  },
+  {
+    "catalog_index": 474889,
+    "case": "dEQP-VK.compute.pipeline.basic.image_barrier_multiple",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.image_barrier_multiple",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474889/result.qpa"
+    ]
+  },
+  {
+    "catalog_index": 474920,
+    "case": "dEQP-VK.compute.pipeline.basic.shared_atomic_op_multiple_groups",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.shared_atomic_op_multiple_groups",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474920/result.qpa"
+    ]
+  },
+  {
+    "catalog_index": 474924,
+    "case": "dEQP-VK.compute.pipeline.basic.shared_var_multiple_groups",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.shared_var_multiple_groups",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474924/result.qpa"
+    ]
+  },
+  {
+    "catalog_index": 474930,
+    "case": "dEQP-VK.compute.pipeline.basic.ssbo_local_barrier_multiple_groups",
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.compute.pipeline.basic.ssbo_local_barrier_multiple_groups",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075343741016Z-compute-write-tracking-cts/cts/474930/result.qpa"
+    ]
+  }
+]

@@ -137,6 +137,8 @@ hk_dispatch_with_usc_launch(struct hk_device *dev, struct hk_cs *cs,
    }
 
    hk_ensure_cs_has_space(cs->cmd, cs, 0x2000 /* TODO */);
+   /* This low-level entry point has no shader side-effect metadata. */
+   cs->writes_memory = true;
    cs->stats.cmds++;
    cs->current =
       agx_cdm_launch(cs->current, dev->dev.chip, grid, wg, launch, usc);
@@ -846,6 +848,10 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    }
 
    cs->current = (uint32_t *)((uint8_t *)cs->current + sink.length);
+   /* Queue overlap decisions apply to CDM producers too, including meta
+    * kernels and graphics stages lowered to compute. */
+   cs->writes_memory |= s->info.writes_memory ||
+                        s->info.stage != MESA_SHADER_COMPUTE;
    cs->stats.cmds++;
 }
 

@@ -1,0 +1,138 @@
+[
+  {
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+    "catalog_index": 2910662,
+    "classification": "targeted-regression",
+    "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+    "requirements": [],
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075953419935Z-compute-write-tracking-final-sync/cts/2910662/result.qpa"
+    ]
+  },
+  {
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+    "catalog_index": 2910658,
+    "classification": "targeted-regression",
+    "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+    "requirements": [],
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075953419935Z-compute-write-tracking-final-sync/cts/2910658/result.qpa"
+    ]
+  },
+  {
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+    "catalog_index": 2910718,
+    "classification": "targeted-regression",
+    "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+    "requirements": [],
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075953419935Z-compute-write-tracking-final-sync/cts/2910718/result.qpa"
+    ]
+  },
+  {
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+    "catalog_index": 2910714,
+    "classification": "targeted-regression",
+    "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+    "requirements": [],
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_fragment_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075953419935Z-compute-write-tracking-final-sync/cts/2910714/result.qpa"
+    ]
+  },
+  {
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+    "catalog_index": 2910578,
+    "classification": "targeted-regression",
+    "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+    "requirements": [],
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r8g8b8a8_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075953419935Z-compute-write-tracking-final-sync/cts/2910578/result.qpa"
+    ]
+  },
+  {
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+    "catalog_index": 2910574,
+    "classification": "targeted-regression",
+    "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+    "requirements": [],
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_vertex.image_128x128_r32g32b32a32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075953419935Z-compute-write-tracking-final-sync/cts/2910574/result.qpa"
+    ]
+  },
+  {
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+    "catalog_index": 2910522,
+    "classification": "targeted-regression",
+    "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+    "requirements": [],
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r8g8b8a8_unorm",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075953419935Z-compute-write-tracking-final-sync/cts/2910522/result.qpa"
+    ]
+  },
+  {
+    "case": "dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+    "catalog_index": 2910518,
+    "classification": "targeted-regression",
+    "rule": "fragment/vertex consumer dependencies; no outcome filtering",
+    "requirements": [],
+    "returncode": 0,
+    "passed": true,
+    "status": "Pass",
+    "argv": [
+      "/root/cts-1.4.6.2/deqp-vk",
+      "--deqp-case=dEQP-VK.synchronization2.op.single_queue.barrier.write_image_compute_read_image_fragment.image_128x128_r32g32b32a32_sfloat",
+      "--deqp-log-images=disable",
+      "--deqp-log-shader-sources=disable",
+      "--deqp-log-filename=/root/asahi-evidence/20260926T075953419935Z-compute-write-tracking-final-sync/cts/2910518/result.qpa"
+    ]
+  }
+]

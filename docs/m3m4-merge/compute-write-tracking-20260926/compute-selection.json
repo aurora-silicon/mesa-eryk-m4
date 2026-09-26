@@ -1,0 +1,45 @@
+{
+  "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+  "cases": [
+    {
+      "catalog_index": 474869,
+      "case": "dEQP-VK.compute.pipeline.basic.atomic_barrier_sum_small"
+    },
+    {
+      "catalog_index": 474870,
+      "case": "dEQP-VK.compute.pipeline.basic.branch_past_barrier"
+    },
+    {
+      "catalog_index": 474873,
+      "case": "dEQP-VK.compute.pipeline.basic.copy_image_to_ssbo_small"
+    },
+    {
+      "catalog_index": 474874,
+      "case": "dEQP-VK.compute.pipeline.basic.copy_ssbo_bounds"
+    },
+    {
+      "catalog_index": 474875,
+      "case": "dEQP-VK.compute.pipeline.basic.copy_ssbo_multiple_groups"
+    },
+    {
+      "catalog_index": 474879,
+      "case": "dEQP-VK.compute.pipeline.basic.copy_ssbo_to_image_small"
+    },
+    {
+      "catalog_index": 474889,
+      "case": "dEQP-VK.compute.pipeline.basic.image_barrier_multiple"
+    },
+    {
+      "catalog_index": 474920,
+      "case": "dEQP-VK.compute.pipeline.basic.shared_atomic_op_multiple_groups"
+    },
+    {
+      "catalog_index": 474924,
+      "case": "dEQP-VK.compute.pipeline.basic.shared_var_multiple_groups"
+    },
+    {
+      "catalog_index": 474930,
+      "case": "dEQP-VK.compute.pipeline.basic.ssbo_local_barrier_multiple_groups"
+    }
+  ]
+}
