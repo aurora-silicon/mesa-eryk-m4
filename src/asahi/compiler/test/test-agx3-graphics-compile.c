@@ -302,6 +302,30 @@ build_vs_g16_imad_negative_byte(void)
    return b.shader;
 }
 
+/* Native preambles leave integer operands in the uniform file until after
+ * ALU legalization. Neither position may bypass multiply-subtract lowering. */
+static nir_shader *
+build_vs_g16_imad_uniform_subtract(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "G16 multiply minus uniform");
+   nir_def *a = nir_load_vertex_id(&b);
+   nir_def *c = nir_load_instance_id(&b);
+   nir_def *u = nir_load_preamble(&b, 1, 32, .base = 0);
+   nir_def *v = nir_load_preamble(&b, 1, 32, .base = 2);
+   nir_def *pos[4] = {
+      nir_isub(&b, nir_imul(&b, a, c), u),
+      nir_isub(&b, nir_imul(&b, a, u), c),
+      nir_isub(&b, nir_imul(&b, a, u), v),
+      nir_isub(&b, nir_imul_imm(&b, a, 31), u),
+   };
+   for (unsigned i = 0; i < 4; ++i)
+      nir_store_uvs_agx(&b, nir_i2f32(&b, pos[i]), nir_imm_intN_t(&b, i, 16));
+   b.shader->info.outputs_written = VARYING_BIT_POS;
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
 static nir_shader *
 build_vs_g17p_div3_mul_high(void)
 {
@@ -2559,6 +2583,8 @@ struct agx3_graphics_case {
 
 static const struct agx3_graphics_case cases[] = {
    {"vs-register-multiply-minus-byte", build_vs_g16_imad_negative_byte, true},
+   {"vs-uniform-multiply-subtract", build_vs_g16_imad_uniform_subtract, true,
+    .reserved_preamble = 4, .g17p_only = true},
    {"vs-flat-triangle", build_vs_flat, true, .expected_leading_sr = 0xdd},
    {"vs-g17p-div3-mul-high", build_vs_g17p_div3_mul_high, true,
     .expected_leading_sr = 0xdd, .g17p_only = true},
@@ -2854,7 +2880,12 @@ main(int argc, char **argv)
       const struct agx3_graphics_case c = {
          "vs-register-multiply-minus-byte", build_vs_g16_imad_negative_byte, true,
       };
-      const bool ok = run_case(&c, AGX_ISA_ENCODING_AGX3B);
+      const struct agx3_graphics_case uniform = {
+         "vs-uniform-multiply-subtract", build_vs_g16_imad_uniform_subtract,
+         true, .reserved_preamble = 4, .g17p_only = true,
+      };
+      const bool ok = run_case(&c, AGX_ISA_ENCODING_AGX3B) &
+                      run_case(&uniform, AGX_ISA_ENCODING_AGX3B);
       printf("G16 multiply minus byte: %s\n", ok ? "PASS" : "FAIL");
       return ok ? 0 : 1;
    }

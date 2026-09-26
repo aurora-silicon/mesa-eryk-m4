@@ -3980,18 +3980,22 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
 
       /* The native IMADD extension selector does not negate a full-width
        * addend. Split a * b - c into multiply and subtract, keeping the
-       * modulo-2^32 result for register as well as immediate addends. */
+       * modulo-2^32 result for register as well as immediate addends.
+       * Preamble operands are still uniforms here; they become registers
+       * in agx_lower_uniform_sources after this legalization pass. */
       if (I->op == AGX_OPCODE_IMAD && I->nr_dests == 1 && I->nr_srcs == 3 &&
           I->dest[0].size == AGX_SIZE_32 && I->shift == 0 &&
           !I->src[1].abs && !I->src[1].neg &&
           ((I->src[1].type == AGX_INDEX_IMMEDIATE &&
             I->src[1].value <= UINT8_MAX) ||
-           (I->src[1].type == AGX_INDEX_NORMAL &&
+           ((I->src[1].type == AGX_INDEX_NORMAL ||
+             I->src[1].type == AGX_INDEX_UNIFORM) &&
             I->src[1].size == AGX_SIZE_32)) &&
           !I->src[2].abs && I->src[2].neg &&
           ((I->src[2].type == AGX_INDEX_IMMEDIATE &&
             I->src[2].value <= UINT8_MAX) ||
-           (I->src[2].type == AGX_INDEX_NORMAL &&
+           ((I->src[2].type == AGX_INDEX_NORMAL ||
+             I->src[2].type == AGX_INDEX_UNIFORM) &&
             I->src[2].size == AGX_SIZE_32))) {
          agx_index product = agx_temp(ctx, AGX_SIZE_32);
          agx_imad_to(&b, product, I->src[0], I->src[1], agx_zero(), 0);
