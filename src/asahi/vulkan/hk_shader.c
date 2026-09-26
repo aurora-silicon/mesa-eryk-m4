@@ -7,6 +7,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "hk_shader.h"
+#include "hk_nir_buffer_bounds.h"
 #include "hk_nir_preserve_sample_loops.h"
 #include "hk_nir_version_samples.h"
 
@@ -456,9 +457,7 @@ check_in_bounds(nir_builder *b, nir_intrinsic_instr *intr)
 
    /* TODO: handle also the iadd(amul) pattern, this is important */
 
-   /* Otherwise bounds check in bytes */
-   nir_def *sat_offset = nir_umin_imm(b, offset, UINT32_MAX - (load_size - 1));
-   return nir_ult(b, nir_iadd_imm(b, sat_offset, load_size - 1), bound);
+   return hk_nir_buffer_offset_in_bounds(b, offset, bound, load_size);
 }
 
 static nir_def *

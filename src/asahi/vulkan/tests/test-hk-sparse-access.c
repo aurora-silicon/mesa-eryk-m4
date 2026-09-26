@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "hk_cmd_buffer.h"
 #include "hk_shader.h"
+#include "hk_nir_buffer_bounds.h"
 #include "compiler/nir/nir_builder.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -433,8 +434,42 @@ check_direct_base_offset(void)
    }
 }
 
+static void
+check_buffer_bounds(void)
+{
+   const unsigned sizes[] = {1, 2, 3, 4, 8, 12, 16, 32, 64, 128};
+   unsigned count = 0;
+   for (unsigned i = 0; i < ARRAY_SIZE(sizes); ++i) {
+      unsigned size = sizes[i];
+      uint32_t limits[] = {0, 1, size - 1, size, size + 1, 256,
+                          UINT32_MAX - size, UINT32_MAX - 1, UINT32_MAX};
+      for (unsigned j = 0; j < ARRAY_SIZE(limits); ++j) {
+         uint32_t bound = limits[j];
+         uint32_t offsets[] = {0, 1, bound, bound - 1, bound + 1,
+                               bound - size, bound - size + 1,
+                               UINT32_MAX - size, UINT32_MAX};
+         for (unsigned k = 0; k < ARRAY_SIZE(offsets); ++k) {
+            nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+               &options, "buffer bound against wide CPU oracle");
+            nir_def *valid = hk_nir_buffer_offset_in_bounds(&b,
+               nir_imm_int(&b, offsets[k]), nir_imm_int(&b, bound), size);
+            nir_intrinsic_instr *out = nir_store_global(&b, nir_b2i32(&b, valid),
+               nir_imm_int64(&b, 0x4000), .align_mul = 4);
+            nir_opt_constant_folding(b.shader);
+            CHECK(nir_src_is_const(out->src[0]));
+            CHECK(nir_src_as_uint(out->src[0]) ==
+                  ((uint64_t)offsets[k] + size <= bound));
+            ++count;
+            ralloc_free(b.shader);
+         }
+      }
+   }
+   printf("PASS: %u buffer bounds against a 64-bit CPU oracle\n", count);
+}
+
 int main(void)
 {
+   check_buffer_bounds();
    check_direct_base_offset();
    for (unsigned form = 0; form < 6; ++form)
       check_direct_proof(form);
