@@ -170,14 +170,23 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    /* Backend debug options change executable code too. Reusing ordinary
     * binaries makes e.g. AGX_MESA_DEBUG=wait silently ineffective, and can
     * later reuse diagnostic binaries in a normal application. Reserve the
-    * upper 20 bits for the compiler's original bit positions. Logging and
+    * bits 44..60 for the compiler's original bit positions. Logging and
     * validation-only options do not change code and need no separate cache.
     */
-   static_assert(AGX_DBG_NOPROMOTE < BITFIELD_BIT(20));
+   static_assert(AGX_DBG_NOPROMOTE < BITFIELD_BIT(17));
    flags |= (agx_get_compiler_debug() &
              (AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
               AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
               AGX_DBG_NOPROMOTE)) << 44;
+
+   /* An unset override selects GCM for fragment shaders and no motion for
+    * other stages. Explicit overrides apply to every stage and must not hit
+    * that default cache entry (nor each other's). Unknown strings have the
+    * same no-motion behavior as "none" in the compiler. */
+   const char *motion = debug_get_option("AGX_CODE_MOTION", NULL);
+   const uint64_t motion_key = !motion ? 0 : !strcmp(motion, "gcm") ? 2 :
+      !strcmp(motion, "gcm-no-vn") ? 3 : !strcmp(motion, "licm") ? 4 : 1;
+   flags |= motion_key << 61;
    return flags;
 }
 
