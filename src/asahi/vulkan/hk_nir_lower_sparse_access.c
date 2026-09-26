@@ -143,6 +143,38 @@ is_direct_buffer_address(nir_def *address, unsigned depth)
  * It cannot acquire sparse holes or per-page aliases during its lifetime.
  * Keep raw/BDA and sparse buffer pointers on the full translation path. */
 static nir_def *
+untag_direct_address(nir_builder *b, nir_def *address, unsigned depth)
+{
+   if (depth && nir_def_instr(address)->type == nir_instr_type_alu) {
+      nir_alu_instr *alu = nir_instr_as_alu(nir_def_instr(address));
+      if (alu->op == nir_op_bcsel) {
+         return nir_bcsel(b, alu->src[0].src.ssa,
+            untag_direct_address(b, alu->src[1].src.ssa, depth - 1),
+            untag_direct_address(b, alu->src[2].src.ssa, depth - 1));
+      }
+      if (alu->op == nir_op_iadd) {
+         for (unsigned i = 0; i < 2; ++i) {
+            nir_def *offset = alu->src[i].src.ssa;
+            nir_instr *instr = nir_def_instr(offset);
+            bool offset32 = nir_src_is_const(alu->src[i].src) &&
+                            nir_src_as_uint(alu->src[i].src) <= UINT32_MAX;
+            if (instr->type == nir_instr_type_alu) {
+               nir_alu_instr *cast = nir_instr_as_alu(instr);
+               offset32 |= cast->op == nir_op_u2u64 &&
+                           cast->src[0].src.ssa->bit_size <= 32;
+            }
+            if (offset32 && is_direct_buffer_address(alu->src[1-i].src.ssa,
+                                                      depth - 1))
+               return nir_iadd(b,
+                  untag_direct_address(b, alu->src[1-i].src.ssa, depth - 1),
+                  offset);
+         }
+      }
+   }
+   return nir_iand_imm(b, address, ~HK_BUFFER_ADDRESS_DIRECT_BIT);
+}
+
+static nir_def *
 descriptor_address(nir_builder *b, const struct sparse_map *map, nir_def *address)
 {
    /* Buffer offsets are 32-bit; adding a valid buffer offset cannot carry out
@@ -150,7 +182,7 @@ descriptor_address(nir_builder *b, const struct sparse_map *map, nir_def *addres
     * through robustness's zero-page selection, but stop at arbitrary loads so
     * a BDA fetched from a canonical buffer still gets its own translation. */
    if (is_direct_buffer_address(address, 16))
-      return nir_iand_imm(b, address, ~HK_BUFFER_ADDRESS_DIRECT_BIT);
+      return untag_direct_address(b, address, 16);
    nir_def *direct = nir_ine_imm(
       b, nir_iand_imm(b, address, HK_BUFFER_ADDRESS_DIRECT_BIT), 0);
    nir_if *nif = nir_push_if(b, direct);

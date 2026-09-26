@@ -394,8 +394,48 @@ check_direct_proof(unsigned form)
    ralloc_free(b.shader);
 }
 
+/* Moving the private tag to the base must preserve carries across the low
+ * 32-bit address word and the robust zero-page arm. Keep a dynamic offset
+ * until after lowering so the test exercises the address-expression path. */
+static void
+check_direct_base_offset(void)
+{
+   for (unsigned zero = 0; zero < 2; ++zero) {
+      for (unsigned edge = 0; edge < 4; ++edge) {
+         const uint32_t offsets[] = {0, 4, 0xfffc, UINT32_MAX - 3};
+         nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+            &options, "direct base plus offset");
+         nir_def *input = nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0);
+         uint64_t base_address = UINT64_C(0x12fffffffc);
+         nir_def *base_def = nir_imm_int64(&b,
+            base_address | HK_BUFFER_ADDRESS_DIRECT_BIT);
+         nir_def *valid = nir_ine_imm(&b, input, 42);
+         nir_def *selected = nir_bcsel(&b, valid, base_def,
+            nir_imm_int64(&b, AGX_ZERO_PAGE_ADDRESS));
+         nir_def *offset = nir_bcsel(&b, valid, input, nir_imm_int(&b, 0));
+         nir_def *address = nir_iadd(&b, selected, nir_u2u64(&b, offset));
+         nir_def *value = nir_load_global(&b, 1, 32, address, .align_mul = 4);
+         nir_intrinsic_instr *load = nir_instr_as_intrinsic(nir_def_instr(value));
+         CHECK(hk_nir_lower_memory_aliases(b.shader));
+         b.cursor = nir_before_impl(b.impl);
+         nir_def_rewrite_uses(input, nir_imm_int(&b, zero ? 42 : offsets[edge]));
+         b.cursor = nir_after_impl(b.impl);
+         nir_intrinsic_instr *out = nir_store_global(&b, load->src[0].ssa,
+            nir_imm_int64(&b, 0x4000), .align_mul = 8);
+         nir_instr_remove(&load->instr);
+         fold(b.shader);
+         nir_validate_shader(b.shader, "direct base offset tag removal");
+         CHECK(nir_src_is_const(out->src[0]));
+         CHECK(nir_src_as_uint(out->src[0]) ==
+               (zero ? AGX_ZERO_PAGE_ADDRESS : base_address + offsets[edge]));
+         ralloc_free(b.shader);
+      }
+   }
+}
+
 int main(void)
 {
+   check_direct_base_offset();
    for (unsigned form = 0; form < 6; ++form)
       check_direct_proof(form);
    for (unsigned i = 0; i < 2; ++i) {
