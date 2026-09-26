@@ -162,7 +162,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    if (agx_chip_uses_hal200_ioto(pdev->dev.chip)) {
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_PRESERVE_BRANCHES", false) << 38;
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_MEMORY_PREAMBLE", false) << 40;
-      flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", false) << 41;
+      flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", true) << 41;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_COALESCE_BROADCAST", false) << 42;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH", false) << 43;
    }
@@ -1617,7 +1617,7 @@ lower_scaled_sample(nir_builder *b, nir_tex_instr *tex, void *unused)
    const int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
    if (handle < 0)
       return false;
-   const bool branch = debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", false);
+   const bool branch = debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", true);
    nir_tex_instr *original = tex;
    if (branch) {
       /* The replacement crosses blocks. Clone the sample before replacing
