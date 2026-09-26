@@ -925,6 +925,16 @@ int main(int argc, char **argv) {
         .pBufferInfo = &descriptor_buffers[i],
     };
   }
+  /* Test partial descriptors independently of the allocated backing size. */
+  const char *ssbo_range = getenv("M4_ORACLE_SSBO0_RANGE");
+  if (ssbo_range) {
+    char *range_end;
+    unsigned long long range = strtoull(ssbo_range, &range_end, 0);
+    if (!*ssbo_range || *range_end || !range || range > binding_stride ||
+        binding_count < 2 || image_option || texel_format_option)
+      die("invalid ordinary SSBO0 range");
+    descriptor_buffers[0].range = range;
+  }
   if (texel_format_option) {
     descriptor_writes[0].descriptorType = texel_type;
     descriptor_writes[0].pBufferInfo = NULL;

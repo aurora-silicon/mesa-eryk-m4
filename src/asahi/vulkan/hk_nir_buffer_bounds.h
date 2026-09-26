@@ -15,4 +15,6 @@ hk_nir_buffer_offset_in_bounds(nir_builder *b, nir_def *offset,
    return nir_ult(b, offset, last_start);
 }
 
+bool hk_nir_coalesce_bounded(nir_shader *nir);
+
 #endif

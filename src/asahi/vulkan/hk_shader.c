@@ -2137,6 +2137,13 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    NIR_PASS(progress, nir, nir_opt_sink, opts);
    NIR_PASS(progress, nir, nir_opt_move, opts);
 
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
+       nir->info.stage == MESA_SHADER_COMPUTE) {
+      NIR_PASS(_, nir, nir_opt_cse);
+      hk_capture_lowering(nir, "before-coalesce-bounded", features);
+      NIR_PASS(_, nir, hk_nir_coalesce_bounded);
+   }
+
    bool soft_fault = agx_has_soft_fault(&dev->dev);
    NIR_PASS(_, nir, nir_shader_intrinsics_pass,
             lower_load_global_constant_offset_instr, nir_metadata_none,

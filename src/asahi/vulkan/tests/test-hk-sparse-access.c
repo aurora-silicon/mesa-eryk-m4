@@ -467,8 +467,119 @@ check_buffer_bounds(void)
    printf("PASS: %u buffer bounds against a 64-bit CPU oracle\n", count);
 }
 
+static void
+check_coalesced_bounded(void)
+{
+   const uint32_t bounds[] = {0, 1, 3, 4, 7, 8, 12, 15, 16, 17, 31, 32, UINT32_MAX};
+   const uint32_t offsets[] = {0, 16, 32, 0xfffffff0};
+   unsigned cases = 0;
+   for (unsigned bi = 0; bi < ARRAY_SIZE(bounds); ++bi) {
+      for (unsigned oi = 0; oi < ARRAY_SIZE(offsets); ++oi) {
+         nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+            &options, "coalesced loads with exact scalar fallback");
+         nir_def *id = nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0);
+         nir_def *base = nir_imm_int64(&b, 0x8000);
+         nir_def *bound = nir_imm_int(&b, bounds[bi]);
+         nir_def *offset = nir_imul_imm(&b, id, 16);
+         nir_def *values[4];
+         for (unsigned c = 0; c < 4; ++c)
+            values[c] = nir_load_global_bounded(&b, 1, 32, base,
+               nir_iadd_imm(&b, offset, c * 4), bound,
+               .align_mul = 16, .align_offset = c * 4,
+               .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
+         nir_intrinsic_instr *out = nir_store_global(&b, nir_vec(&b, values, 4),
+            nir_imm_int64(&b, 0x4000), .align_mul = 16);
+         CHECK(hk_nir_coalesce_bounded(b.shader));
+         nir_validate_shader(b.shader, "coalesced bounded loads");
+         b.cursor = nir_before_impl(b.impl);
+         nir_def_rewrite_uses(id, nir_imm_int(&b, offsets[oi] / 16));
+         bool progress;
+         do {
+            progress = false;
+            NIR_PASS(progress, b.shader, nir_opt_constant_folding);
+            NIR_PASS(progress, b.shader, nir_opt_dead_cf);
+            NIR_PASS(progress, b.shader, nir_opt_dce);
+         } while (progress);
+         nir_foreach_block(block, b.impl) {
+            nir_foreach_instr_safe(instr, block) {
+               if (instr->type != nir_instr_type_intrinsic)
+                  continue;
+               nir_intrinsic_instr *in = nir_instr_as_intrinsic(instr);
+               if (in->intrinsic != nir_intrinsic_load_global &&
+                   in->intrinsic != nir_intrinsic_load_global_bounded)
+                  continue;
+               bool vector = in->intrinsic == nir_intrinsic_load_global;
+               CHECK(nir_src_is_const(in->src[0]));
+               uint32_t off = vector ? nir_src_as_uint(in->src[0]) - 0x8000
+                                    : nir_src_as_uint(in->src[1]);
+               unsigned count = in->def.num_components;
+               if (vector) {
+                  CHECK(count == 4);
+                  CHECK((uint64_t)off + 16 <= bounds[bi]);
+               }
+               b.cursor = nir_before_instr(instr);
+               nir_def *data[4];
+               for (unsigned c = 0; c < count; ++c) {
+                  uint64_t at = (uint64_t)off + 4 * c;
+                  uint32_t word = (uint64_t)off + 4 * count <= bounds[bi] ? (uint32_t)at ^ 0xa533cc77 : 0;
+                  data[c] = nir_imm_int(&b, word);
+               }
+               nir_def_replace(&in->def, nir_vec(&b, data, count));
+            }
+         }
+         do {
+            progress = false;
+            NIR_PASS(progress, b.shader, nir_opt_constant_folding);
+            NIR_PASS(progress, b.shader, nir_opt_copy_prop);
+            NIR_PASS(progress, b.shader, nir_opt_dce);
+         } while (progress);
+         CHECK(nir_src_is_const(out->src[0]));
+         for (unsigned c = 0; c < 4; ++c) {
+            uint64_t at = (uint64_t)offsets[oi] + c * 4;
+            uint32_t expected = at + 4 <= bounds[bi] ? (uint32_t)at ^ 0xa533cc77 : 0;
+            CHECK(nir_src_comp_as_uint(out->src[0], c) == expected);
+         }
+         ++cases;
+         ralloc_free(b.shader);
+      }
+   }
+   printf("PASS: %u coalesced-load boundaries against scalar memory oracle\n", cases);
+}
+
+static void
+check_coalesced_rejections(void)
+{
+   for (unsigned mode = 0; mode < 4; ++mode) {
+      nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+         &options, "coalesced load rejection boundaries");
+      nir_def *base = nir_imm_int64(&b, 0x8000);
+      nir_def *bound = nir_imm_int(&b, 128);
+      nir_def *offset = nir_imul_imm(&b,
+         nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0), 16);
+      nir_def *values[4];
+      for (unsigned c = 0; c < 4; ++c) {
+         if (mode == 3 && c == 2)
+            nir_store_global(&b, nir_imm_int(&b, 7), base, .align_mul = 4);
+         values[c] = nir_load_global_bounded(&b, 1, 32, base,
+            nir_iadd_imm(&b, offset, c * 4), bound,
+            .align_mul = mode == 0 ? 4 : 16,
+            .align_offset = mode == 0 ? 0 : c * 4,
+            .access = (mode == 1 ? ACCESS_VOLATILE : 0) |
+                      (mode == 2 ? 0 : ACCESS_NON_WRITEABLE));
+      }
+      nir_store_global(&b, nir_vec(&b, values, 4),
+         nir_imm_int64(&b, 0x4000), .align_mul = 16);
+      CHECK(!hk_nir_coalesce_bounded(b.shader));
+      nir_validate_shader(b.shader, "rejected unsafe grouping");
+      ralloc_free(b.shader);
+   }
+   puts("PASS: coalescing rejects unaligned, volatile, mutable and intervening stores");
+}
+
 int main(void)
 {
+   check_coalesced_bounded();
+   check_coalesced_rejections();
    check_buffer_bounds();
    check_direct_base_offset();
    for (unsigned form = 0; form < 6; ++form)
