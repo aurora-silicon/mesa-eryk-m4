@@ -303,7 +303,8 @@ get_buffer_address(const VkDescriptorBufferInfo *const info, bool read_only)
    assert(addr_range.range <= UINT32_MAX);
 
    uint64_t address = addr_range.addr;
-   if (buffer && buffer->bound_address && addr_range.range &&
+   if (hk_native_direct_buffers_enabled() &&
+       buffer && buffer->bound_address && addr_range.range &&
        !(buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) {
       const struct hk_device *dev = (const struct hk_device *)buffer->vk.base.device;
       if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip))

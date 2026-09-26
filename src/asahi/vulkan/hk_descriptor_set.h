@@ -16,6 +16,15 @@
 
 #include "util/list.h"
 #include "util/vma.h"
+#include "util/u_debug.h"
+
+/* Address shortcut retained for diagnosis only: changing fragment control
+ * flow regresses the retained Frostpunk images on both G15S and G16G. */
+static inline bool
+hk_native_direct_buffers_enabled(void)
+{
+   return debug_get_bool_option("HK_DIAGNOSTIC_DIRECT_BUFFERS", false);
+}
 
 struct hk_descriptor_set_layout;
 

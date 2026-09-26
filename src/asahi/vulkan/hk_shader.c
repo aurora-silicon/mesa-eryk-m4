@@ -165,15 +165,20 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", false) << 41;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_COALESCE_BROADCAST", false) << 42;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH", false) << 43;
+      flags |= (uint64_t)hk_native_direct_buffers_enabled() << 44;
    }
 
    /* Backend debug options change executable code too. Reusing ordinary
     * binaries makes e.g. AGX_MESA_DEBUG=wait silently ineffective, and can
     * later reuse diagnostic binaries in a normal application. Reserve the
-    * bits 44..60 for the compiler's original bit positions. Logging and
-    * validation-only options do not change code and need no separate cache.
+    * bits 44..60 for the compiler's original bit positions. Compiler bit 0
+    * is unused, so flag 44 holds the diagnostic buffer shortcut above.
+    * Logging/validation options do not change code and need no separate cache.
     */
    static_assert(AGX_DBG_NOPROMOTE < BITFIELD_BIT(17));
+   static_assert(((AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
+                   AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
+                   AGX_DBG_NOPROMOTE) & 1) == 0);
    flags |= (agx_get_compiler_debug() &
              (AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
               AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
@@ -387,7 +392,8 @@ hk_make_feature_key(const struct vk_physical_device *pdev,
           ((pdev->properties.sparseResidencyNonResidentStrict &&
             (!feats || feats->sparseResidencyBuffer || feats->sparseResidencyImage2D))
               ? HK_FEAT_STRICT_SPARSE : 0) |
-          ((feats && !feats->sparseBinding && !feats->descriptorBuffer)
+          ((hk_native_direct_buffers_enabled() && feats &&
+            !feats->sparseBinding && !feats->descriptorBuffer)
               ? HK_FEAT_DIRECT_BUFFER_DESCRIPTORS : 0);
 }
 

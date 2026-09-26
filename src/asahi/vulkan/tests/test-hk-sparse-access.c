@@ -10,6 +10,7 @@
 static const nir_shader_compiler_options options = {0};
 static bool alias_leaf_present;
 static bool specialize_geometry;
+static mesa_shader_stage test_stage = MESA_SHADER_COMPUTE;
 static const uint64_t base = 0x20000000, size = 0x10000000, map = 0x80000000;
 
 static void
@@ -63,7 +64,7 @@ byte_resident(uint64_t address)
 static void
 check_load(uint64_t address, unsigned bits, unsigned components, unsigned alignment)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "sparse bytes");
+   nir_builder b = nir_builder_init_simple_shader(test_stage, &options, "sparse bytes");
    nir_def *input = nir_load_global(&b, components, bits, nir_imm_int64(&b, address), .align_mul = alignment);
    nir_store_global(&b, input, nir_imm_int64(&b, 0x4000), .align_mul = alignment);
    CHECK(hk_nir_lower_sparse_access(b.shader));
@@ -97,7 +98,7 @@ check_load(uint64_t address, unsigned bits, unsigned components, unsigned alignm
 static void
 check_atomic(bool bound)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "sparse atomic");
+   nir_builder b = nir_builder_init_simple_shader(test_stage, &options, "sparse atomic");
    nir_def *input = nir_global_atomic(&b, 32,
       nir_imm_int64(&b, base + (bound ? 0 : 16384)), nir_imm_int(&b, 7),
       .atomic_op = nir_atomic_op_iadd);
@@ -120,7 +121,7 @@ static void
 check_buffer_alias(uint64_t address, bool leaf_present)
 {
    alias_leaf_present = leaf_present;
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "atomic alias");
+   nir_builder b = nir_builder_init_simple_shader(test_stage, &options, "atomic alias");
    nir_def *value = nir_global_atomic(&b, 32, nir_imm_int64(&b, address),
                                      nir_imm_int(&b, 1), .atomic_op = nir_atomic_op_iadd);
    nir_store_global(&b, value, nir_imm_int64(&b, 0x4000), .align_mul = 4);
@@ -142,7 +143,7 @@ static void
 check_alias_cross_page(bool store, unsigned bits, unsigned components)
 {
    alias_leaf_present = true;
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "alias page crossing");
+   nir_builder b = nir_builder_init_simple_shader(test_stage, &options, "alias page crossing");
    uint64_t addr = base + 16383;
    if (store)
       nir_store_global(&b, nir_imm_zero(&b, components, bits), nir_imm_int64(&b, addr), .align_mul = 1);
@@ -174,7 +175,7 @@ check_alias_cross_page(bool store, unsigned bits, unsigned components)
 static void
 check_descriptor_pointer(bool dereference)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options,
+   nir_builder b = nir_builder_init_simple_shader(test_stage, &options,
                                                   "descriptor versus BDA");
    nir_def *pointer = nir_load_global_constant(&b, 1, 64,
       nir_iadd_imm(&b, nir_load_root_agx(&b), 128), .align_mul = 8);
@@ -192,7 +193,7 @@ check_alias_vector(bool store, uint64_t address, bool leaf_present,
                    unsigned write_mask)
 {
    alias_leaf_present = leaf_present;
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options,
+   nir_builder b = nir_builder_init_simple_shader(test_stage, &options,
                                                   "page-contained alias vector");
    if (store) {
       nir_store_global(&b, nir_imm_zero(&b, components, bits),
@@ -235,7 +236,7 @@ check_alias_vector(bool store, uint64_t address, bool leaf_present,
 static void
 check_texture_descriptor(void)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "texture metadata");
+   nir_builder b = nir_builder_init_simple_shader(test_stage, &options, "texture metadata");
    nir_def *handle = nir_bindless_image_agx(&b, nir_imm_int(&b, 64), .desc_set = 0);
    nir_def *address = nir_load_from_texture_handle_agx(&b, handle);
    nir_def *descriptor = nir_load_global_constant(&b, 4, 32, nir_iadd_imm(&b, address, 16), .align_mul = 16);
@@ -249,7 +250,7 @@ check_texture_descriptor(void)
 static void
 check_alias_metadata(unsigned dereferences, bool alias_root)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options,
+   nir_builder b = nir_builder_init_simple_shader(test_stage, &options,
                                                   "alias metadata provenance");
    nir_def *pointer = nir_load_global_constant(&b, 1, 64,
       nir_iadd_imm(&b, nir_load_root_agx(&b), alias_root ?
@@ -337,7 +338,7 @@ static void
 check_direct_access(bool direct, unsigned operation)
 {
    alias_leaf_present = true;
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+   nir_builder b = nir_builder_init_simple_shader(test_stage,
                                                   &options, "direct constant pointer");
    const uint64_t address = base + 16388;
    nir_def *pointer = nir_imm_int64(&b, address |
@@ -373,7 +374,7 @@ check_direct_access(bool direct, unsigned operation)
 static void
 check_direct_proof(unsigned form)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+   nir_builder b = nir_builder_init_simple_shader(test_stage,
                                                   &options, "direct address proof");
    nir_def *x = nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0);
    nir_def *address = nir_ior_imm(&b, nir_u2u64(&b, x),
@@ -418,7 +419,7 @@ check_direct_base_offset(void)
    for (unsigned zero = 0; zero < 2; ++zero) {
       for (unsigned edge = 0; edge < 4; ++edge) {
          const uint32_t offsets[] = {0, 4, 0xfffc, UINT32_MAX - 3};
-         nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+         nir_builder b = nir_builder_init_simple_shader(test_stage,
             &options, "direct base plus offset");
          nir_def *input = nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0);
          uint64_t base_address = UINT64_C(0x12fffffffc);
@@ -463,7 +464,7 @@ check_buffer_bounds(void)
                                bound - size, bound - size + 1,
                                UINT32_MAX - size, UINT32_MAX};
          for (unsigned k = 0; k < ARRAY_SIZE(offsets); ++k) {
-            nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+            nir_builder b = nir_builder_init_simple_shader(test_stage,
                &options, "buffer bound against wide CPU oracle");
             nir_def *valid = hk_nir_buffer_offset_in_bounds(&b,
                nir_imm_int(&b, offsets[k]), nir_imm_int(&b, bound), size);
@@ -489,7 +490,7 @@ check_coalesced_bounded(void)
    unsigned cases = 0;
    for (unsigned bi = 0; bi < ARRAY_SIZE(bounds); ++bi) {
       for (unsigned oi = 0; oi < ARRAY_SIZE(offsets); ++oi) {
-         nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+         nir_builder b = nir_builder_init_simple_shader(test_stage,
             &options, "coalesced loads with exact scalar fallback");
          nir_def *id = nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0);
          nir_def *base = nir_imm_int64(&b, 0x8000);
@@ -564,7 +565,7 @@ static void
 check_coalesced_rejections(void)
 {
    for (unsigned mode = 0; mode < 4; ++mode) {
-      nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+      nir_builder b = nir_builder_init_simple_shader(test_stage,
          &options, "coalesced load rejection boundaries");
       nir_def *base = nir_imm_int64(&b, 0x8000);
       nir_def *bound = nir_imm_int(&b, 128);
@@ -595,6 +596,18 @@ int main(void)
    check_coalesced_bounded();
    check_coalesced_rejections();
    check_buffer_bounds();
+   /* Exercise the production fallback in both address-lowering paths. */
+   unsetenv("HK_DIAGNOSTIC_DIRECT_BUFFERS");
+   for (unsigned stage = 0; stage < 2; ++stage) {
+      test_stage = stage ? MESA_SHADER_FRAGMENT : MESA_SHADER_COMPUTE;
+      for (unsigned geometry = 0; geometry < 2; ++geometry) {
+         specialize_geometry = geometry;
+         run_suite();
+      }
+   }
+   test_stage = MESA_SHADER_COMPUTE;
+   /* The retained diagnostic shortcut still has to preserve address carries. */
+   setenv("HK_DIAGNOSTIC_DIRECT_BUFFERS", "true", 1);
    check_direct_base_offset();
    for (unsigned form = 0; form < 6; ++form)
       check_direct_proof(form);
@@ -606,7 +619,7 @@ int main(void)
          check_direct_access(true, operation);
       }
    }
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+   nir_builder b = nir_builder_init_simple_shader(test_stage,
                                                   &options, "window specialization");
    const unsigned offsets[] = {
       hk_root_descriptor_offset(sparse_va_base),
@@ -631,5 +644,6 @@ int main(void)
    nir_validate_shader(b.shader, "immutable geometry only");
    ralloc_free(b.shader);
    puts("PASS: immutable memory window specialization preserves dynamic tables");
+   unsetenv("HK_DIAGNOSTIC_DIRECT_BUFFERS");
    return 0;
 }

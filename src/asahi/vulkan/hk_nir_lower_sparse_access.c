@@ -62,6 +62,23 @@ canonical_address(nir_builder *b, const struct sparse_map *map,
                nir_ishl_imm(b, nir_ushr_imm(b, safe_offset, 26), 3)),
       .align_mul = 8);
    nir_def *fallback = nir_bcsel(b, inside, primary, address);
+   /* Removing these uniform branches changes fragment results in a retained
+    * cross-device regression. Keep the established path while that compiler
+    * interaction is investigated; other stages retain the branchless lookup. */
+   if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
+      nir_push_if(b, nir_iand(b, inside, nir_ine_imm(b, leaf, 0)));
+      nir_def *mapped = nir_load_global_constant(
+         b, 1, 64,
+         nir_iadd(b, leaf,
+                  nir_iand_imm(b, nir_ushr_imm(b, safe_offset, 11), 32760)),
+         .align_mul = 8);
+      nir_def *canonical =
+         nir_bcsel(b, nir_ine_imm(b, mapped, 0),
+                   nir_iadd(b, mapped, nir_iand_imm(b, address, 16383)), primary);
+      nir_push_else(b, NULL);
+      nir_pop_if(b, NULL);
+      return nir_if_phi(b, canonical, fallback);
+   }
    /* Absent leaves are identity mappings. Redirect their metadata read to
     * the permanent zero page, including its offset, instead of opening an
     * execution-mask branch around every lookup. Real leaves are 32 KiB;
@@ -179,6 +196,8 @@ untag_direct_address(nir_builder *b, nir_def *address, unsigned depth)
 static nir_def *
 descriptor_address(nir_builder *b, const struct sparse_map *map, nir_def *address)
 {
+   if (!hk_native_direct_buffers_enabled())
+      return canonical_address(b, map, address);
    /* Buffer offsets are 32-bit; adding a valid buffer offset cannot carry out
     * of the device VA bits into the private top-bit tag. Preserve this proof
     * through robustness's zero-page selection, but stop at arbitrary loads so
