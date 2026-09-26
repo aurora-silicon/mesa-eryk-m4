@@ -27,3 +27,8 @@ fix. Evidence, source patches and exact binaries are retained in the private
 local benchmark workspace. Watchdog and all-channel thermal guards were active;
 the M3 failed-test guard triggered a recovery reboot before the passing test.
 This validates the saved replay, not a live application or desktop replacement.
+
+Independent control of the fallback-only commit (without 64-bit export): M3
+20260926T064344890665Z and M4 20260926T064345183599Z finish under their guards
+and pass all three exact RGB comparisons. Library SHA256
+`a2f968f93fafcaa8d42c1e921ba4ce30232c21cd9c68ed21955ce085792e9694`.
