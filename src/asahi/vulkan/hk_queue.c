@@ -176,12 +176,15 @@ asahi_fill_cdm_command(struct hk_device *dev, struct hk_cs *cs,
 
    /* GPU publication precedes firmware timestamp writes. Keep the host
     * flush for either timestamp endpoint, whose later firmware-agent writes
-    * are outside the shader barrier's visibility guarantee. */
-   if (dev->dev.chip == AGX_CHIP_G16G && cs->ends_wide_visibility &&
+    * are outside the shader barrier's visibility guarantee. Query resets
+    * also retain that ownership transfer before firmware rewrites the pool. */
+   if ((dev->dev.chip == AGX_CHIP_G16G || dev->dev.chip == AGX_CHIP_G15S) &&
+       cs->ends_wide_visibility && !cs->ends_timestamp_reset &&
        !cs->timestamp.start.handle && !cs->timestamp.end.handle &&
        !cs->timestamp.end_copy_count &&
        (dev->dev.params.features & DRM_ASAHI_FEATURE_COMPUTE_WIDE_VISIBILITY) &&
-       debug_get_bool_option("HK_M4_COALESCE_COMPUTE_STAMPS", false)) {
+       debug_get_bool_option("HK_M4_COALESCE_COMPUTE_STAMPS",
+          dev->dev.chip == AGX_CHIP_G15S)) {
       cmd->flags |= DRM_ASAHI_COMPUTE_WIDE_VISIBILITY;
       if (debug_get_bool_option("HK_COMMAND_PROFILE", false))
          fprintf(stderr, "HK_COMPUTE_STAMPS cs=%" PRIx64 " wide_visibility=1\n", cs->addr);

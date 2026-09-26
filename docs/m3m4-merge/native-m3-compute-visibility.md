@@ -46,3 +46,19 @@ image checks, but had no measurable performance benefit; it remains disabled.
 Hardware tests used the 60-second watchdog and thermal guard. Full game assets,
 images, QPA logs and telemetry are retained in the private local benchmark repo.
 These targeted results are not a claim of Vulkan conformance.
+
+## Qualified kernel stamp coalescing
+
+G15S may pass the existing COMPUTE_WIDE_VISIBILITY hint when its kernel
+advertises the matching capability. Timestamp endpoints, timestamp copies and
+query-reset streams retain the firmware flush. The M3 kernel flushes the final
+job of every batch regardless of the hint. M4 keeps its previous default.
+
+M3 module SHA256 `372990bcae131aa66402160e199b6f579b8c57b3fe04f3dc57e51d9163bbfba4`
+and Mesa SHA256 `0010df68a4881d47966e9759a2039096f2612334109c2f4c36894aea6ef58d32`
+passed 13 query modes, 43 sparse/alias cases, eight synchronization CTS cases
+and the exact Satisfactory frame checks (1/16/31, check 20260925T225716846143Z).
+The three timed 30-frame intervals were 7.020701585, 7.061139977 and 7.019927103 s:
+median 4.27308 FPS, approximately neutral relative to 4.24622 FPS before this
+change. This qualifies visibility semantics; it does not establish a significant
+performance gain by itself. Tests used the mandatory thermal/watchdog guards.
