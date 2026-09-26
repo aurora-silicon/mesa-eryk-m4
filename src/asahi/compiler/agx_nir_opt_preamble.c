@@ -73,9 +73,8 @@ native_preamble_instr(const nir_instr *instr, const void *data)
    if (instr->type == nir_instr_type_alu) {
       const nir_alu_instr *alu = nir_instr_as_alu(instr);
       const nir_op_info *info = &nir_op_infos[alu->op];
-      /* Qualify basic full-width arithmetic independently from comparisons,
-       * rounding and narrowing, which the native constant program has not
-       * yet passed. Memory accesses still stay in the Ioto resource loader. */
+      /* Arithmetic remains separately opt-in. Qualified full-width comparisons
+       * below may export a Boolean word without changing arithmetic order. */
       if (options->float_alu && alu->def.bit_size == 32) {
          bool full_width = true;
          for (unsigned i = 0; i < info->num_inputs; ++i)
@@ -91,6 +90,19 @@ native_preamble_instr(const nir_instr *instr, const void *data)
             default:
                break;
             }
+         }
+      }
+      if (alu->def.bit_size == 1 && info->num_inputs == 2 &&
+          alu->src[0].src.ssa->bit_size == 32 &&
+          alu->src[1].src.ssa->bit_size == 32) {
+         switch (alu->op) {
+         case nir_op_feq:
+         case nir_op_fneu:
+         case nir_op_flt:
+         case nir_op_fge:
+            return true;
+         default:
+            break;
          }
       }
       if (nir_alu_type_get_base_type(info->output_type) == nir_type_float)

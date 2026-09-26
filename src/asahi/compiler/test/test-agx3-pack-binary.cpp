@@ -7302,7 +7302,8 @@ TEST_F(AGX3PackBinary, StreamedVertexExportsRetireBeforeRegisterReuse)
    }
 }
 
-TEST_F(AGX3PackBinary, NativePreambleExportsBooleanAsWord)
+static void
+test_native_boolean_preamble(bool floating_comparison)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL,
                                                  "native-preamble-bool");
@@ -7311,7 +7312,8 @@ TEST_F(AGX3PackBinary, NativePreambleExportsBooleanAsWord)
    for (unsigned i = 0; i < 12; ++i)
       value = nir_ixor(&b, nir_imul_imm(&b, value, 1664525),
                       nir_ushr_imm(&b, value, 7));
-   nir_def *condition = nir_ult(&b, value, uniform);
+   nir_def *condition = floating_comparison ? nir_flt(&b, value, uniform)
+                                            : nir_ult(&b, value, uniform);
    nir_push_if(&b, condition);
    nir_store_global(&b, nir_imm_int(&b, 42), nir_imm_int64(&b, 0x100000),
                     .align_mul = 4);
@@ -7342,4 +7344,14 @@ TEST_F(AGX3PackBinary, NativePreambleExportsBooleanAsWord)
    EXPECT_GT(exports, 0u);
    EXPECT_GT(bool_to_word, 0u);
    ralloc_free(b.shader);
+}
+
+TEST_F(AGX3PackBinary, NativePreambleExportsBooleanAsWord)
+{
+   test_native_boolean_preamble(false);
+}
+
+TEST_F(AGX3PackBinary, NativePreambleExportsFloatComparisonAsWord)
+{
+   test_native_boolean_preamble(true);
 }
