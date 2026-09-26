@@ -65,7 +65,8 @@ canonical_address(nir_builder *b, const struct sparse_map *map,
    /* Removing these uniform branches changes fragment results in a retained
     * cross-device regression. Keep the established path while that compiler
     * interaction is investigated; other stages retain the branchless lookup. */
-   if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
+   if (b->shader->info.stage == MESA_SHADER_FRAGMENT &&
+       !hk_native_direct_buffers_enabled()) {
       nir_push_if(b, nir_iand(b, inside, nir_ine_imm(b, leaf, 0)));
       nir_def *mapped = nir_load_global_constant(
          b, 1, 64,

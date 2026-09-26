@@ -36,3 +36,23 @@ Private captures, compiler bundles and images remain in gpu-replay-bench.
 M4 full replay171153886064 also passes:10/10/17 changed pixels,max1/2/1.
 Its guarded replay completes in65.29seconds including setup and readbacks;
 this is a correctness check, not a scored timing.
+
+## Complete diagnostic control
+
+The explicit `HK_DIAGNOSTIC_DIRECT_BUFFERS=true` control now also restores
+branchless fragment alias lookup. The first version restored the descriptor
+shortcuts but left this second half of the old path disabled. Default behavior
+is unchanged; the existing option bit already separates shader cache entries.
+
+A Satisfactory native Vulkan gameplay control on M3 reproduces every reference
+RGB pixel at frames 1/16/31 with this complete control, the four existing
+preamble/prefetch options, and `HK_NATIVE_BRANCH_SCALED=true`. Omitting the scaled
+branch control produces a large mismatch; restoring that control alone leaves
+341/855/287 changed pixels (maximum 2/3/3). This qualifies only the explicit
+recorded replay profile, not these optimizations as global defaults. Frostpunk
+and Lethal Company still require the conservative default paths. The compiler
+interaction remains unresolved, and no reference tolerance was widened.
+
+Private evidence: `regression-native-full-scaled-control.json` and corresponding
+retained full replay. Diagnostic Vulkan SHA256:
+`372e6351a85b681e7d42731f4dd1c988e0fc7a640a6859a82ebcfc07c791999f`.
