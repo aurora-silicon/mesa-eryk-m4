@@ -3047,8 +3047,14 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       nir->info.stage == MESA_SHADER_FRAGMENT &&
       debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false);
 
+   /* Ioto-populated inputs and native preamble outputs must not share the
+    * final 128-bit uniform block. On G15S and G16G, placing outputs at half
+    * 44 after an input pointer at halves 40..43 intermittently zeroes the
+    * first two outputs. Starting at half 48 fixes the sampler/UBO readback
+    * probes on both chips. Keep this within the experimental preamble path;
+    * its broader memory-load correctness is still being qualified. */
    struct agx_shader_key backend_key = {
-      .reserved_preamble = reserved,
+      .reserved_preamble = native_preamble ? ALIGN_POT(reserved, 8) : reserved,
       .dev = agx_gather_device_key(&dev->dev),
       .no_stop = nir->info.stage == MESA_SHADER_FRAGMENT,
       /* Native Ioto declares TPS for internal kernels too. */
