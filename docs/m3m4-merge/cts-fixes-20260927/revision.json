@@ -1,0 +1,6 @@
+{
+  "reason": "Fix transform-feedback metadata overflow, advanced blend pipeline binds, unbound static vertex inputs, float16 tessellation IO and M3 sample-location limits. Separate regression evidence retained; original catalog outcomes remain immutable.",
+  "mesa_prefix": "/opt/asahi-m3m4-cts-20260927",
+  "mesa_sha256": "912b52dd8c52f7a693e5ee84193cff891fe728ef308d7706b98a5362ce39ead8",
+  "mesa_commit": "0ac1527e3f1f92782e494177f747078fd1c8eb3f"
+}

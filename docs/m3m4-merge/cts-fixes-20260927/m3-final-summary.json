@@ -1,0 +1,43 @@
+{
+  "machine": "m3",
+  "healthy": true,
+  "counts": {
+    "Pass": 134,
+    "NotSupported": 1
+  },
+  "source": "/home/council/dev/dirtyroom_m4/build/cts-fixes-20260927/m3-final",
+  "guard": {
+    "boot_id": "f468dfbc-ac7c-4fa1-8e70-62e59bc1331f",
+    "phase": "complete",
+    "watchdog": {
+      "device": "/dev/watchdog0",
+      "identity": "Apple SoC Watchdog",
+      "timeout_seconds": 60,
+      "initial_timeleft_seconds": 59,
+      "periodic_keepalive": false,
+      "armed": true,
+      "ssh_broker_lease": false
+    },
+    "thermal_policy": {
+      "startup_max_mc": 95000,
+      "stop_mc": 120000,
+      "sample_interval_seconds": 0.5,
+      "kernel_regulation_target_mc": 110000
+    },
+    "verified_kernel_records": 436,
+    "elapsed_seconds": 2.0015483899999253,
+    "final_temperatures": {
+      "te000m": 46250.0,
+      "te001m": 50500.0,
+      "tp000m": 44750.0,
+      "tp001m": 47250.0,
+      "tp002m": 50250.0
+    }
+  },
+  "binary_hashes": {
+    "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+    "/root/cts-paired/deqp-runner": "060aad45bbfbc9f1d5156cfbe950584fe86d1ec77e81b609a568bb519f4b6b85",
+    "/opt/asahi-m3m4-cts-20260927/lib/libvulkan_asahi.so": "912b52dd8c52f7a693e5ee84193cff891fe728ef308d7706b98a5362ce39ead8",
+    "/root/m3-gpu-tools/asahi.ko": "4eda32a289b8923a584f5b0bfc21ca5d90a1aff66826d4d698a3ffd3ca6793a1"
+  }
+}

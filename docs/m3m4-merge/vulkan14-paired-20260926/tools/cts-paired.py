@@ -48,6 +48,8 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--run', action='store_true')
     p.add_argument('--review', action='append', default=[], metavar='SEGMENT=REASON')
+    p.add_argument('--revision', type=Path,
+                   help='Explicit driver revision JSON; original campaign/results remain unchanged')
     a = p.parse_args()
     a.output = a.output.resolve()
     a.output.mkdir(parents=True, exist_ok=True)
@@ -75,6 +77,21 @@ def main():
         assert json.loads((a.output/'campaign.json').read_text()) == config, 'Campaign changed'
     else:
         save(a.output/'campaign.json', config)
+    prefix = PREFIX
+    expected_mesa = '372e6351a85b681e7d42731f4dd1c988e0fc7a640a6859a82ebcfc07c791999f'
+    revision = None
+    if a.revision:
+        revision = json.loads(a.revision.read_text())
+        assert revision['reason'].strip() and revision['mesa_commit'].strip()
+        prefix = revision['mesa_prefix']
+        expected_mesa = revision['mesa_sha256']
+        assert prefix.startswith('/opt/') and len(expected_mesa) == 64
+        # Keep the baseline manifest immutable. Each new segment carries its
+        # revision and installed identity, including the first index affected.
+        env = dict(env, VK_DRIVER_FILES=prefix+'/asahi.json',
+                   VK_ICD_FILENAMES=prefix+'/asahi.json',
+                   LD_LIBRARY_PATH=prefix+'/lib',
+                   DRIRC_CONFIGDIR=prefix+'/share/drirc.d')
     save(a.output/'environment.json', env)
     db = sqlite3.connect(a.output/'results.sqlite3')
     db.execute('CREATE TABLE IF NOT EXISTS outcomes (idx INTEGER PRIMARY KEY, name TEXT, status TEXT, detail TEXT, segment TEXT)')
@@ -103,13 +120,18 @@ module='/root/m3-gpu-tools/asahi.ko' if MACHINE=='m3' else '/lib/modules/'+os.un
 paths=[BINARY,PREFIX+'/lib/libvulkan_asahi.so',module]
 params={p.name:p.read_text().strip() for p in Path('/sys/module/asahi/parameters').glob('*')}
 print(json.dumps(dict(kernel=os.uname().release,files={p:hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in paths},parameters=params)))
-'''.replace('MACHINE',repr(a.machine)).replace('BINARY',repr(BINARY)).replace('PREFIX',repr(PREFIX))
+'''.replace('MACHINE',repr(a.machine)).replace('BINARY',repr(BINARY)).replace('PREFIX',repr(prefix))
         current = json.loads(remote(['python3','-c',code]))
         path = a.output/'identity.json'
-        if path.exists(): assert json.loads(path.read_text()) == current, 'Installed identity changed'
+        if path.exists():
+            baseline=json.loads(path.read_text())
+            revisions_path=a.output/'approved-identities.json'
+            revisions=json.loads(revisions_path.read_text()) if revisions_path.exists() else []
+            assert current==baseline or any(r['identity']==current and r['reason'].strip() for r in revisions), 'Installed identity changed without recorded review'
         else: save(path,current)
         assert current['files'][BINARY] == '36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc'
-        assert current['files'][PREFIX+'/lib/libvulkan_asahi.so'] == '372e6351a85b681e7d42731f4dd1c988e0fc7a640a6859a82ebcfc07c791999f'
+        assert current['files'][prefix+'/lib/libvulkan_asahi.so'] == expected_mesa
+        return current
     # Ingest complete host evidence before scheduling, including after a host interruption.
     while True:
         for path in sorted((a.output/'segments').glob('*/summary.json')):
@@ -135,7 +157,7 @@ print(json.dumps(dict(kernel=os.uname().release,files={p:hashlib.sha256(Path(p).
         if (a.output/'STOP').exists(): report('stopped-at-boundary'); return 0
         if shutil.disk_usage(a.output).free < 2*1024**3:
             report('host-disk-reserve'); return 3
-        pin()
+        identity=pin()
         start=next(i for i in range(len(names)) if i not in done)
         wsi=names[start].startswith('dEQP-VK.wsi.')
         size=16 if a.machine=='m3' else (100 if wsi else 10000)
@@ -181,6 +203,10 @@ print(json.dumps(dict(kernel=os.uname().release,files={p:hashlib.sha256(Path(p).
         while (a.output/'segments'/key).exists():
             attempt+=1;key=f'{start:07d}-{indices[-1]+1:07d}-attempt{attempt}'
         segment=a.output/'segments'/key;segment.mkdir(parents=True)
+        save(segment/'identity.json',identity)
+        if revision:
+            save(segment/'revision.json',revision)
+        save(segment/'environment.json',env)
         raw,metadata=selection(names,indices,catalog)
         if history:
             metadata['scheduling']=dict(historical_campaign=str(history_path.parent),

@@ -1,0 +1,9 @@
+{
+  "kernel": "7.1.9-dirtyroom-asahi2+",
+  "files": {
+    "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+    "/opt/asahi-m3m4-cts-20260927/lib/libvulkan_asahi.so": "912b52dd8c52f7a693e5ee84193cff891fe728ef308d7706b98a5362ce39ead8",
+    "/lib/modules/7.1.9-dirtyroom-asahi2+/kernel/drivers/gpu/drm/asahi/asahi.ko": "da993c65b6633c323b2e6db3cc55085cec11e9f0648e4d7bd6632f9d1444ba13"
+  },
+  "parameters": {}
+}

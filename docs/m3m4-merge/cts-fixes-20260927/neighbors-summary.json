@@ -1,0 +1,105 @@
+{
+  "m3": {
+    "counts": {
+      "Pass": 5125,
+      "NotSupported": 14510
+    },
+    "groups": {
+      "sample-locations": {
+        "Pass": 3621,
+        "NotSupported": 13778
+      },
+      "advanced-blend": {
+        "Pass": 252,
+        "NotSupported": 252
+      },
+      "vertex-input": {
+        "Pass": 46
+      },
+      "16-bit-io": {
+        "Pass": 1206,
+        "NotSupported": 480
+      }
+    },
+    "selected": 19635,
+    "results_files": [
+      "build/cts-fixes-20260927/m3-neighbors-v1/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-000000/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-000512/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-001024/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-001536/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-002048/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-002560/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-003072/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-003584/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-004096/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-004608/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-005120/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-005632/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-006144/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-006656/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-007168/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-007680/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-008192/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-008704/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-009216/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-009728/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-010240/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-010752/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-011264/run/results.json",
+      "build/cts-fixes-20260927/m3-neighbors-v1-rest/m3-neighbors-v1-rest-011776/run/results.json"
+    ],
+    "cases_sha256": "fedf50a73c77cd47ce802666435a41bad7453340b7f078e5f1b77e4bcb8dc58f",
+    "failures": []
+  },
+  "m4": {
+    "counts": {
+      "Pass": 5125,
+      "NotSupported": 14510
+    },
+    "groups": {
+      "sample-locations": {
+        "Pass": 3621,
+        "NotSupported": 13778
+      },
+      "advanced-blend": {
+        "Pass": 252,
+        "NotSupported": 252
+      },
+      "vertex-input": {
+        "Pass": 46
+      },
+      "16-bit-io": {
+        "Pass": 1206,
+        "NotSupported": 480
+      }
+    },
+    "selected": 19635,
+    "results_files": [
+      "build/cts-fixes-20260927/m4-neighbors-v1/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-000000/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-000512/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-001024/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-001536/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-002048/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-002560/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-003072/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-003584/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-004096/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-004608/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-005120/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-005632/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-006144/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-006656/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-007168/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-007680/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-008192/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-008704/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-009216/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-009728/run/results.json",
+      "build/cts-fixes-20260927/m4-neighbors-v1-rest/m4-neighbors-v1-rest-010240/run/results.json"
+    ],
+    "cases_sha256": "fedf50a73c77cd47ce802666435a41bad7453340b7f078e5f1b77e4bcb8dc58f",
+    "failures": []
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "machine": "m4",
+  "healthy": true,
+  "counts": {
+    "Pass": 135
+  },
+  "source": "/home/council/dev/dirtyroom_m4/build/cts-fixes-20260927/m4-final",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260927T105301296280Z-m4-final",
+  "peak_temperature_c": 70.5,
+  "guard_verdict": "pass",
+  "cases_sha256": "51d43e206685e44d33f99f496eae6233fb89aa2cf816f412d28f8a9db2fa1c84",
+  "elapsed_seconds": 5.399073808999674
+}
