@@ -1,0 +1,9 @@
+{
+  "reason": "Resolve premature M3 TA progress timeout: normal unmodified CTS shader retires in 35.73 ms with finite firmware poll interval 100. Original 68-case batch passes; final module after quiet reboot passes all 140 logical family cases and 88 render smoke cases. Failure latch and bounded firmware snapshot collection retained. Original failure outcomes remain immutable.",
+  "mesa_prefix": "/opt/asahi-m3m4-cts-20260927",
+  "mesa_sha256": "912b52dd8c52f7a693e5ee84193cff891fe728ef308d7706b98a5362ce39ead8",
+  "mesa_commit": "0ac1527e3f1f92782e494177f747078fd1c8eb3f",
+  "kernel_source_commit": "ad030b321e46",
+  "kernel_published_commit": "cc3a3b104f91",
+  "kernel_module_sha256": "d714d3112c3e953be7885e2cb0112d500bc9925b897b378117be41ff610e1222"
+}

@@ -1,0 +1,75 @@
+{
+  "m3-ta-100": {
+    "evidence": "build/driver-roadmap-20260927/m3-ta-100",
+    "healthy": true,
+    "counts": {
+      "Pass": 1
+    },
+    "maximum_sampled_temperature_c": 55.5
+  },
+  "m3-ta-100-original-batch": {
+    "evidence": "build/driver-roadmap-20260927/m3-ta-100-original-batch",
+    "healthy": true,
+    "counts": {
+      "Pass": 68
+    },
+    "maximum_sampled_temperature_c": 64.0
+  },
+  "m3-ta-policy-logical": {
+    "evidence": "build/driver-roadmap-20260927/m3-ta-policy-logical",
+    "healthy": true,
+    "counts": {
+      "Pass": 140
+    },
+    "maximum_sampled_temperature_c": 67.75
+  },
+  "m3-direct-timed": {
+    "evidence": "build/driver-roadmap-20260927/m3-direct-timed",
+    "healthy": true,
+    "counts": {
+      "Pass": 1
+    },
+    "maximum_sampled_temperature_c": 54.25
+  },
+  "m3-trip-16384-timed": {
+    "evidence": "build/driver-roadmap-20260927/m3-trip-16384-timed",
+    "healthy": true,
+    "counts": {
+      "Fail": 1
+    },
+    "maximum_sampled_temperature_c": 54.75
+  },
+  "m3-licm-timed": {
+    "evidence": "build/driver-roadmap-20260927/m3-licm-timed",
+    "state": "incomplete receipt; firmware error event 4 retained in dmesg",
+    "maximum_sampled_temperature_c": 52.25
+  },
+  "m3-nocache-hints": {
+    "evidence": "build/driver-roadmap-20260927/m3-nocache-hints",
+    "healthy": false,
+    "counts": {
+      "Crash": 1
+    },
+    "maximum_sampled_temperature_c": 55.5
+  },
+  "m3-ta-final-logical": {
+    "evidence": "build/driver-roadmap-20260927/m3-ta-final-logical",
+    "healthy": true,
+    "counts": {
+      "Pass": 140
+    },
+    "module_sha256": "d714d3112c3e953be7885e2cb0112d500bc9925b897b378117be41ff610e1222",
+    "source_commit": "ad030b321e46",
+    "published_commit": "cc3a3b104f91"
+  },
+  "m3-ta-final-smoke": {
+    "evidence": "build/driver-roadmap-20260927/m3-ta-final-smoke",
+    "healthy": true,
+    "counts": {
+      "Pass": 88
+    },
+    "module_sha256": "d714d3112c3e953be7885e2cb0112d500bc9925b897b378117be41ff610e1222",
+    "source_commit": "ad030b321e46",
+    "published_commit": "cc3a3b104f91"
+  }
+}

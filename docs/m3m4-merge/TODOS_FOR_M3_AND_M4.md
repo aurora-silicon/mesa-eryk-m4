@@ -44,9 +44,9 @@ earlier representation cleanup intentionally deferred.
 - [x] Finish M4's 3,206,030-case frozen Linux catalog. No further failures
   appeared after the known fixes. Original 134 failures, one crash and four
   QualityWarnings remain in the versioned campaign record.
-- [ ] Finish M3's catalog. Paused at 2,712,963 recorded cases after firmware
-  error event 4. A test process was subsequently killed by the guard; its
-  `Crash` label is not proof that userspace caused the GPU fault.
+- [ ] Finish M3's catalog. Resumed from 2,712,963 recorded cases after fixing
+  a premature firmware TA progress timeout. The original `Crash` record
+  remains; process SIGKILL followed the guard observing the GPU fault.
 - [ ] Eventually run a complete qualification campaign on a single final
   kernel/Mesa revision. The current campaign spans explicitly recorded fixes
   and uses an existing corrected CTS binary; it is not an official unmodified
@@ -54,11 +54,14 @@ earlier representation cleanup intentionally deferred.
 
 ## P0: diagnose the new M3 fault and finish correctness coverage
 
-Status: in progress. Evidence:
+Status: timeout cause fixed; remaining coverage in progress. Evidence:
 `build/cts-paired-20260926/m3-pte-fix/segments/2712954-2713022`.
 The runner reported `float16.logical.opfordequal_vector_tesse` at catalog index
 2713005. Firmware reported a render failure, no faults in the sampled MMU banks,
-and a nonzero VDM state on one core. These are observations, not a root cause.
+and a nonzero VDM state on one core. Isolation and a single-field firmware
+experiment identify premature TA progress checking: valid full work takes
+35.73 ms and passes with a finite 100-poll interval. See the recorded validation
+in `docs/m3m4-merge/cts-fixes-20260927/m3-ta-progress-timeout.md`.
 
 - [x] Reproduce the identified case in isolation with the exact failing binaries.
   Also fails with the pre-CTS-fix Mesa; current M4 passes the same case.
@@ -67,11 +70,13 @@ and a nonzero VDM state on one core. These are observations, not a root cause.
   reported test caused the fault.
 - [ ] Capture the relevant shaders, generated code, submission state and first
   firmware error. Compare against the M4 result and a known-good reference.
-- [ ] Fix the responsible compiler, submission or lifetime bug; retain a small
-  reproducer and add a focused regression test where practical.
+- [x] Fix the responsible firmware progress policy, retaining the exact CTS
+  reproducer. Published kernel `cc3a3b104f91`; original 68-case segment and
+  all 140 logical cases pass. Final quiet boot also passes 88 render smoke cases.
 - [ ] Validate the original sequence, adjacent float16/tessellation cases and
   relevant game captures on both GPUs.
-- [ ] Resume only missing full-catalog indices after explicit evidence review.
+- [x] Resume only missing full-catalog indices after explicit evidence review.
+  Kernel identity and review reason are recorded without rewriting old results.
 - [ ] Retain and explain allocation-callback QualityWarnings separately from
   failures; do not add dummy allocations simply to silence the tests.
 
