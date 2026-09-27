@@ -100,7 +100,11 @@ completes with every non-pass classified.
   lost contexts is rejected, and Mesa consistently reports device/context loss.
 - [ ] Distinguish the first hardware fault from secondary canceled jobs and
   watchdog actions in machine-readable evidence.
-- [ ] Preserve bounded first-fault snapshots independently of printk retention.
+- [x] Add bounded M3 active-job firmware snapshots through devcoredump and
+  collect them under the guard before watchdog recovery. The real fault retains
+  478,763 bytes across 12 owned-RAM records; five parser/collection tests pass.
+  Development `90d936e42cac`, published adaptation `7c64de6e7964`.
+- [ ] Complete first-fault snapshots across all error paths and both GPUs.
   Evaluate devcoredump and DRM wedged notifications rather than bespoke large
   log dumps. Include shader addresses, queue positions and firmware identity.
 - [ ] Exercise application exit, SIGKILL, device destruction and failed

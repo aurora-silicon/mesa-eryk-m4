@@ -1,0 +1,147 @@
+{
+  "boot_id": "a4cfe0e8-b9e4-4c43-b89b-4ce1d842330b",
+  "error": "RuntimeError('GPU runtime latched unhealthy')",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": false
+  },
+  "thermal_policy": {
+    "startup_max_mc": 95000,
+    "stop_mc": 120000,
+    "sample_interval_seconds": 0.5,
+    "kernel_regulation_target_mc": 110000
+  },
+  "firmware_fault_snapshots": [
+    {
+      "format": "M3FWD001",
+      "created_monotonic_ns": 39533722503,
+      "length": 478763,
+      "sha256": "9ef40fb85848262f989f69c037a61c933472b55265bd486bc42efdc819d6b492",
+      "records": [
+        {
+          "name": "root",
+          "va": "0xfffffc204062ff40",
+          "size": 192,
+          "offset": 104,
+          "begin_monotonic_ns": 39533723461,
+          "end_monotonic_ns": 39533727128,
+          "sha256": "cfbbd755a897839fc70fddd00f1f618e026ba70516bea4efc908a84d12dfdcd3"
+        },
+        {
+          "name": "runtime",
+          "va": "0xfffffc20406b7b4d",
+          "size": 1203,
+          "offset": 360,
+          "begin_monotonic_ns": 39533727878,
+          "end_monotonic_ns": 39533745896,
+          "sha256": "122724d02e5e6cc638592c0069c4a0b47441f54c2ffe4bf6bb1bed0b8c6ae72f"
+        },
+        {
+          "name": "hardware",
+          "va": "0xfffffc20406fb5fc",
+          "size": 35332,
+          "offset": 1627,
+          "begin_monotonic_ns": 39533749021,
+          "end_monotonic_ns": 39534292546,
+          "sha256": "985034a807c4c55771bd08b10838b4e5dd817b8c3cceb6a4e4658d59f5c5e83f"
+        },
+        {
+          "name": "globals",
+          "va": "0xfffffc20407cc204",
+          "size": 15868,
+          "offset": 37023,
+          "begin_monotonic_ns": 39534305088,
+          "end_monotonic_ns": 39534553938,
+          "sha256": "951bc7790c61e35a51fd33485a78454150fbfb09f1a9562022ff4a585ee5502a"
+        },
+        {
+          "name": "control",
+          "va": "0xfffffc20003bbc30",
+          "size": 50128,
+          "offset": 52955,
+          "begin_monotonic_ns": 39534577165,
+          "end_monotonic_ns": 39535371625,
+          "sha256": "db2574cf8eda9c7522d923832054e08cb22473150fb172d53a92b6b4f4c145fd"
+        },
+        {
+          "name": "flags",
+          "va": "0xfffffc2040857fc0",
+          "size": 64,
+          "offset": 103147,
+          "begin_monotonic_ns": 39535371958,
+          "end_monotonic_ns": 39535372916,
+          "sha256": "7e7a7434375aff433b140117e2bd3a517fb7f60a3d779bf1f8545fdc05a2a0ef"
+        },
+        {
+          "name": "event-state",
+          "va": "0xfffffc2040377fd0",
+          "size": 48,
+          "offset": 103275,
+          "begin_monotonic_ns": 39535373208,
+          "end_monotonic_ns": 39535374041,
+          "sha256": "cf15944965ef0eb6b5ce8920afe04517db84ca4f6ea3eabe149943bd280f9c4f"
+        },
+        {
+          "name": "event-ring",
+          "va": "0xfffffc20403b8800",
+          "size": 14336,
+          "offset": 103387,
+          "begin_monotonic_ns": 39535374833,
+          "end_monotonic_ns": 39535602640,
+          "sha256": "6ca0a2029f19bc8a2a5ee8ebe39218bd7c50b3d11c69520e7d80efe7a5911b59"
+        },
+        {
+          "name": "fwlog-state",
+          "va": "0xfffffc20403ffee0",
+          "size": 288,
+          "offset": 117787,
+          "begin_monotonic_ns": 39535602931,
+          "end_monotonic_ns": 39535607306,
+          "sha256": "2d5565fb483d8ea4525a7a9229677d1038ad34b6e22c8d5152e1d7f7b9817597"
+        },
+        {
+          "name": "fwlog-ring",
+          "va": "0xfffffc2040443000",
+          "size": 331776,
+          "offset": 118139,
+          "begin_monotonic_ns": 39535658258,
+          "end_monotonic_ns": 39539150481,
+          "sha256": "a251c7b271e711604c800658cf80ad17ef32328ab9b24fca54438b214224c3d9"
+        },
+        {
+          "name": "trace-state",
+          "va": "0xfffffc20404d7fd0",
+          "size": 48,
+          "offset": 449979,
+          "begin_monotonic_ns": 39539191458,
+          "end_monotonic_ns": 39539191999,
+          "sha256": "00f346404d1f20738facf53be8846ca8538acb9a9fe47e51f2bd6fd11231ceb6"
+        },
+        {
+          "name": "trace-ring",
+          "va": "0xfffffc2040519000",
+          "size": 28672,
+          "offset": 450091,
+          "begin_monotonic_ns": 39539192666,
+          "end_monotonic_ns": 39539485260,
+          "sha256": "0f673fc581f7c9ddbe171d63b4ba75234671a554aa2665f8d3e6f5cf9cb9a0c3"
+        }
+      ],
+      "note": "Sequential owned-firmware RAM observations; not atomic, no shader or application buffers.",
+      "file": "m3-fault-devcd1.bin",
+      "source": "/sys/class/devcoredump/devcd1/data"
+    }
+  ],
+  "development_commit": "90d936e42cac",
+  "publication_commit": "7c64de6e7964",
+  "installed_module_sha256": "3ed25bae714b8a4f848f181100493e4374241f1f735aaf1cc328f67be622ade1",
+  "evidence": "build/driver-roadmap-20260927/m3-fault-snapshot",
+  "cts_case": "dEQP-VK.spirv_assembly.instruction.graphics.float16.logical.opfordequal_vector_tesse",
+  "catalog_index": 2713005,
+  "qualification": "Fault capture validated; shader timeout not fixed. Publishing adaptation compiled, not hardware deployed."
+}
