@@ -146,7 +146,9 @@ struct hk_shader_info {
     * allocation here.
     */
    nir_xfb_info xfb_info;
-   nir_xfb_output_info xfb_outputs[64];
+   /* Scalarized 16-bit outputs can use both halves of each component.
+    * Account for every NIR varying slot, including builtins. */
+   nir_xfb_output_info xfb_outputs[VARYING_SLOT_MAX * 4 * 2];
 };
 
 /*
