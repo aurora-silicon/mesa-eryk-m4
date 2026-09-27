@@ -60,7 +60,8 @@ The runner reported `float16.logical.opfordequal_vector_tesse` at catalog index
 2713005. Firmware reported a render failure, no faults in the sampled MMU banks,
 and a nonzero VDM state on one core. These are observations, not a root cause.
 
-- [ ] Reproduce the identified case in isolation with the exact failing binaries.
+- [x] Reproduce the identified case in isolation with the exact failing binaries.
+  Also fails with the pre-CTS-fix Mesa; current M4 passes the same case.
 - [ ] If isolation passes, replay the original case sequence and investigate
   accumulated state, lifetime and allocation effects. Do not assume the last
   reported test caused the fault.
@@ -81,6 +82,17 @@ completes with every non-pass classified.
 ## P1: reliable failure handling and GPU recovery
 
 ### Error propagation and ownership
+
+- [x] Latch M3 errors after queue publication, including fallible submission and
+  retirement reads, before the next packet can release retained resources.
+  Preserve the primary error when diagnostic reads fail. Development build
+  validated with the real fault; published-source adaptation preserves its
+  existing unlocked-wait and recovery-diagnostic code.
+- [x] Retain unhealthy host-progress snapshots before stopping watchdog renewal;
+  distinguish unhealthy state from malformed or incompatible progress ABI.
+  Six offline checks pass; the real M3 fault retains `healthy=0` evidence.
+- [x] Keep partial CTS regression outcomes when the guard kills the runner before
+  its final batch receipt. Missing receipt means incomplete, never success.
 
 - [ ] Audit every submit, timeout, firmware crash, MMU fault and teardown path.
   Document which jobs, queues, VMs, buffers and callbacks each path owns.
@@ -246,3 +258,22 @@ carry enough retained evidence for another developer to reproduce them.
   reproduction. M3 recovered via the existing watchdog and its normal display
   manager is active. M4's full catalog is complete; no new stress campaign has
   been started there by this roadmap task.
+
+- 2026-09-27: Isolated M3 tessellation timeout reproduces with current and older
+  Mesa; current M4 passes. Both captures contain the same 17 compiler-input
+  hashes. Register-spill and no-scheduler diagnostics still fail; neither is a
+  fix. The `wait` compiler flag does not affect the native AGX3 submit path and
+  does not rule out synchronization bugs. Root cause remains open.
+- 2026-09-27: First P1 implementation: M3 development commit `00f119c45501`,
+  publishing-branch adaptation `58a9b568a9af`. Module SHA256
+  `3b3aacb0ff561063a4ee5da6f02e038b8388776aeff2fcc945ac6f6f468537d3`.
+  Real-fault validation now retains an unhealthy progress snapshot and reports
+  `GPU runtime latched unhealthy`; the regression tool preserves its partial
+  outcome without a Python traceback. This improves containment and evidence;
+  it does not fix tessellation or implement GPU reset. Evidence is under
+  `build/driver-roadmap-20260927/`.
+- 2026-09-27: Follow-up validation: all 88 rendering smoke cases pass on the
+  installed development module after watchdog recovery; the normal display
+  manager is active. The publishing adaptation also builds with its own
+  generated kernel/Rust dependencies. It is source-build validated separately
+  from the development module's hardware results.

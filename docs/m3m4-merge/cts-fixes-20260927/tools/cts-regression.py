@@ -25,6 +25,8 @@ def main():
     p.add_argument('--cases', required=True, type=Path)
     p.add_argument('--output', required=True, type=Path)
     p.add_argument('--prefix', required=True)
+    p.add_argument('--env', action='append', default=[], metavar='KEY=VALUE',
+                   help='Recorded diagnostic overrides forwarded to the guarded workload')
     p.add_argument('--batch-size', type=int, default=0,
                    help='Split a larger selection into separately guarded batches')
     a = p.parse_args()
@@ -48,6 +50,8 @@ def main():
             cmd = [sys.executable, str(Path(__file__).resolve()), '--machine',
                    a.machine, '--cases', str(cases), '--output', str(out),
                    '--prefix', a.prefix]
+            for value in a.env:
+                cmd += ['--env', value]
             with (a.output/('batch-%06d.log' % start)).open('w') as log:
                 rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT).returncode
             if not (out/'summary.json').exists():
@@ -72,6 +76,10 @@ def main():
         ASAHI_MESA_DEBUG='nocompress', HK_DEBUG_LOG='0', AGX_MESA_DEBUG='',
         VK_LAYER_PATH='/var/empty', VK_IMPLICIT_LAYER_PATH='/var/empty',
         MESA_SHADER_CACHE_DIR='/root/cts-regression-cache/mesa')
+    for override in a.env:
+        key, value = override.split('=', 1)
+        assert key and '=' not in key
+        env[key] = value
     (a.output/'environment.json').write_text(json.dumps(env, indent=2)+'\n')
     if a.machine == 'm4':
         cmd = [sys.executable, str(ROOT/'tools/cts-bulk.py'),
@@ -111,7 +119,11 @@ def main():
             return rc or 1
         rows = json.loads((out/'results.json').read_text())
         guard = json.loads((out/'result.json').read_text())
-        batch = json.loads((out/'batch-result.json').read_text())
+        # A guard may kill the runner on the first GPU fault before it writes
+        # its final batch receipt. Keep partial outcomes and the guard failure.
+        batch_path = out/'batch-result.json'
+        batch = (json.loads(batch_path.read_text()) if batch_path.exists() else
+                 dict(status='incomplete', reason='No batch receipt; inspect guard evidence'))
         summary = dict(healthy=not rc and guard['phase']=='complete' and
             batch['status']=='complete', guard=guard, batch=batch,
             counts=Counter(r['status'] for r in rows), selected=len(rows))
