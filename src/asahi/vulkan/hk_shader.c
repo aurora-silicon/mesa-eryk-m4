@@ -2644,9 +2644,11 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
     * so retaining the pointer until after compilation is a use-after-free.
     */
    if (xfb_info) {
-      if (xfb_info->output_count > ARRAY_SIZE(shader->info.xfb_outputs))
+      if (xfb_info->output_count > ARRAY_SIZE(shader->info.xfb_outputs)) {
+         ralloc_free(nir);
          return vk_errorf(&dev->vk, VK_ERROR_UNKNOWN,
                           "Transform feedback output metadata exceeds capacity");
+      }
 
       memcpy(&shader->info.xfb_info, xfb_info,
              nir_xfb_info_size(xfb_info->output_count));
