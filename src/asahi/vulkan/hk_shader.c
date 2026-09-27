@@ -3596,13 +3596,14 @@ nir_opts(nir_shader *nir, void *data)
    } while (progress);
 }
 
-/* Native varyings use 32-bit components. Widen narrow integer interfaces
- * before interstage optimization: nir_opt_varyings may retype flat IO as
- * float, after which a numeric half-float conversion loses integer NaN bits.
- * Keep narrowing inside the consumer, where it is ordinary integer ALU.
+/* Native varyings use 32-bit components, including Poly's tessellation
+ * storage. Widen both sides of 16-bit interfaces before lowering those
+ * accesses, then narrow in the consumer using the original scalar type.
+ * Do this before interstage optimization: nir_opt_varyings may retype flat
+ * integer IO as float, where numeric conversion would lose integer NaN bits.
  */
 static bool
-hk_widen_integer_io(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+hk_widen_narrow_io(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
    bool store;
    switch (intr->intrinsic) {
@@ -3630,7 +3631,8 @@ hk_widen_integer_io(nir_builder *b, nir_intrinsic_instr *intr, void *data)
                             : nir_intrinsic_dest_type(intr);
    nir_alu_type base = nir_alu_type_get_base_type(type);
    unsigned bits = store ? intr->src[0].ssa->bit_size : intr->def.bit_size;
-   if (bits != 16 || (base != nir_type_int && base != nir_type_uint))
+   if (bits != 16 || (base != nir_type_int && base != nir_type_uint &&
+                      base != nir_type_float))
       return false;
 
    nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
@@ -3657,7 +3659,7 @@ hk_widen_integer_io(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       intr->def.bit_size = 32;
       nir_intrinsic_set_dest_type(intr, base | 32);
       b->cursor = nir_after_instr(&intr->instr);
-      nir_def *value = nir_u2u16(b, &intr->def);
+      nir_def *value = nir_convert_to_bit_size(b, &intr->def, base, 16);
       nir_def_rewrite_uses_after(&intr->def, value);
    }
    return true;
@@ -3695,7 +3697,7 @@ hk_compile_shaders(struct vk_device *vk_dev, uint32_t shader_count,
       }
 
       if (agx_chip_uses_hal200_ioto(dev->dev.chip))
-         NIR_PASS(_, nir, nir_shader_intrinsics_pass, hk_widen_integer_io,
+         NIR_PASS(_, nir, nir_shader_intrinsics_pass, hk_widen_narrow_io,
                   nir_metadata_control_flow, NULL);
 
       shaders[i] = nir;
