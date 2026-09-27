@@ -1,0 +1,22 @@
+{
+  "id": "20260927T222130208193Z-roadmap-m4-resource-allocation-fixed",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260927T222130208193Z-roadmap-m4-resource-allocation-fixed",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 1,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 59.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 59.25,
+      "Ta000m": 57.0,
+      "Te000m": 56.25,
+      "Te001m": 54.5,
+      "Tp000m": 59.25,
+      "Tp001m": 54.5
+    }
+  }
+}

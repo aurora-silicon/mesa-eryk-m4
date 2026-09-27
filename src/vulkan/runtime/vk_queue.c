@@ -1450,8 +1450,19 @@ vk_common_QueueWaitIdle(VkQueue _queue)
       return result;
 
    result = vk_queue_signal_sync(queue, sync, 0);
-   if (unlikely(result != VK_SUCCESS))
+   if (unlikely(result != VK_SUCCESS)) {
+      /* An allocation failure leaves no queued reference to this sync:
+       * deferred flush errors are converted to DEVICE_LOST, and immediate
+       * submission destroys its temporary submit before returning. In
+       * particular, failure to allocate the signal-only submit must not leak
+       * the sync we just created. Keep the lost-device path separate because
+       * deferred submissions may still retain its pointer.
+       */
+      if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
+          result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
+         vk_sync_destroy(queue->base.device, sync);
       return result;
+   }
 
    result = vk_sync_wait(queue->base.device, sync, 0,
                          VK_SYNC_WAIT_COMPLETE, UINT64_MAX);

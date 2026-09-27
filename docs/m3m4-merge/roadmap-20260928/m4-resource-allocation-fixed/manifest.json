@@ -1,0 +1,29 @@
+{
+  "id": "20260927T222130208193Z-roadmap-m4-resource-allocation-fixed",
+  "hypothesis": "Free idle-wait sync on submission OOM; all observed allocation failures clean up with working checked GPU transfers",
+  "command": [
+    "env",
+    "VK_DRIVER_FILES=/opt/asahi-m3m4-roadmap-20260928/asahi.json",
+    "LD_LIBRARY_PATH=/opt/asahi-m3m4-roadmap-20260928/lib",
+    "ASAHI_M4_EXPERIMENTAL=1",
+    "/root/vk-resource-allocation-failure",
+    "0x8132",
+    "/root/asahi-evidence/20260927T222130208193Z-roadmap-m4-resource-allocation-fixed/allocations.jsonl",
+    "resources"
+  ],
+  "expected_success": "DEVICE_ALLOCATION_FAILURE_PASS",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "4292b8e6cdac01506d46061d128c5d5f9eb4ffae",
+      "status": " M src/vulkan/runtime/vk_queue.c\n",
+      "patch_sha256": "d0aa755d10a6fe0c20275d8b40a20def3aa2f9976ca10a00d1e4461a30176ec8"
+    },
+    "kernel": {
+      "head": "63703468d95d5e8104570429ac2af585ca79da07",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

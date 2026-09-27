@@ -76,8 +76,85 @@ static void *reallocate(void *data, void *ptr, size_t size, size_t alignment, Vk
     if (ptr) memcpy(p,ptr,size < previous ? size : previous);
     release(data,ptr); return p;
 }
+
+/* Allocation failures during object construction, command recording and submit.
+ * Each successful execution fills and reads back every word of a 16 KiB buffer.
+ * Objects use the same callback owner as the device; every failure unwinds in
+ * reverse order. A failed submit must not leave a live GPU referencing frees.
+ */
+static VkResult resource_work(PFN_vkGetInstanceProcAddr gipa, VkInstance instance,
+    VkPhysicalDevice physical, VkDevice device, uint32_t family,
+    const VkAllocationCallbacks *cb) {
+#define RLOAD(name) PFN_##name name=(PFN_##name)gipa(instance,#name);CHECK(name)
+    RLOAD(vkCreateBuffer);RLOAD(vkDestroyBuffer);RLOAD(vkGetBufferMemoryRequirements);
+    RLOAD(vkGetPhysicalDeviceMemoryProperties);RLOAD(vkAllocateMemory);RLOAD(vkFreeMemory);
+    RLOAD(vkBindBufferMemory);RLOAD(vkMapMemory);RLOAD(vkUnmapMemory);
+    RLOAD(vkCreateCommandPool);RLOAD(vkDestroyCommandPool);RLOAD(vkAllocateCommandBuffers);
+    RLOAD(vkBeginCommandBuffer);RLOAD(vkEndCommandBuffer);RLOAD(vkCmdFillBuffer);
+    RLOAD(vkCmdPipelineBarrier);RLOAD(vkCreateFence);RLOAD(vkDestroyFence);
+    RLOAD(vkGetDeviceQueue);RLOAD(vkQueueSubmit);RLOAD(vkWaitForFences);RLOAD(vkDeviceWaitIdle);
+#undef RLOAD
+    VkResult result=VK_SUCCESS;
+    VkBuffer buffer=VK_NULL_HANDLE; VkDeviceMemory memory=VK_NULL_HANDLE;
+    VkCommandPool pool=VK_NULL_HANDLE; VkFence fence=VK_NULL_HANDLE;
+    void *mapped=NULL;
+#define TRY(call) do { result=(call); if(result!=VK_SUCCESS) goto cleanup; } while(0)
+    VkBufferCreateInfo bi={.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size=16384,.usage=VK_BUFFER_USAGE_TRANSFER_DST_BIT};
+    TRY(vkCreateBuffer(device,&bi,cb,&buffer));
+    VkMemoryRequirements req;vkGetBufferMemoryRequirements(device,buffer,&req);
+    VkPhysicalDeviceMemoryProperties mp;vkGetPhysicalDeviceMemoryProperties(physical,&mp);
+    uint32_t type=0;const VkMemoryPropertyFlags flags=VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    while(type<mp.memoryTypeCount && (!(req.memoryTypeBits&(1u<<type)) || (mp.memoryTypes[type].propertyFlags&flags)!=flags))++type;
+    CHECK(type<mp.memoryTypeCount);
+    VkMemoryAllocateInfo ai={.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,.allocationSize=req.size,.memoryTypeIndex=type};
+    TRY(vkAllocateMemory(device,&ai,cb,&memory));
+    TRY(vkBindBufferMemory(device,buffer,memory,0));
+    TRY(vkMapMemory(device,memory,0,req.size,0,&mapped));
+    memset(mapped,0,16384);
+    VkCommandPoolCreateInfo pi={.sType=VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,.queueFamilyIndex=family};
+    TRY(vkCreateCommandPool(device,&pi,cb,&pool));
+    VkCommandBufferAllocateInfo ca={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool=pool,.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY,.commandBufferCount=1};
+    VkCommandBuffer command;TRY(vkAllocateCommandBuffers(device,&ca,&command));
+    VkCommandBufferBeginInfo begin={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    TRY(vkBeginCommandBuffer(command,&begin));
+    vkCmdFillBuffer(command,buffer,0,16384,0xa5c39e17);
+    VkMemoryBarrier barrier={.sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT,.dstAccessMask=VK_ACCESS_HOST_READ_BIT};
+    vkCmdPipelineBarrier(command,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&barrier,0,NULL,0,NULL);
+    TRY(vkEndCommandBuffer(command));
+    VkFenceCreateInfo fi={.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    TRY(vkCreateFence(device,&fi,cb,&fence));
+    VkQueue queue;vkGetDeviceQueue(device,family,0,&queue);
+    VkSubmitInfo si={.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO,.commandBufferCount=1,.pCommandBuffers=&command};
+    TRY(vkQueueSubmit(queue,1,&si,fence));
+    /* A submit accepted by the implementation owns these resources until its
+     * fence completes. Never free timed-out work as an allocation-test result. */
+    result=vkWaitForFences(device,1,&fence,VK_TRUE,UINT64_C(10000000000));
+    CHECK(result==VK_SUCCESS);
+    for(unsigned i=0;i<16384/4;++i)CHECK(((uint32_t*)mapped)[i]==0xa5c39e17);
+cleanup:
+    /* Includes any partial work accepted before a submit allocation error. */
+    VkResult idle=vkDeviceWaitIdle(device);
+    if(idle==VK_ERROR_OUT_OF_HOST_MEMORY || idle==VK_ERROR_OUT_OF_DEVICE_MEMORY){
+        /* WaitIdle itself can allocate a synchronization object. A one-shot
+         * OOM must be retryable; it is not evidence of a GPU failure. */
+        fprintf(stderr,"RESOURCE_PROBE cleanup_wait_result=%d\n",idle);
+        if(result==VK_SUCCESS)result=idle;
+        idle=vkDeviceWaitIdle(device);
+    }
+    CHECK(idle==VK_SUCCESS);
+    if(fence)vkDestroyFence(device,fence,cb);
+    if(pool)vkDestroyCommandPool(device,pool,cb);
+    if(mapped)vkUnmapMemory(device,memory);
+    if(buffer)vkDestroyBuffer(device,buffer,cb);
+    if(memory)vkFreeMemory(device,memory,cb);
+#undef TRY
+    return result;
+}
 int main(int argc,char **argv) {
-    CHECK(argc==3);
+    CHECK(argc==3 || (argc==4 && !strcmp(argv[3],"resources")));
+    bool resources=argc==4;
     char *end; unsigned long chip=strtoul(argv[1],&end,0);
     CHECK(!*end && (chip==0x6030 || chip==0x8132));
     FILE *report=fopen(argv[2],"wx"); CHECK(report);
@@ -105,11 +182,19 @@ int main(int argc,char **argv) {
     VkDeviceCreateInfo di={.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,.queueCreateInfoCount=1,.pQueueCreateInfos=&qi};
     unsigned total=0;
     for(unsigned failure=0;failure<=total;++failure){
-        struct state *s=calloc(1,sizeof(*s));CHECK(s);CHECK(!pthread_mutex_init(&s->lock,NULL));s->fail_at=failure;
+        struct state *s=calloc(1,sizeof(*s));CHECK(s);CHECK(!pthread_mutex_init(&s->lock,NULL));s->fail_at=resources?0:failure;
         VkAllocationCallbacks cb={.pUserData=s,.pfnAllocation=allocate,.pfnReallocation=reallocate,.pfnFree=release};
         VkDevice device=VK_NULL_HANDLE;VkResult result=vkCreateDevice(physical,&di,&cb,&device);
-        CHECK(result==VK_SUCCESS || result==VK_ERROR_OUT_OF_HOST_MEMORY);
-        if(result==VK_SUCCESS){CHECK(device);vkDestroyDevice(device,&cb);}else{CHECK(s->injected);}
+        if(resources){
+            CHECK(result==VK_SUCCESS);
+            pthread_mutex_lock(&s->lock);
+            s->calls=0;s->fail_at=failure;
+            pthread_mutex_unlock(&s->lock);
+            result=resource_work(gipa,instance,physical,device,family,&cb);
+            vkDestroyDevice(device,&cb);device=VK_NULL_HANDLE;
+        }
+        CHECK(result==VK_SUCCESS || result==VK_ERROR_OUT_OF_HOST_MEMORY || result==VK_ERROR_OUT_OF_DEVICE_MEMORY);
+        if(!resources && result==VK_SUCCESS){CHECK(device);vkDestroyDevice(device,&cb);}else if(result!=VK_SUCCESS){CHECK(s->injected);}
         fprintf(report,"{\"fail_at\":%u,\"calls\":%u,\"result\":%d,\"injected\":%s,\"live\":%u,\"peak\":%u}\n",failure,s->calls,result,s->injected?"true":"false",s->count,s->peak);fflush(report);
         CHECK(!s->count);
         if(!failure){CHECK(result==VK_SUCCESS);total=s->calls;CHECK(total>0 && total<=256);}
@@ -117,5 +202,5 @@ int main(int argc,char **argv) {
         CHECK(!pthread_mutex_destroy(&s->lock));free(s);
     }
     vkDestroyInstance(instance,NULL);fclose(report);dlclose(loader);
-    printf("DEVICE_ALLOCATION_FAILURE_PASS tested=%u\n",total);return 0;
+    printf("DEVICE_ALLOCATION_FAILURE_PASS mode=%s tested=%u\n",resources?"resources":"device",total);return 0;
 }

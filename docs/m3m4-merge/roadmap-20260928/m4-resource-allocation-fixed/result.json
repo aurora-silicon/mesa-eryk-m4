@@ -1,0 +1,70 @@
+{
+  "command": [
+    "env",
+    "VK_DRIVER_FILES=/opt/asahi-m3m4-roadmap-20260928/asahi.json",
+    "LD_LIBRARY_PATH=/opt/asahi-m3m4-roadmap-20260928/lib",
+    "ASAHI_M4_EXPERIMENTAL=1",
+    "/root/vk-resource-allocation-failure",
+    "0x8132",
+    "/root/asahi-evidence/20260927T222130208193Z-roadmap-m4-resource-allocation-fixed/allocations.jsonl",
+    "resources"
+  ],
+  "seconds": 40,
+  "boot_id": "9e78bd0e-a97b-40aa-bcfd-0f2777538096",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "progress_source": "debugfs-host-verified-v1",
+  "returncode": 0,
+  "thermal": {
+    "startup_limit_mc": 95000,
+    "stop_limit_mc": 120000,
+    "interval_seconds": 0.5,
+    "samples": 1,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 59250,
+      "Ta000m": 57000,
+      "Te000m": 56250,
+      "Te001m": 54500,
+      "Tp000m": 59250,
+      "Tp001m": 54500
+    },
+    "failure": null,
+    "all_peak_temperatures_mc": {
+      "class/hwmon/hwmon0/temp1_input": 59250,
+      "class/hwmon/hwmon0/temp2_input": 57000,
+      "class/hwmon/hwmon0/temp3_input": 56250,
+      "class/hwmon/hwmon0/temp4_input": 54500,
+      "class/hwmon/hwmon0/temp5_input": 59250,
+      "class/hwmon/hwmon0/temp6_input": 54500,
+      "class/hwmon/hwmon5/temp1_input": 29199,
+      "class/hwmon/hwmon5/temp2_input": 36725,
+      "class/hwmon/hwmon5/temp3_input": 37527,
+      "class/hwmon/hwmon5/temp4_input": 38720,
+      "class/thermal/thermal_zone0/temp": 59000
+    },
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 1800000,
+        "max_khz": 1800000
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 1860000,
+        "max_khz": 1860000
+      }
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{"fail_at":0,"calls":15,"result":0,"injected":false,"live":0,"peak":22}
+{"fail_at":1,"calls":3,"result":-1,"injected":true,"live":0,"peak":10}
+{"fail_at":2,"calls":4,"result":-1,"injected":true,"live":0,"peak":11}
+{"fail_at":3,"calls":5,"result":-1,"injected":true,"live":0,"peak":12}
+{"fail_at":4,"calls":6,"result":-1,"injected":true,"live":0,"peak":13}
+{"fail_at":5,"calls":7,"result":-1,"injected":true,"live":0,"peak":14}
+{"fail_at":6,"calls":8,"result":-1,"injected":true,"live":0,"peak":15}
+{"fail_at":7,"calls":9,"result":-1,"injected":true,"live":0,"peak":16}
+{"fail_at":8,"calls":16,"result":0,"injected":true,"live":0,"peak":22}
+{"fail_at":9,"calls":16,"result":0,"injected":true,"live":0,"peak":22}
+{"fail_at":10,"calls":14,"result":-1,"injected":true,"live":0,"peak":21}
+{"fail_at":11,"calls":13,"result":-1,"injected":true,"live":0,"peak":20}
+{"fail_at":12,"calls":14,"result":-1,"injected":true,"live":0,"peak":21}
+{"fail_at":13,"calls":15,"result":-1,"injected":true,"live":0,"peak":22}
+{"fail_at":14,"calls":16,"result":-1,"injected":true,"live":0,"peak":22}
+{"fail_at":15,"calls":17,"result":-1,"injected":true,"live":1,"peak":23}
