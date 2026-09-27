@@ -1134,7 +1134,9 @@ hk_get_device_properties(const struct agx_device *dev,
 
       /* VK_EXT_sample_locations */
       .sampleLocationSampleCounts =
-         other_sample_counts & ~VK_SAMPLE_COUNT_1_BIT,
+         (agx_chip_uses_g15_g16_shader_abi(dev->chip) ? sample_counts
+                                                    : other_sample_counts) &
+         ~VK_SAMPLE_COUNT_1_BIT,
       .maxSampleLocationGridSize = (VkExtent2D){1, 1},
       .sampleLocationCoordinateRange[0] = 0.0f,
       .sampleLocationCoordinateRange[1] = 0.9375f,
