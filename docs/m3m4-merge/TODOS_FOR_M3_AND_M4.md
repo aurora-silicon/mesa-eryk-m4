@@ -293,3 +293,19 @@ carry enough retained evidence for another developer to reproduce them.
   active builds were retained. Free space increased from roughly 12 to 50 GiB.
   Restoration instructions and per-file receipts:
   `build/driver-roadmap-20260927/ARCHIVED_BINARIES.md` and adjacent JSONL files.
+
+- 2026-09-27: P1 fence/lifetime follow-up: M4 `05cc062c9266` error-completes
+  every admitted packet after global GPU failure while retaining all published
+  DMA owners; 88 render smoke and 140 logical CTS cases pass on hardware. M3
+  `52b06070669f` / published `6fb5196678f7` makes packet completion idempotent
+  and ignores scheduler deadlines racing valid retirement; separate builds and
+  concurrent callback tests pass. M3 deployment waits for an explicit full-CTS
+  checkpoint, so these are not yet M3 hardware-validation claims.
+- 2026-09-27: P1 evidence follow-up: M4 `d4a8867ff214` / `38ffd53dec64`, M3
+  `6195f48a7970` / published `6664169b2271` extend first-fault capture to boot,
+  idle/RTKit and publication errors; retain a versioned primary-errno record;
+  bound M4 snapshots to 16 MiB; wake the worker on RTKit crash. Snapshot bounds,
+  failed allocation/read rollback and old/new decoder checks pass. Hardware
+  fault injection remains in progress. Ownership audit and evidence:
+  `docs/m3m4-merge/roadmap-20260928/`. P1 reset and broad lifetime acceptance
+  remain incomplete; error fencing does not prove stopped GPU DMA.

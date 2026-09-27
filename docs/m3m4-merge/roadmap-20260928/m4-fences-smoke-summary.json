@@ -1,0 +1,23 @@
+{
+  "selected": 88,
+  "recorded": 88,
+  "completed": 88,
+  "counts": {
+    "Pass": 88
+  },
+  "classifications": {
+    "regression": 88
+  },
+  "elapsed_seconds": 3.5709294569969643,
+  "preparation_seconds": 1.3710803639987716,
+  "runner_seconds": 1.224449605000018,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "0b3e4f766994b5195f239dab618d2b44e40227896fb726ff8b1f9cc48ec0c4bd",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260927T212153569632Z-m4-fences-smoke",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 69.0,
+  "healthy": true
+}

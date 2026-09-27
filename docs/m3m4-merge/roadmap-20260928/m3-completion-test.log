@@ -1,0 +1,26 @@
+warning: constant `ETIMEDOUT` is never used
+ --> /tmp/m3-packet-mw6z_l_v/test.rs:4:65
+  |
+4 | const ENODEV:Error=Error(-19); const EIO:Error=Error(-5); const ETIMEDOUT:Error=Error(-110);
+  |                                                                 ^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `mark_failed` is never used
+  --> /tmp/m3-packet-mw6z_l_v/test.rs:56:48
+   |
+56 | impl Health {fn healthy(&self)->bool{self.0}fn mark_failed(&self){panic!("diagnostic-only path");}}
+   | ----------- method in this implementation      ^^^^^^^^^^^
+
+warning: function `timeout_nohang` is never used
+  --> /tmp/m3-packet-mw6z_l_v/test.rs:60:23
+   |
+60 | mod m3_params {pub fn timeout_nohang()->bool{true}}
+   |                       ^^^^^^^^^^^^^^
+
+warning: 3 warnings emitted
+
+PASS healthy pending/retired, failed and removed scheduler timeout states
+PASS cancellation after retirement
+PASS first error and DMA ownership preserved
+PASS 200 concurrent completion/cancellation races

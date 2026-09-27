@@ -1,0 +1,4 @@
+PASS healthy pending/retired, failed and removed scheduler timeout states
+PASS cancellation after retirement
+PASS first error and DMA ownership preserved
+PASS 200 concurrent completion/cancellation races
