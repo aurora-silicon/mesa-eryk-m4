@@ -302,7 +302,15 @@ vk_get_dynamic_graphics_states(BITSET_WORD *dynamic,
       CASE( DEPTH_CLIP_NEGATIVE_ONE_TO_ONE_EXT, VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE)
       CASE( ATTACHMENT_FEEDBACK_LOOP_ENABLE_EXT, ATTACHMENT_FEEDBACK_LOOP_ENABLE)
       CASE( DEPTH_CLAMP_RANGE_EXT,        VP_DEPTH_CLAMP_RANGE)
-      CASE( COLOR_BLEND_ADVANCED_EXT,     CB_BLEND_ADVANCED)
+      case VK_DYNAMIC_STATE_COLOR_BLEND_ADVANCED_EXT:
+         BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_BLEND_ADVANCED);
+         /* The advanced command supplies the blend operations as well.
+          * Do not overwrite them with static attachment equations when
+          * binding a pipeline after the dynamic command was recorded.
+          * Blend factors are ignored for advanced operations.
+          */
+         BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS);
+         break;
       default:
          UNREACHABLE("Unsupported dynamic graphics state");
       }
@@ -2349,6 +2357,8 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
                      cb.attachments[a].src_premultiplied);
          COPY_MEMBER(CB_BLEND_ADVANCED,
                      cb.attachments[a].blend_overlap);
+         COPY_MEMBER(CB_BLEND_ADVANCED,
+                     cb.attachments[a].clamp_results);
       }
    }
 
