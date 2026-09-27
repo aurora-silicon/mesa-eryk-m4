@@ -277,3 +277,10 @@ carry enough retained evidence for another developer to reproduce them.
   manager is active. The publishing adaptation also builds with its own
   generated kernel/Rust dependencies. It is source-build validated separately
   from the development module's hardware results.
+- 2026-09-27: Disk-pressure cleanup: cleared the regenerable uv download cache,
+  losslessly compressed 1,494 inactive driver binaries and shared storage for
+  607 byte-identical compressed archives. Each removed original was SHA-256
+  verified against decompressed output. Sources, replay captures, fault logs and
+  active builds were retained. Free space increased from roughly 12 to 50 GiB.
+  Restoration instructions and per-file receipts:
+  `build/driver-roadmap-20260927/ARCHIVED_BINARIES.md` and adjacent JSONL files.
