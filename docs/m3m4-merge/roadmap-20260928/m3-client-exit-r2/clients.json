@@ -1,0 +1,1034 @@
+[
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 8,
+        "bytes": 131072,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 9,
+        "bytes": 147456,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 9,
+        "bytes": 147456,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "exit",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "sigkill",
+    "returncode": -9,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  },
+  {
+    "mode": "checked_render",
+    "returncode": 0,
+    "memory": {
+      "user_gem": {
+        "objects": 0,
+        "bytes": 0,
+        "peak_objects": 575,
+        "peak_bytes": 831537152
+      },
+      "kernel_gem": {
+        "objects": 10,
+        "bytes": 163840,
+        "peak_objects": 27,
+        "peak_bytes": 442368
+      },
+      "m3_coherent": {
+        "objects": 1204,
+        "bytes": 475774976,
+        "peak_objects": 1204,
+        "peak_bytes": 475774976
+      }
+    }
+  }
+]

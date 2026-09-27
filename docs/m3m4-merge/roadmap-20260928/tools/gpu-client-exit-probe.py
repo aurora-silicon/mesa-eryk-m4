@@ -17,6 +17,8 @@ assert len(memory_files)==1,memory_files
 memory_path=memory_files[0]
 env={k:v for k,v in os.environ.items() if not k.startswith(('VK_','MESA_','AGX_','HK_','ASAHI_','LD_','M4_ORACLE_'))}
 settings=dict(VK_DRIVER_FILES='/opt/asahi-m3m4-cts-20260927/asahi.json',VK_ICD_FILENAMES='/opt/asahi-m3m4-cts-20260927/asahi.json',LD_LIBRARY_PATH='/opt/asahi-m3m4-cts-20260927/lib',ASAHI_M3_EXPERIMENTAL='1',ASAHI_M4_EXPERIMENTAL='1',ASAHI_MESA_DEBUG='nocompress',HK_DEBUG_LOG='0',AGX_MESA_DEBUG='',VK_LAYER_PATH='/var/empty',VK_IMPLICIT_LAYER_PATH='/var/empty')
+assert memory_path.parent.name in ('asahi-m3','asahi-m4')
+settings['M4_ORACLE_DEVICE']='M3' if memory_path.parent.name=='asahi-m3' else 'M4'
 env.update(settings)
 (out/'lifetime-environment.json').write_text(json.dumps(settings,indent=2)+'\n')
 (out/'lifetime-inputs.json').write_text(json.dumps({f:hashlib.sha256((base/f).read_bytes()).hexdigest() for f in ['vk-buffer-oracle','probe.spv','input.bin','reference.bin']},indent=2)+'\n')

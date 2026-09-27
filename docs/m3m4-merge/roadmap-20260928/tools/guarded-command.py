@@ -136,6 +136,13 @@ if kernel_proc is not None:
     kernel_read.close()
     kernel_write.flush(); os.fsync(kernel_write.fileno()); kernel_write.close()
 t.check()
+# Catch loss that races process exit; printk is evidence, not the health gate.
+if progress is not None:
+    try:
+        progress.poll(time.monotonic())
+    except (OSError, RuntimeError, ValueError) as error:
+        progress_error = str(error)
+        r['progress_error'] = progress_error
 r.update(returncode=proc.returncode, thermal=t.summary())
 (a.output/'result.json').write_text(json.dumps(r,indent=2)+'\n')
 subprocess.run(['dmesg','--color=never'],stdout=(a.output/'dmesg.log').open('w'),check=True,timeout=3)

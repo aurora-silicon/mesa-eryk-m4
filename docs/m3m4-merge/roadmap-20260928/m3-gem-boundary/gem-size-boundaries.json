@@ -1,0 +1,63 @@
+[
+  {
+    "size": 0,
+    "errno": 22,
+    "handle": 0
+  },
+  {
+    "size": 18446744073709551615,
+    "errno": 75,
+    "handle": 0
+  },
+  {
+    "size": 18446744073709551614,
+    "errno": 75,
+    "handle": 0
+  },
+  {
+    "size": 18446744073709543424,
+    "errno": 75,
+    "handle": 0
+  },
+  {
+    "size": 18446744073709535233,
+    "errno": 75,
+    "handle": 0
+  },
+  {
+    "size": 1,
+    "mapped_bytes": 16384,
+    "touched_both_ends": true,
+    "closed": true
+  },
+  {
+    "size": 16383,
+    "mapped_bytes": 16384,
+    "touched_both_ends": true,
+    "closed": true
+  },
+  {
+    "size": 16384,
+    "mapped_bytes": 16384,
+    "touched_both_ends": true,
+    "closed": true
+  },
+  {
+    "size": 16385,
+    "mapped_bytes": 32768,
+    "touched_both_ends": true,
+    "closed": true
+  },
+  {
+    "size": 65535,
+    "mapped_bytes": 65536,
+    "touched_both_ends": true,
+    "closed": true
+  },
+  {
+    "size": 65536,
+    "mapped_bytes": 65536,
+    "touched_both_ends": true,
+    "closed": true
+  }
+]

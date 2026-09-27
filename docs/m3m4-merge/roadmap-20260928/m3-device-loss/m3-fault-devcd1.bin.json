@@ -1,0 +1,132 @@
+{
+  "first_error": {
+    "errno": -110,
+    "dma_retirement_unproven": true
+  },
+  "format": "M3FWD001",
+  "created_monotonic_ns": 182493235141,
+  "length": 478843,
+  "sha256": "f99badb5ed8d7bde10053be192844a444fbe58c9c9a3c412f93d85149e387c58",
+  "records": [
+    {
+      "name": "host-first-error",
+      "va": "0x0",
+      "size": 16,
+      "offset": 104,
+      "begin_monotonic_ns": 182493236266,
+      "end_monotonic_ns": 182493236308,
+      "sha256": "b183817f648abdfc00cd3d191f092d0830c9953315fca8ae428672f136811b84"
+    },
+    {
+      "name": "root",
+      "va": "0xfffffc204062ff40",
+      "size": 192,
+      "offset": 184,
+      "begin_monotonic_ns": 182493237891,
+      "end_monotonic_ns": 182493240933,
+      "sha256": "cfbbd755a897839fc70fddd00f1f618e026ba70516bea4efc908a84d12dfdcd3"
+    },
+    {
+      "name": "runtime",
+      "va": "0xfffffc20406b7b4d",
+      "size": 1203,
+      "offset": 440,
+      "begin_monotonic_ns": 182493242200,
+      "end_monotonic_ns": 182493259784,
+      "sha256": "2d4b5db0bedbf61ea74b9c2fb7d341bb17eb097260a0d9ecfabe6c33c2edc1bc"
+    },
+    {
+      "name": "hardware",
+      "va": "0xfffffc20406fb5fc",
+      "size": 35332,
+      "offset": 1707,
+      "begin_monotonic_ns": 182493263201,
+      "end_monotonic_ns": 182493799729,
+      "sha256": "942dc3d5f3cfa1db8da03e1b3428a5dbf476f593195d9b35dcd093ede8adf52d"
+    },
+    {
+      "name": "globals",
+      "va": "0xfffffc20407cc204",
+      "size": 15868,
+      "offset": 37103,
+      "begin_monotonic_ns": 182493812021,
+      "end_monotonic_ns": 182494059578,
+      "sha256": "3073bb5aae2da2c1efbeb76c17a46bcdf766f79cf37fef5fd6cbc470534be630"
+    },
+    {
+      "name": "control",
+      "va": "0xfffffc20003bbc30",
+      "size": 50128,
+      "offset": 53035,
+      "begin_monotonic_ns": 182494083055,
+      "end_monotonic_ns": 182494867933,
+      "sha256": "b70658533a35432a4f87cfc7f9ad07513a3f525dbd32982e2231237811e44414"
+    },
+    {
+      "name": "flags",
+      "va": "0xfffffc2040857fc0",
+      "size": 64,
+      "offset": 103227,
+      "begin_monotonic_ns": 182494868267,
+      "end_monotonic_ns": 182494869350,
+      "sha256": "78f25412991279963b977fb2030eb89e1d12ec10ecd7de42d9cce595675c65b2"
+    },
+    {
+      "name": "event-state",
+      "va": "0xfffffc2040377fd0",
+      "size": 48,
+      "offset": 103355,
+      "begin_monotonic_ns": 182494869683,
+      "end_monotonic_ns": 182494870558,
+      "sha256": "196c2a702c79dd70aeb8aa07493feec328553fbd4ba2cab49b6f2eb0a5517a37"
+    },
+    {
+      "name": "event-ring",
+      "va": "0xfffffc20403b8800",
+      "size": 14336,
+      "offset": 103467,
+      "begin_monotonic_ns": 182494871350,
+      "end_monotonic_ns": 182495095349,
+      "sha256": "3142542702272c0d6c8cd8944e182e2c4d5c9eb96245c2ee7cf6e75cbc2c869b"
+    },
+    {
+      "name": "fwlog-state",
+      "va": "0xfffffc20403ffee0",
+      "size": 288,
+      "offset": 117867,
+      "begin_monotonic_ns": 182495095599,
+      "end_monotonic_ns": 182495099599,
+      "sha256": "2d5565fb483d8ea4525a7a9229677d1038ad34b6e22c8d5152e1d7f7b9817597"
+    },
+    {
+      "name": "fwlog-ring",
+      "va": "0xfffffc2040443000",
+      "size": 331776,
+      "offset": 118219,
+      "begin_monotonic_ns": 182495149927,
+      "end_monotonic_ns": 182500388190,
+      "sha256": "a251c7b271e711604c800658cf80ad17ef32328ab9b24fca54438b214224c3d9"
+    },
+    {
+      "name": "trace-state",
+      "va": "0xfffffc20404d7fd0",
+      "size": 48,
+      "offset": 450059,
+      "begin_monotonic_ns": 182500469225,
+      "end_monotonic_ns": 182500469975,
+      "sha256": "17b0761f87b081d5cf10757ccc89f12be355c70e2e29df288b65b30710dcbcd1"
+    },
+    {
+      "name": "trace-ring",
+      "va": "0xfffffc2040519000",
+      "size": 28672,
+      "offset": 450171,
+      "begin_monotonic_ns": 182500470933,
+      "end_monotonic_ns": 182500926574,
+      "sha256": "18619b678a5c207a971a0aa931604f48162e307c57ecdec450d5f095fe9f32c7"
+    }
+  ],
+  "note": "Sequential owned-firmware RAM observations; not atomic, no shader or application buffers.",
+  "file": "m3-fault-devcd1.bin",
+  "source": "/sys/class/devcoredump/devcd1/data"
+}

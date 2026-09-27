@@ -342,3 +342,12 @@ carry enough retained evidence for another developer to reproduce them.
   `16a30679f5ba0b7bc85b5e017fea0c3202a3c6dfec41e47cd71729a9a8fee5da`
   boots with the normal display manager and healthy progress/accounting files.
   Regression validation is underway before a reviewed continuation.
+
+- 2026-09-28: M3 GEM boundaries, 14 queued exits, 14 SIGKILLs and 15 checked
+  readbacks pass with stable live allocation extents. Both GPUs pass failure
+  injection at all eight observed Vulkan device-construction allocations.
+  A deliberate M3 timeout returns DEVICE_LOST and retains the 478,843-byte
+  primary-fault snapshot. Fixed both guards to check terminal GPU health before
+  disarming; child exit zero cannot hide a latched failure. After watchdog
+  recovery, 140 logical and 88 rendering cases pass. M3 catalog resumed from
+  2,757,077 outcomes with explicit identity review. See `m3-memory-validation.md`.

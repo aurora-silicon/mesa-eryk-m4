@@ -1,0 +1,9 @@
+{"fail_at":0,"calls":8,"result":0,"injected":false,"live":0,"peak":8}
+{"fail_at":1,"calls":1,"result":-1,"injected":true,"live":0,"peak":0}
+{"fail_at":2,"calls":2,"result":-1,"injected":true,"live":0,"peak":1}
+{"fail_at":3,"calls":3,"result":-1,"injected":true,"live":0,"peak":2}
+{"fail_at":4,"calls":4,"result":-1,"injected":true,"live":0,"peak":3}
+{"fail_at":5,"calls":5,"result":-1,"injected":true,"live":0,"peak":4}
+{"fail_at":6,"calls":6,"result":-1,"injected":true,"live":0,"peak":5}
+{"fail_at":7,"calls":7,"result":-1,"injected":true,"live":0,"peak":6}
+{"fail_at":8,"calls":8,"result":-1,"injected":true,"live":0,"peak":7}

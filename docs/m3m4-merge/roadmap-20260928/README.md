@@ -2,8 +2,8 @@
 
 See `failure-ownership-audit.md` for ownership boundaries and remaining proof
 gaps. Test summaries preserve hardware success separately from source/mock
-checks. The active M3 full-catalog campaign keeps its original reviewed kernel;
-new M3 source commits have not yet replaced it.
+checks. The M3 campaign now uses the explicitly reviewed P1/P2 kernel checkpoint;
+see `m3-memory-validation.md`. Original outcomes and revision history remain.
 
 Tools in this directory are versioned copies of workspace-root `tools/`.
 Run the tests from that workspace root, with kernel checkouts in `linux/`:
