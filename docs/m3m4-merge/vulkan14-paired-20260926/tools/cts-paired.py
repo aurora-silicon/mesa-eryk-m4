@@ -86,7 +86,7 @@ def main():
         db.execute('INSERT OR REPLACE INTO reviews VALUES (?,?)',(path,reason))
     db.commit()
     history_path=ROOT/'build/cts-full-confirm3-20260920/results.sqlite3'
-    history=sqlite3.connect('file:'+str(history_path)+'?mode=ro',uri=True) if a.machine=='m3' else None
+    history=sqlite3.connect('file:'+str(history_path)+'?mode=ro',uri=True)
     def report(state, active=None):
         counts = dict(db.execute('SELECT status,COUNT(*) FROM outcomes GROUP BY status'))
         save(a.output/'progress.json', dict(state=state, machine=a.machine, total=len(names),
@@ -150,6 +150,18 @@ print(json.dumps(dict(kernel=os.uname().release,files={p:hashlib.sha256(Path(p).
                 if prior.get('family')==family(names[start]):
                     n=prior['selected'];elapsed=max(.1,prior['runner_seconds'])
                     size=max(1,min(4096,n*2,int(n*15/elapsed)))
+        if a.machine=='m4' and not wsi:
+            # A slower family may outlast the 900-second segment bound even
+            # though individual cases keep passing. Target half that bound
+            # using the most recent measured rate, including interrupted runs.
+            previous=db.execute('SELECT summary FROM segments ORDER BY rowid DESC LIMIT 1').fetchone()
+            if previous:
+                prior=json.loads(previous[0])
+                elapsed=prior.get('runner_seconds',0)
+                completed=prior.get('completed',0)
+                if elapsed>0 and completed>0:
+                    size=min(size,max(1,int(completed*450/elapsed)))
+        budget,scale=(15,4) if a.machine=='m3' else (450,2)
         indices=[]
         historical_seconds={idx:json.loads(detail).get('seconds') or 0 for idx,detail in
             history.execute('SELECT idx,detail FROM outcomes WHERE idx>=? AND idx<?',(start,start+size))} if history else {}
@@ -161,8 +173,8 @@ print(json.dumps(dict(kernel=os.uname().release,files={p:hashlib.sha256(Path(p).
                 # Prior durations affect grouping only, never coverage or verdict.
                 # Leave room for slower M3 uncached sparse-VA scans; one long
                 # case remains a singleton with the original case/guard bounds.
-                cost=max(.001,historical_seconds.get(i,0))*4
-                if history and indices and estimated+cost>15:break
+                cost=max(.001,historical_seconds.get(i,0))*scale
+                if history and indices and estimated+cost>budget:break
                 indices.append(i);estimated+=cost
         key=f'{start:07d}-{indices[-1]+1:07d}'
         attempt=0
@@ -172,7 +184,7 @@ print(json.dumps(dict(kernel=os.uname().release,files={p:hashlib.sha256(Path(p).
         raw,metadata=selection(names,indices,catalog)
         if history:
             metadata['scheduling']=dict(historical_campaign=str(history_path.parent),
-                estimated_seconds=estimated,budget_seconds=15,scale=4,
+                estimated_seconds=estimated,budget_seconds=budget,scale=scale,
                 scope='Grouping only; all original indices and outcomes retained')
         (segment/'cases.txt').write_bytes(raw);save(segment/'cases.meta.json',metadata)
         report('running',dict(segment=key,start=start,end=indices[-1]+1,headless=wsi))

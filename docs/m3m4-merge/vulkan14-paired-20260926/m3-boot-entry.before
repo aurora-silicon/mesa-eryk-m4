@@ -1,0 +1,9 @@
+title UNSTABLE USB-C trial (7.1.9-dirtyroom-asahi1+)
+version 7.1.9-dirtyroom-asahi1+
+linux /vmlinuz-7.1.9-dirtyroom-asahi1+.usbc1
+initrd /initramfs-7.1.9-dirtyroom-asahi1+.img $tuned_initrd
+options root=UUID=391a13cb-c57f-44cb-b1fc-ab233af9d9b4 ro rootflags=subvol=root  rhgb quiet rootflags=subvol=root
+grub_users $grub_users
+grub_arg --unrestricted
+grub_class fedora-asahi-remix
+

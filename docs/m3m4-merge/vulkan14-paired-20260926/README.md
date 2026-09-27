@@ -97,3 +97,21 @@ processes. Each live directory has `controller-process.json`; the common root
 has `watchdog-process.json`. These processes continue between chat turns, but
 stop for review on incomplete/faulted segments or before exhausting host disk.
 They do not automatically diagnose or recover failures.
+
+## September 27 continuation
+
+M3 stopped at 1,039,729 terminal cases after another kmsg overrun in segment
+1039641-1039729. All 88 CTS cases completed Pass, but the guard correctly failed
+closed on EPIPE. Continuous reading does not guarantee that a 128 KiB kernel
+ring survives short mapping-log bursts. The existing UNSTABLE boot entry was
+updated with `log_buf_len=16M`; the kernel and Mesa binaries remain unchanged.
+Before/after BLS entries are retained here. The watchdog and log-sequence
+checks remain strict; the lost interval cannot be claimed fault-free.
+
+M4 stopped at 2,927,855 terminal cases when the 900-second runner budget expired
+in a 10,000-case batch. Its log showed continued passing tests through expiry
+and 83.25 C maximum temperature. Selection now uses previous measured progress
+to target a 450-second M4 batch, plus historical per-case durations with a 2x
+allowance. The 60-second case and 900-second runner limits stay unchanged.
+M3 retains its 15-second grouping target and 4x historical allowance. Only
+uncompleted original indices resume; all failures and raw evidence remain.
