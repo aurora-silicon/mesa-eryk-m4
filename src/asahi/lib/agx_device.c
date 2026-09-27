@@ -417,6 +417,8 @@ agx_bo_import(struct agx_device *dev, int fd)
 
    if (!bo->size) {
       bo->dev = dev;
+      bo->handle = gem_handle;
+      bo->prime_fd = -1;
       bo->size = lseek(fd, 0, SEEK_END);
       bo->align = AIL_PAGESIZE;
 
@@ -439,7 +441,8 @@ agx_bo_import(struct agx_device *dev, int fd)
       bo->handle = gem_handle;
       bo->prime_fd = os_dupfd_cloexec(fd);
       bo->label = "Imported BO";
-      assert(bo->prime_fd >= 0);
+      if (bo->prime_fd < 0)
+         goto error;
 
       p_atomic_set(&bo->refcnt, 1);
       bo->va = agx_va_alloc(dev, bo->size, bo->align, 0, 0);
@@ -449,7 +452,7 @@ agx_bo_import(struct agx_device *dev, int fd)
             stderr,
             "import failed: Could not allocate from VMA heap (0x%llx bytes)\n",
             (long long)bo->size);
-         abort();
+         goto error;
       }
 
       if (dev->is_virtio) {
@@ -463,7 +466,7 @@ agx_bo_import(struct agx_device *dev, int fd)
       if (ret) {
          fprintf(stderr, "import failed: Could not bind BO at 0x%llx\n",
                  (long long)bo->va->addr);
-         abort();
+         goto error;
       }
    } else {
       /* bo->refcnt == 0 can happen if the BO
@@ -500,7 +503,11 @@ agx_bo_import(struct agx_device *dev, int fd)
    return bo;
 
 error:
-   memset(bo, 0, sizeof(*bo));
+   /* Only a previously empty slot reaches here. Release every acquired
+    * resource, including the new GEM handle, before dropping bo_map_lock.
+    * Existing imports and the caller's dma-buf fd retain their ownership.
+    */
+   agx_bo_free(dev, bo);
    simple_mtx_unlock(&dev->bo_map_lock);
    return NULL;
 }

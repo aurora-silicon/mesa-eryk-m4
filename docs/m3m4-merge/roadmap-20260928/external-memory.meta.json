@@ -1,0 +1,694 @@
+{
+  "schema": 1,
+  "cases_sha256": "559730825e0e0f80b1c4d53001aecc0ecc173178272bbfecdc24b349e9eab4b6",
+  "provenance": {
+    "schema": 1,
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "source": "/home/council/dev/dirtyroom_m4/build/cts-1.4-baseline/mustpass/mustpass.txt",
+    "source_sha256": "fe29a62a97e128542b3c6cf46c892ba168d7856f3e57f130b40b82f25cfb40a6",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "count": 3206030,
+    "source_count": 3247552,
+    "excluded_count": 41522,
+    "order": "ASCII lexicographic (LC_ALL=C)",
+    "linux_only": true,
+    "exclusion_rule": "win32 or .android. in case name",
+    "capability_filter": false,
+    "result_filter": false,
+    "index_convention": "zero-based; start inclusive, end exclusive"
+  },
+  "cases": [
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.buffer.bind_export_import_bind",
+      "catalog_index": 270953,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.buffer.export_bind_import_bind",
+      "catalog_index": 270954,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.buffer.export_import_bind_bind",
+      "catalog_index": 270955,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.buffer.info",
+      "catalog_index": 270956,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.buffer.maintenance5",
+      "catalog_index": 270957,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.device_only.dup",
+      "catalog_index": 270958,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.device_only.dup2",
+      "catalog_index": 270959,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.device_only.dup3",
+      "catalog_index": 270960,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.device_only.export_multiple_times",
+      "catalog_index": 270961,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.device_only.fd_properties",
+      "catalog_index": 270962,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.device_only.import_multiple_times",
+      "catalog_index": 270963,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.device_only.import_twice",
+      "catalog_index": 270964,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.device_only.send_over_socket",
+      "catalog_index": 270965,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.host_visible.dup",
+      "catalog_index": 270966,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.host_visible.dup2",
+      "catalog_index": 270967,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.host_visible.dup3",
+      "catalog_index": 270968,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.host_visible.export_multiple_times",
+      "catalog_index": 270969,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.host_visible.fd_properties",
+      "catalog_index": 270970,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.host_visible.import_multiple_times",
+      "catalog_index": 270971,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.host_visible.import_twice",
+      "catalog_index": 270972,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.host_visible.send_over_socket",
+      "catalog_index": 270973,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.image.bind_export_import_bind",
+      "catalog_index": 270974,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.image.export_bind_import_bind",
+      "catalog_index": 270975,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.image.export_import_bind_bind",
+      "catalog_index": 270976,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.dedicated.image.info",
+      "catalog_index": 270977,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.buffer.bind_export_import_bind",
+      "catalog_index": 270978,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.buffer.export_bind_import_bind",
+      "catalog_index": 270979,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.buffer.export_import_bind_bind",
+      "catalog_index": 270980,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.buffer.info",
+      "catalog_index": 270981,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.buffer.maintenance5",
+      "catalog_index": 270982,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.device_only.dup",
+      "catalog_index": 270983,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.device_only.dup2",
+      "catalog_index": 270984,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.device_only.dup3",
+      "catalog_index": 270985,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.device_only.export_multiple_times",
+      "catalog_index": 270986,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.device_only.fd_properties",
+      "catalog_index": 270987,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.device_only.import_multiple_times",
+      "catalog_index": 270988,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.device_only.import_twice",
+      "catalog_index": 270989,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.device_only.send_over_socket",
+      "catalog_index": 270990,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.host_visible.dup",
+      "catalog_index": 270991,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.host_visible.dup2",
+      "catalog_index": 270992,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.host_visible.dup3",
+      "catalog_index": 270993,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.host_visible.export_multiple_times",
+      "catalog_index": 270994,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.host_visible.fd_properties",
+      "catalog_index": 270995,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.host_visible.import_multiple_times",
+      "catalog_index": 270996,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.host_visible.import_twice",
+      "catalog_index": 270997,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.host_visible.send_over_socket",
+      "catalog_index": 270998,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.image.bind_export_import_bind",
+      "catalog_index": 270999,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.image.export_bind_import_bind",
+      "catalog_index": 271000,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.image.export_import_bind_bind",
+      "catalog_index": 271001,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.dma_buf.suballocated.image.info",
+      "catalog_index": 271002,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.buffer.bind_export_import_bind",
+      "catalog_index": 271055,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.buffer.export_bind_import_bind",
+      "catalog_index": 271056,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.buffer.export_import_bind_bind",
+      "catalog_index": 271057,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.buffer.info",
+      "catalog_index": 271058,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.buffer.maintenance5",
+      "catalog_index": 271059,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.device_only.dup",
+      "catalog_index": 271060,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.device_only.dup2",
+      "catalog_index": 271061,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.device_only.dup3",
+      "catalog_index": 271062,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.device_only.export_multiple_times",
+      "catalog_index": 271063,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.device_only.import_multiple_times",
+      "catalog_index": 271064,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.device_only.import_twice",
+      "catalog_index": 271065,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.device_only.send_over_socket",
+      "catalog_index": 271066,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.host_visible.dup",
+      "catalog_index": 271067,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.host_visible.dup2",
+      "catalog_index": 271068,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.host_visible.dup3",
+      "catalog_index": 271069,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.host_visible.export_multiple_times",
+      "catalog_index": 271070,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.host_visible.import_multiple_times",
+      "catalog_index": 271071,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.host_visible.import_twice",
+      "catalog_index": 271072,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.host_visible.send_over_socket",
+      "catalog_index": 271073,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.image.bind_export_import_bind",
+      "catalog_index": 271074,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.image.export_bind_import_bind",
+      "catalog_index": 271075,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.image.export_import_bind_bind",
+      "catalog_index": 271076,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.dedicated.image.info",
+      "catalog_index": 271077,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.buffer.bind_export_import_bind",
+      "catalog_index": 271078,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.buffer.export_bind_import_bind",
+      "catalog_index": 271079,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.buffer.export_import_bind_bind",
+      "catalog_index": 271080,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.buffer.info",
+      "catalog_index": 271081,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.buffer.maintenance5",
+      "catalog_index": 271082,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.device_only.dup",
+      "catalog_index": 271083,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.device_only.dup2",
+      "catalog_index": 271084,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.device_only.dup3",
+      "catalog_index": 271085,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.device_only.export_multiple_times",
+      "catalog_index": 271086,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.device_only.import_multiple_times",
+      "catalog_index": 271087,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.device_only.import_twice",
+      "catalog_index": 271088,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.device_only.send_over_socket",
+      "catalog_index": 271089,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.host_visible.dup",
+      "catalog_index": 271090,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.host_visible.dup2",
+      "catalog_index": 271091,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.host_visible.dup3",
+      "catalog_index": 271092,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.host_visible.export_multiple_times",
+      "catalog_index": 271093,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.host_visible.import_multiple_times",
+      "catalog_index": 271094,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.host_visible.import_twice",
+      "catalog_index": 271095,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.host_visible.send_over_socket",
+      "catalog_index": 271096,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.image.bind_export_import_bind",
+      "catalog_index": 271097,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.image.export_bind_import_bind",
+      "catalog_index": 271098,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.image.export_import_bind_bind",
+      "catalog_index": 271099,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    },
+    {
+      "case": "dEQP-VK.api.external.memory.opaque_fd.suballocated.image.info",
+      "catalog_index": 271100,
+      "classification": "regression",
+      "requirements": [],
+      "rule": "dma-buf/opaque fd external-memory ownership regression"
+    }
+  ]
+}

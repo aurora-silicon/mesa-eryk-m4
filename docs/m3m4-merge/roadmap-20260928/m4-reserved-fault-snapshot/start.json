@@ -1,0 +1,19 @@
+{
+  "command": [
+    "python3",
+    "/root/gpu-device-loss-probe.py",
+    "/root/asahi-evidence/20260927T221732003240Z-roadmap-m4-reserved-fault-snapshot"
+  ],
+  "seconds": 40,
+  "boot_id": "48912c0f-5087-4f2d-b363-0c98275c90f9",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "progress_source": "debugfs-host-verified-v1"
+}

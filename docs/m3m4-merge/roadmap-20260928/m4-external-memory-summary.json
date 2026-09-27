@@ -1,0 +1,9 @@
+{
+  "healthy": true,
+  "counts": {
+    "Pass": 90,
+    "NotSupported": 6
+  },
+  "selected": 96,
+  "completed_batches_end": 96
+}

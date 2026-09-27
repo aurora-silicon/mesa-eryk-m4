@@ -1,0 +1,66 @@
+{
+  "command": [
+    "python3",
+    "/root/gpu-device-loss-probe.py",
+    "/root/asahi-evidence/20260927T221732003240Z-roadmap-m4-reserved-fault-snapshot"
+  ],
+  "seconds": 40,
+  "boot_id": "48912c0f-5087-4f2d-b363-0c98275c90f9",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "progress_source": "debugfs-host-verified-v1",
+  "progress_error": "GPU runtime latched unhealthy",
+  "returncode": 0,
+  "thermal": {
+    "startup_limit_mc": 95000,
+    "stop_limit_mc": 120000,
+    "interval_seconds": 0.5,
+    "samples": 6,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 59250,
+      "Ta000m": 57000,
+      "Te000m": 56500,
+      "Te001m": 55000,
+      "Tp000m": 59250,
+      "Tp001m": 55000
+    },
+    "failure": null,
+    "all_peak_temperatures_mc": {
+      "class/hwmon/hwmon0/temp1_input": 59250,
+      "class/hwmon/hwmon0/temp2_input": 57000,
+      "class/hwmon/hwmon0/temp3_input": 56500,
+      "class/hwmon/hwmon0/temp4_input": 55000,
+      "class/hwmon/hwmon0/temp5_input": 59250,
+      "class/hwmon/hwmon0/temp6_input": 55000,
+      "class/hwmon/hwmon5/temp1_input": 29299,
+      "class/hwmon/hwmon5/temp2_input": 36423,
+      "class/hwmon/hwmon5/temp3_input": 37126,
+      "class/hwmon/hwmon5/temp4_input": 38450,
+      "class/thermal/thermal_zone0/temp": 59250
+    },
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 4104000,
+        "max_khz": 1800000
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 2892000,
+        "max_khz": 1860000
+      }
+    ]
+  }
+}

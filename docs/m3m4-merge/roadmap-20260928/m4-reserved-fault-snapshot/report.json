@@ -1,0 +1,22 @@
+{
+  "id": "20260927T221732003240Z-roadmap-m4-reserved-fault-snapshot",
+  "verdict": "gpu_timeout",
+  "transport_returncode": 255,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260927T221732003240Z-roadmap-m4-reserved-fault-snapshot",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 7,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 59.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 59.25,
+      "Ta000m": 57.5,
+      "Te000m": 56.5,
+      "Te001m": 55.0,
+      "Tp000m": 59.25,
+      "Tp001m": 55.0
+    }
+  }
+}

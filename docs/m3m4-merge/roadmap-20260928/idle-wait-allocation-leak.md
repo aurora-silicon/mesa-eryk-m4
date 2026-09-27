@@ -22,5 +22,5 @@ the fill/readback. Device-construction failure coverage remains eight points.
 Scope: no kernel allocator or mmap failure is injected here. Deferred
 DEVICE_LOST can retain a queued sync reference and is deliberately not folded
 into the recoverable OOM cleanup change; that ownership path remains open.
-M4 hardware validation is separate from M3, whose full catalog continues on
-its previously reviewed Mesa until a guarded validation checkpoint.
+M3 also passes all 15 resource-allocation points with no callback-owned leaks.
+Both GPUs pass 88 rendering smoke cases with the idle-wait fix.

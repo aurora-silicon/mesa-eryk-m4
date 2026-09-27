@@ -1,0 +1,6 @@
+{
+  "vk-buffer-oracle": "0bb6daa1abaffc4d80d31b5af282fc161a80f3be9e71f2ba8066fca9979165a9",
+  "probe.spv": "927bc85be03d0ab4cd50951559c66d4cd5f78b8863d9b90233683b81cf61018c",
+  "input.bin": "b225776d8dfa992d80a1b10cabe4e27aeab109b5048605b2551309d6d91a9dfc",
+  "expected.bin": "b225776d8dfa992d80a1b10cabe4e27aeab109b5048605b2551309d6d91a9dfc"
+}

@@ -351,3 +351,14 @@ carry enough retained evidence for another developer to reproduce them.
   disarming; child exit zero cannot hide a latched failure. After watchdog
   recovery, 140 logical and 88 rendering cases pass. M3 catalog resumed from
   2,757,077 outcomes with explicit identity review. See `m3-memory-validation.md`.
+
+- 2026-09-28: Reserved snapshot backing during healthy initialization (M4
+  `63703468d95d`, M3 published `e9268a4002d9`). Serializer tests pass with
+  allocation failure armed after reservation. M4 fault injection retains the
+  full 1,970,952-byte dump and recovers its desktop; M3 deployment remains
+  pending. Generic sysfs publication/mapping allocation remains a proof gap.
+- 2026-09-28: Expanded allocation injection found a real shared Mesa leak:
+  QueueWaitIdle lost its sync when signal-only submit allocation failed.
+  Fixed in `ea84e595994`; both GPUs pass all 15 object/record/submit/idle failure
+  points with zero callback-owned allocations and 88 rendering smoke cases.
+  Deferred lost-device sync ownership remains separate from recoverable OOM.

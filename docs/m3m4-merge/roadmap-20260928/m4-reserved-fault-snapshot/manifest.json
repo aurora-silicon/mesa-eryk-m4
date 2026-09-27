@@ -1,0 +1,24 @@
+{
+  "id": "20260927T221732003240Z-roadmap-m4-reserved-fault-snapshot",
+  "hypothesis": "Preallocated first-fault snapshot remains collectable after a native GPU timeout with final guard health rejection",
+  "command": [
+    "python3",
+    "/root/gpu-device-loss-probe.py",
+    "/root/asahi-evidence/20260927T221732003240Z-roadmap-m4-reserved-fault-snapshot"
+  ],
+  "expected_success": "FAULT_PROBE",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "4292b8e6cdac01506d46061d128c5d5f9eb4ffae",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "kernel": {
+      "head": "63703468d95d5e8104570429ac2af585ca79da07",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

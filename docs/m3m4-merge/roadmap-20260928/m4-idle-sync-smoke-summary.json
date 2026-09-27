@@ -1,0 +1,23 @@
+{
+  "selected": 88,
+  "recorded": 88,
+  "completed": 88,
+  "counts": {
+    "Pass": 88
+  },
+  "classifications": {
+    "regression": 88
+  },
+  "elapsed_seconds": 3.210277650010539,
+  "preparation_seconds": 1.281622153997887,
+  "runner_seconds": 1.4329194289999805,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "0b3e4f766994b5195f239dab618d2b44e40227896fb726ff8b1f9cc48ec0c4bd",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260927T222221351827Z-m4-idle-sync-smoke",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 59.25,
+  "healthy": true
+}

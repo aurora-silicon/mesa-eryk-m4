@@ -1,0 +1,5 @@
+import failed: Could not map fd 20 to handle
+import failed: BO is not a multiple of the page size (0x4001 bytes)
+import failed: Could not allocate from VMA heap (0x4000 bytes)
+import failed: Could not bind BO at 0x10000
+PASS seven import failure boundaries, existing import, zero-ref revival and final ownership cleanup

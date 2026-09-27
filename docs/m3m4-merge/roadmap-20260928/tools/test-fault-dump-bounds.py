@@ -16,13 +16,13 @@ methods = s[s.index('    pub(crate) fn new('):s.index('    pub(crate) fn buffer(
 harness = r'''
 use std::{ops::{Deref,DerefMut},sync::atomic::{AtomicBool,AtomicU64,Ordering}};
 type Result<T=()> = std::result::Result<T,i32>;
-const EINVAL:i32=-22;const EOVERFLOW:i32=-75;const E2BIG:i32=-7;const GFP_KERNEL:()=();
+const EINVAL:i32=-22;const EOVERFLOW:i32=-75;const E2BIG:i32=-7;const GFP_KERNEL:()=();const GFP_NOWAIT:()=();
 static FAIL_ALLOC:AtomicBool=AtomicBool::new(false);
 struct KVVec<T>(Vec<T>);
 impl KVVec<u8>{
- fn from_elem(value:u8,len:usize,_:())->Result<Self>{Ok(Self(vec![value;len]))}
+ fn with_capacity(len:usize,_:())->Result<Self>{if FAIL_ALLOC.load(Ordering::SeqCst){return Err(-12)}Ok(Self(Vec::with_capacity(len)))}
  fn resize(&mut self,len:usize,value:u8,_:())->Result{
-  if FAIL_ALLOC.swap(false,Ordering::SeqCst){return Err(-12)}
+  if len>self.0.capacity() && FAIL_ALLOC.load(Ordering::SeqCst){return Err(-12)}
   self.0.resize(len,value);Ok(())
  }
  fn truncate(&mut self,len:usize){self.0.truncate(len)}
@@ -36,13 +36,20 @@ impl Dump {
 /*METHODS*/
 }
 fn main(){
+ FAIL_ALLOC.store(true,Ordering::SeqCst);
+ assert!(matches!(Dump::new(9),Err(-12)));
+ FAIL_ALLOC.store(false,Ordering::SeqCst);
  let mut d=Dump::with_format(9,b"M4FWD001",108).unwrap();
+ let before=u64::from_le_bytes(d.bytes[24..32].try_into().unwrap());
+ d.begin(123);
+ assert_eq!(u64::from_le_bytes(d.bytes[16..24].try_into().unwrap()),123);
+ assert!(u64::from_le_bytes(d.bytes[24..32].try_into().unwrap())>before);
  assert_eq!(d.record("oversize",0,5, |_|panic!("oversize read")),Err(E2BIG));
  assert_eq!(d.record("overflow",0,usize::MAX, |_|panic!("overflow read")),Err(EOVERFLOW));
  assert_eq!(d.record("",0,4, |_|panic!("empty name read")),Err(EINVAL));
  assert_eq!(d.bytes.len(),40);assert_eq!(d.count,0);
  FAIL_ALLOC.store(true,Ordering::SeqCst);
- assert_eq!(d.record("oom",0,4, |_|panic!("allocation failure read")),Err(-12));
+ // Every append must succeed with allocator failure armed after reserve.
  assert_eq!(d.bytes.len(),40);assert_eq!(d.count,0);
  assert_eq!(d.record("bad-read",0,4, |out|{out[0]=255;Err(-5)}),Err(-5));
  assert_eq!(d.bytes.len(),40);assert_eq!(d.count,0);
@@ -53,9 +60,10 @@ fn main(){
  assert_eq!(d.record("full",0,1, |_|panic!("full read")),Err(E2BIG));
  d.count=u32::MAX;
  assert_eq!(d.record("count-overflow",0,1, |_|panic!("counter overflow")),Err(EOVERFLOW));
+ FAIL_ALLOC.store(false,Ordering::SeqCst);
  let m4=Dump::new(1).unwrap();let m3=Dump::new_m3().unwrap();
  assert_eq!(m4.limit,16*1024*1024);assert_eq!(m3.limit,2*1024*1024);
- println!("PASS size bounds, overflow, allocation/read rollback and exact-capacity append");
+ println!("PASS size bounds, overflow, preallocated append under allocation failure/read rollback and exact-capacity append");
 }
 '''.replace('/*METHODS*/',methods)
 with tempfile.TemporaryDirectory(prefix='fault-bounds-') as tmp:
