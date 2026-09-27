@@ -1,0 +1,10 @@
+#version 450
+layout(local_size_x=1) in;
+layout(std430,set=0,binding=0) buffer B { uint words[]; };
+void main() {
+    uint value=words[1];
+    for (uint i=0; i<words[0]; ++i) {
+        value=(value*1664525u+1013904223u) ^ (value>>13u);
+    }
+    words[1]=value;
+}

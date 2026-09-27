@@ -325,3 +325,20 @@ carry enough retained evidence for another developer to reproduce them.
   renewed the watchdog from those counters, and forced a slow kmsg reader to
   overrun the unchanged 128 KiB ring. Peak 60.75 C; desktop stayed active.
   M3 source refactor builds separately; existing full CTS remains uninterrupted.
+
+- 2026-09-28: P2 checked GEM-size rounding (M4 `2631756846be`, published M3
+  `a63738cc7818`) rejects zero/overflow before backing creation. Live M4 ioctl
+  checks pass for five invalid and six small valid sizes; map/write/read/close
+  returns current allocation counters exactly to baseline. Initial probe-only
+  variable-shadowing failure is retained separately from the passing repeat.
+- 2026-09-28: Shared allocation-extent/current/peak counters (M4 `ceb7e4cb0d1c`,
+  M3 development `0984ca081cd1`, published `d027554bcafd`) follow GEM object
+  lifetime and M3 coherent backing. Host churn/overflow/last-reference tests
+  pass. M4 also passes 14 queued-work exits, 14 SIGKILLs and 15 intervening
+  checked compute readbacks; measured live counts/bytes are unchanged after
+  warmup. These are extent counters, not resident/pinned-page accounting.
+- 2026-09-28: M3 full catalog checkpointed cleanly at 2,757,077 outcomes to
+  validate accumulated P1/P2 changes on hardware. New development module
+  `16a30679f5ba0b7bc85b5e017fea0c3202a3c6dfec41e47cd71729a9a8fee5da`
+  boots with the normal display manager and healthy progress/accounting files.
+  Regression validation is underway before a reviewed continuation.

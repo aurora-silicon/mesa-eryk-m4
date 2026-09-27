@@ -9,7 +9,9 @@ import argparse,json,subprocess,time
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('output',type=Path);p.add_argument('--uid',type=int,default=1000)
 a=p.parse_args()
-guard=json.loads((a.output/'start.json').read_text())
+receipt=a.output/'start.json'
+if not receipt.exists():receipt=a.output/'result.json'
+guard=json.loads(receipt.read_text())
 assert guard['watchdog']['armed'] and guard['watchdog']['timeout_seconds']==60
 subprocess.run(['systemctl','stop','display-manager',f'user@{a.uid}.service'],check=True,timeout=20)
 deadline=time.monotonic()+10

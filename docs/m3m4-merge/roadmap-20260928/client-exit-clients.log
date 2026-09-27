@@ -1,0 +1,101 @@
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf
+MODE exit
+LIFETIME_PROBE pending_result=2 mode=exit
+MODE sigkill
+LIFETIME_PROBE pending_result=2 mode=sigkill
+MODE None
+device: Apple M4 (G16G B0) (0x8132)
+PASS: buffer oracle bad=0/2 watched_bad=0 on queue 0 flags=0xf

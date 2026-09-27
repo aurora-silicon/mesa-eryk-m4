@@ -1,0 +1,42 @@
+{
+  "before": {
+    "user_gem": {
+      "objects": 1,
+      "bytes": 17039360,
+      "peak_objects": 325,
+      "peak_bytes": 971112448
+    },
+    "kernel_gem": {
+      "objects": 569,
+      "bytes": 798949376,
+      "peak_objects": 1791,
+      "peak_bytes": 2860433408
+    },
+    "m3_coherent": {
+      "objects": 0,
+      "bytes": 0,
+      "peak_objects": 0,
+      "peak_bytes": 0
+    }
+  },
+  "after": {
+    "user_gem": {
+      "objects": 1,
+      "bytes": 17039360,
+      "peak_objects": 325,
+      "peak_bytes": 971112448
+    },
+    "kernel_gem": {
+      "objects": 569,
+      "bytes": 798949376,
+      "peak_objects": 1791,
+      "peak_bytes": 2860433408
+    },
+    "m3_coherent": {
+      "objects": 0,
+      "bytes": 0,
+      "peak_objects": 0,
+      "peak_bytes": 0
+    }
+  }
+}
