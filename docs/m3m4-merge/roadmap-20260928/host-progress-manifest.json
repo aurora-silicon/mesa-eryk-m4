@@ -1,0 +1,24 @@
+{
+  "id": "20260927T214311259455Z-roadmap-m4-log-independent-progress",
+  "hypothesis": "Host-verified GPU retirement renews the 60-second watchdog through a forced 128KiB printk-ring overrun with summary logging disabled",
+  "command": [
+    "python3",
+    "/root/progress-log-overrun-probe.py",
+    "/root/asahi-evidence/20260927T214311259455Z-roadmap-m4-log-independent-progress"
+  ],
+  "expected_success": "HOST_PROGRESS_OVERRUN_PASS",
+  "seconds": 100,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "c16caf72b0bae9431d7052009d8cef3b969ae52a",
+      "status": " M docs/m3m4-merge/TODOS_FOR_M3_AND_M4.md\n?? docs/m3m4-merge/roadmap-20260928/allocation-quality-warnings.json\n?? docs/m3m4-merge/roadmap-20260928/allocation-quality-warnings.md\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-M4FWD001.bin.gz\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-command.log\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-fault-collection.log\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-g16-fault-devcd1-job140.bin.json\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-guard.log\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-kernel-live.log\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-manifest.json\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-report.json\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-result.json\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-source/\n?? docs/m3m4-merge/roadmap-20260928/fault-probe-start.json\n?? docs/m3m4-merge/roadmap-20260928/fault-probe.md\n?? docs/m3m4-merge/roadmap-20260928/m4-first-fault-recovered-smoke-summary.json\n",
+      "patch_sha256": "58dec495732b835ab41708210506c7f0355365b40cd91f1b74ef250bfe68eda4"
+    },
+    "kernel": {
+      "head": "d92ca41aad31cce6a1adc056173a2f66d91c6880",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

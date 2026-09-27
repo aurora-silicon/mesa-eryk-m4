@@ -77,8 +77,10 @@ in `docs/m3m4-merge/cts-fixes-20260927/m3-ta-progress-timeout.md`.
   relevant game captures on both GPUs.
 - [x] Resume only missing full-catalog indices after explicit evidence review.
   Kernel identity and review reason are recorded without rewriting old results.
-- [ ] Retain and explain allocation-callback QualityWarnings separately from
+- [x] Retain and explain allocation-callback QualityWarnings separately from
   failures; do not add dummy allocations simply to silence the tests.
+  The four original records on each GPU and reference-counted DEVICE-scope
+  allocation explanation are retained in `roadmap-20260928/allocation-quality-warnings.md`.
 
 Acceptance: the fault is explained and fixed, original reproductions pass under
 the normal guards, the desktop remains usable, and the remaining M3 catalog
@@ -309,3 +311,17 @@ carry enough retained evidence for another developer to reproduce them.
   fault injection remains in progress. Ownership audit and evidence:
   `docs/m3m4-merge/roadmap-20260928/`. P1 reset and broad lifetime acceptance
   remain incomplete; error fencing does not prove stopped GPU DMA.
+
+- 2026-09-27: Deliberate finite M4 compute timeout: Vulkan wait and subsequent
+  submit returned DEVICE_LOST; device destruction returned; guard retained a
+  1,970,952-byte snapshot with primary ETIMEDOUT before reboot. Normal desktop
+  and 88 rendering smoke cases recovered. This validates containment/fallback,
+  not a GPU reset or multiple simultaneous failed-packet fences.
+- 2026-09-27: Shared host-only retirement accounting added to both sources
+  (M4 `d92ca41aad31`, M3 development `01d0def130ab`, published `2378b7741f31`).
+  M4's guard now uses the debugfs counter when available, with no fallback on
+  malformed/unhealthy state. Summary logging disabled on its normal boot.
+  A 65.19-second run passed 281 compute oracles, verified 283 global retirements,
+  renewed the watchdog from those counters, and forced a slow kmsg reader to
+  overrun the unchanged 128 KiB ring. Peak 60.75 C; desktop stayed active.
+  M3 source refactor builds separately; existing full CTS remains uninterrupted.

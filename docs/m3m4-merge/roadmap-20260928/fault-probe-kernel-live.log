@@ -1,0 +1,80 @@
+[   57.349280] asahi 302600000.gpu: G16G: idle owner cache bytes_hits_search_misses_puts_evictions_oversized_global_rejects=[960544768, 254, 106, 279, 0, 0, 0]
+[   57.349291] asahi 302600000.gpu: G16G: userspace GPU job 139 retired (1 commands) monotonic_ns=57533815589 summary_span_ns=34994738989 render_commands=3 compute_commands=0 render_prepare_ns=84780 compute_prepare_ns=0 render_active_ns=2292787 compute_active_ns=0 render_gpu_ns=835540 compute_gpu_ns=0 render_private_clear_bytes=0 render_private_clear_ns=0 render_clear_ns=23196 render_tiling_ns=26499 render_stage_gap_ns=130373 render_fragment_ns=678665
+[   57.349297] asahi 302600000.gpu: G16G: batch summary monotonic_ns=57533815589 packet_counts=[0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] packet_active_ns=1674124 union=1
+[   57.349302] asahi 302600000.gpu: G16G: completion wait totals monotonic_ns=57533815589 messages=469 waits=2265 late=48 timeouts=282 geometry_overflow=0 consecutive_gap_ns=0 consecutive_gap_count=0
+[   57.349305] asahi 302600000.gpu: G16G: GPU timeline summary monotonic_ns=57533815589 pstate_samples=[0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 0, 0] gap_ticks=[835338258, 0] gap_counts=[2, 0] overlaps=1
+[   57.349310] asahi 302600000.gpu: G16G: GPU boundary summary monotonic_ns=57533815589 gap_ticks=[0, 0, 0, 0, 835338258, 0, 0, 0] gap_counts=[0, 0, 0, 0, 2, 0, 0, 0]
+[   57.349314] asahi 302600000.gpu: G16G: GPU publication summary monotonic_ns=57533815589 gap_ticks=[[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 835326539, 11719], [0, 0, 0], [0, 0, 0], [0, 0, 0]] final_retire=[2, 9005, 4673] invalid=0
+[   57.349320] asahi 302600000.gpu: G16G: completion phase samples monotonic_ns=57533815589 pipe=0 before_start=12 executing=0 end_before_stamps=10 stamps_before_queue=0 queue_before_pipe=0 missing_compute_timestamps=0
+[   57.349323] asahi 302600000.gpu: G16G: completion phase samples monotonic_ns=57533815589 pipe=1 before_start=10 executing=0 end_before_stamps=1 stamps_before_queue=0 queue_before_pipe=0 missing_compute_timestamps=0
+[   57.349325] asahi 302600000.gpu: G16G: completion phase samples monotonic_ns=57533815589 pipe=2 before_start=0 executing=0 end_before_stamps=0 stamps_before_queue=0 queue_before_pipe=0 missing_compute_timestamps=0
+[   57.349327] asahi 302600000.gpu: G16G: render geometry summary monotonic_ns=57533815589 asid=2 width=2560 height=1664 commands=3 prepare_ns=84780 active_ns=2292787 fragment_ns=678665 max_fragment_ns=555958
+[   57.547278] apple-pmp-thermal: power ns=57732355927 mc=59500 p_mw=959 e_mw=1079 gpu_mw=935 total_mw=2973 sustainable_mw=8000 allowed_mw=20000 credit_mj=600000 p_level=0 e_level=0 gpu_level=0 error=0
+[   58.057944] apple-pmp-thermal: power ns=58244371281 mc=59250 p_mw=959 e_mw=1079 gpu_mw=935 total_mw=2973 sustainable_mw=8000 allowed_mw=20000 credit_mj=600000 p_level=0 e_level=0 gpu_level=0 error=0
+[   58.568725] apple-pmp-thermal: power ns=58756374795 mc=59250 p_mw=984 e_mw=693 gpu_mw=984 total_mw=2661 sustainable_mw=8000 allowed_mw=20000 credit_mj=600000 p_level=0 e_level=0 gpu_level=0 error=0
+[   59.079707] apple-pmp-thermal: power ns=59268530814 mc=59250 p_mw=984 e_mw=693 gpu_mw=984 total_mw=2661 sustainable_mw=8000 allowed_mw=20000 credit_mj=600000 p_level=0 e_level=0 gpu_level=0 error=0
+[   59.590460] apple-pmp-thermal: power ns=59780352084 mc=59000 p_mw=898 e_mw=338 gpu_mw=1017 total_mw=2253 sustainable_mw=8000 allowed_mw=20000 credit_mj=600000 p_level=0 e_level=0 gpu_level=0 error=0
+[   59.626730] asahi 302600000.gpu: G16G: userspace GPU timeout job=140 status=[ffffffff, ffffffff, 0, 0] queue=[33, 33, 33, 33, 33, 0] pipe=[26, 26, 26]
+[   59.626742] asahi 302600000.gpu: G16G: reading engine/MMU snapshot at pstate=9
+[   59.626747] asahi 302600000.gpu: G16G: GPU MMU configuration=[1, 3ff, 1, 0, 0, 3680d8, 3680d8, 0, 0, 0, 0, 40fffee, 0]
+[   59.626753] asahi 302600000.gpu: G16G: SGX +0xc040=0x0000000000000000
+[   59.626757] asahi 302600000.gpu: G16G: SGX +0xc048=0x0023007000288020
+[   59.626760] asahi 302600000.gpu: G16G: SGX +0xc050=0x0000000008000003
+[   59.626763] asahi 302600000.gpu: G16G: SGX +0xc058=0x0000000000000000
+[   59.626766] asahi 302600000.gpu: G16G: SGX +0xc120=0x0000000000000001
+[   59.626769] asahi 302600000.gpu: G16G: SGX +0xc140=0x0000000000000000
+[   59.626772] asahi 302600000.gpu: G16G: SGX +0xc148=0x0000000000000000
+[   59.626774] asahi 302600000.gpu: G16G: SGX +0xd8c0=0x0000000000000000
+[   59.626777] asahi 302600000.gpu: G16G: SGX +0xd8c8=0x0000000000000000
+[   59.626787] asahi 302600000.gpu: G16G: compute preemption progress=[0, 0, 0, 0] private-pages=8192
+[   59.626792] asahi 302600000.gpu: G16G: recent trace index=98 thread=1 id=0x105 phase=0 args=[0, 0, 0, 0]
+[   59.626797] asahi 302600000.gpu: G16G: recent trace index=99 thread=1 id=0x106 phase=0 args=[0, 0, 0, 0]
+[   59.626800] asahi 302600000.gpu: G16G: recent trace index=100 thread=1 id=0x105 phase=0 args=[0, 0, 0, 0]
+[   59.626804] asahi 302600000.gpu: G16G: recent trace index=101 thread=1 id=0x106 phase=0 args=[0, 0, 0, 0]
+[   59.626807] asahi 302600000.gpu: G16G: recent trace index=102 thread=1 id=0x105 phase=0 args=[0, 0, 0, 0]
+[   59.626810] asahi 302600000.gpu: G16G: recent trace index=103 thread=1 id=0x106 phase=0 args=[0, 0, 0, 0]
+[   59.626813] asahi 302600000.gpu: G16G: recent trace index=104 thread=1 id=0x105 phase=0 args=[0, 0, 0, 0]
+[   59.626817] asahi 302600000.gpu: G16G: recent trace index=105 thread=1 id=0x106 phase=0 args=[0, 0, 0, 0]
+[   59.626820] asahi 302600000.gpu: G16G: recent trace index=106 thread=1 id=0x105 phase=0 args=[0, 0, 0, 0]
+[   59.626823] asahi 302600000.gpu: G16G: recent trace index=107 thread=1 id=0x106 phase=0 args=[0, 0, 0, 0]
+[   59.626826] asahi 302600000.gpu: G16G: recent trace index=108 thread=1 id=0x105 phase=0 args=[0, 0, 0, 0]
+[   59.626829] asahi 302600000.gpu: G16G: recent trace index=109 thread=1 id=0x106 phase=0 args=[0, 0, 0, 0]
+[   59.626832] asahi 302600000.gpu: G16G: recent trace index=110 thread=1 id=0x105 phase=0 args=[0, 0, 0, 0]
+[   59.626835] asahi 302600000.gpu: G16G: recent trace index=111 thread=1 id=0x106 phase=0 args=[0, 0, 0, 0]
+[   59.626839] asahi 302600000.gpu: G16G: recent trace index=112 thread=1 id=0x105 phase=0 args=[0, 0, 0, 0]
+[   59.626842] asahi 302600000.gpu: G16G: recent trace index=113 thread=1 id=0x106 phase=0 args=[0, 0, 0, 0]
+[   59.626845] asahi 302600000.gpu: G16G: firmware RAM +0x68158=[24]
+[   59.626848] asahi 302600000.gpu: G16G: firmware RAM +0x128d60=[fffe, 600000005, 5, 100000000, 100000001, 1, 1, 0]
+[   59.626853] asahi 302600000.gpu: G16G: firmware RAM +0x129b20=[0, 0, 0, 0]
+[   59.626856] asahi 302600000.gpu: G16G: firmware RAM +0x129bc8=[0, 1, 0, 100000000, 0, 0, 0, 0]
+[   59.626860] asahi 302600000.gpu: G16G: firmware RAM +0x129d00=[0, 1, 0, 7f7f7f7f, 1, 0, 0, 1]
+[   59.626863] asahi 302600000.gpu: G16G: firmware RAM +0x147368=[7000288020, fffffc200772c020, 23, 7000288620, 0, fffffc200772c1c4]
+[   59.626868] asahi 302600000.gpu: G16G: firmware RAM +0x192900=[2, 0, fffffc0000188ca0, 0, 0]
+[   59.626871] asahi 302600000.gpu: G16G: firmware RAM +0x1929d0=[0, 0, 0, 0, 0, 0, 0, 0]
+[   59.626874] asahi 302600000.gpu: G16G: firmware RAM +0x1935a0=[fffffc20002e4000]
+[   59.626878] asahi 302600000.gpu: G16G: vertex engine state=[115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[   59.626885] asahi 302600000.gpu: G16G: fragment engine state=[115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[   59.626891] asahi 302600000.gpu: G16G: compute engine state=[0, 0, 0, 1, 3b0000, fffffc20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[   59.626896] asahi 302600000.gpu: G16G: hardware UMA slot1=[800000e2041100, 400000000000, 2000, 0]
+[   59.626899] asahi 302600000.gpu: G16G: firmware GPU power state=0x9
+[   59.626902] asahi 302600000.gpu: G16G: power policy +0x0=[1, 30d40, 30d40, 0, 0, 3f800000, 0, 0]
+[   59.626907] asahi 302600000.gpu: G16G: power policy +0x20=[0, 0, 0, 9, 9, 0, 9, 0]
+[   59.626911] asahi 302600000.gpu: G16G: power policy +0x40=[384, c, 384, 0, 384, 0, 0, 0]
+[   59.626916] asahi 302600000.gpu: G16G: power policy +0xb80=[384, 0, 0, 0, 64, 0, 0, 0]
+[   59.626920] asahi 302600000.gpu: G16G: power policy +0xbc0=[384, 0, 0, 0, 0, 0, 0, 0]
+[   59.626924] asahi 302600000.gpu: G16G: power policy +0x6510=[0, 0, 0, 0, 0, 0, 0, 2]
+[   59.626928] asahi 302600000.gpu: G16G: power policy +0x6550=[0, 0, 0, 0, 3, 0, 0, 0]
+[   59.626931] asahi 302600000.gpu: G16G: reading engine/MMU snapshot at pstate=9
+[   59.626935] asahi 302600000.gpu: G16G: GPU MMU configuration=[1, 3ff, 1, 0, 0, 3680d8, 3680d8, 0, 0, 0, 0, 40fffee, 0]
+[   59.626939] asahi 302600000.gpu: G16G: SGX +0xc040=0x0000000000000000
+[   59.626942] asahi 302600000.gpu: G16G: SGX +0xc048=0x0023007000288020
+[   59.626945] asahi 302600000.gpu: G16G: SGX +0xc050=0x0000000008000003
+[   59.626948] asahi 302600000.gpu: G16G: SGX +0xc058=0x0000000000000000
+[   59.626950] asahi 302600000.gpu: G16G: SGX +0xc120=0x0000000000000001
+[   59.626953] asahi 302600000.gpu: G16G: SGX +0xc140=0x0000000000000000
+[   59.626956] asahi 302600000.gpu: G16G: SGX +0xc148=0x0000000000000000
+[   59.626958] asahi 302600000.gpu: G16G: SGX +0xd8c0=0x0000000000000000
+[   59.626961] asahi 302600000.gpu: G16G: SGX +0xd8c8=0x0000000000000000
+[   59.626963] asahi 302600000.gpu: G16G: GPU retirement unproven, job 140 error ETIMEDOUT; retaining DMA owners
+[   59.626972] asahi 302600000.gpu: G16G: first runtime error errno=-110
+[   59.642478] asahi 302600000.gpu: Asahi: sealed 1970952-byte firmware fault snapshot offered to devcoredump (M4FWD001)

@@ -44,6 +44,19 @@ kernel_write=None
 kernel_pending=''
 last_feed=time.monotonic()
 last_job=-1
+progress = None
+progress_path = Path('/sys/kernel/debug/asahi-m4/progress')
+if progress_path.exists():
+    from completion_progress import CompletionProgress
+    progress = CompletionProgress(a.output/'host-progress.jsonl', progress_path)
+    r['progress_source'] = 'debugfs-host-verified-v1'
+else:
+    # Explicit compatibility for older deployed kernels. A present endpoint
+    # that is malformed/unhealthy never falls back to printk-based renewal.
+    r['progress_source'] = 'legacy-printk-retirement'
+(a.output/'start.json').write_text(json.dumps(r,indent=2)+'\n')
+progress_error = None
+renewed_count = 0
 # Retain the entire experiment stream even for short runs. This remains the
 # authoritative fault evidence if the optional journal query stalls.
 kernel_write=(a.output/'kernel-live.log').open('w')
@@ -70,6 +83,24 @@ with (a.output/'command.log').open('w') as log:
     while proc.poll() is None:
         relay()
         t.check()
+        if progress is not None:
+            try:
+                count, completed_at = progress.poll(time.monotonic())
+                now = time.monotonic()
+                if (a.seconds > 40 and count > renewed_count and
+                        completed_at is not None and 0 <= now-completed_at < 3 and
+                        now-last_feed >= 5):
+                    t.check()
+                    with (a.output/'host-progress.jsonl').open('a') as evidence:
+                        evidence.flush(); os.fsync(evidence.fileno())
+                    w.integer(KEEPALIVE)
+                    last_feed = now
+                    renewed_count = count
+                    print(json.dumps({'event':'gpu-retirement-renewal','completed':count}),flush=True)
+            except (OSError, RuntimeError, ValueError) as error:
+                progress_error = str(error)
+                r['progress_error'] = progress_error
+                stop()
         if kernel_read is not None:
             if kernel_proc.poll() is not None:
                 stop()
@@ -86,7 +117,7 @@ with (a.output/'command.log').open('w') as log:
                 retired_at=int(exact[1])/1e9 if exact else (float(match[1]) if match else 0)
                 if match and int(match[2])>last_job and 0<=now-retired_at<3:
                     last_job=int(match[2])
-                    if a.seconds>40 and now-last_feed>=5:
+                    if progress is None and a.seconds>40 and now-last_feed>=5:
                         t.check()
                         kernel_write.flush(); os.fsync(kernel_write.fileno())
                         w.integer(KEEPALIVE)
@@ -144,7 +175,7 @@ if ('sealed ' in new_dmesg and 'firmware fault snapshot' in new_dmesg and
         diagnostics.flush(); os.fsync(diagnostics.fileno())
     os.sync()
 faults=['Internal error:', 'BUG:', 'Oops:', 'Kernel panic', 'soft lockup', 'hard LOCKUP', 'ASC failed to stop', 'GPU retirement unproven', 'first runtime error', 'firmware crashed']
-if (final_taint & ~initial_taint & ((1 << 7) | (1 << 9) | (1 << 14))) or any(f in new_dmesg for f in faults):
+if progress_error or (final_taint & ~initial_taint & ((1 << 7) | (1 << 9) | (1 << 14))) or any(f in new_dmesg for f in faults):
     print('Kernel fault detected; requesting reboot with watchdog still armed',flush=True)
     subprocess.run(['systemctl','reboot'],check=True,timeout=5)
     raise RuntimeError('kernel fault during guarded command; watchdog remains armed')

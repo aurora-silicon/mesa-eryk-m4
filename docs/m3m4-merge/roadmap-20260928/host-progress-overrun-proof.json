@@ -1,0 +1,8 @@
+{
+  "ring_bytes": 131072,
+  "slow_reader_overrun": true,
+  "verified_completions": 283,
+  "oracle_passes": 281,
+  "elapsed_seconds": 65.189589139,
+  "printk_policy_restored": true
+}

@@ -1,0 +1,24 @@
+{
+  "id": "20260927T213437534968Z-roadmap-m4-bounded-timeout",
+  "hypothesis": "Deliberately overlong finite compute must report device loss and retain a bounded first-fault snapshot; expected guard failure followed by reboot",
+  "command": [
+    "python3",
+    "/root/roadmap-fault-probe/run.py",
+    "/root/asahi-evidence/20260927T213437534968Z-roadmap-m4-bounded-timeout"
+  ],
+  "expected_success": "FAULT_PROBE device_destroyed",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "c16caf72b0bae9431d7052009d8cef3b969ae52a",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "kernel": {
+      "head": "38ffd53dec64b72f6b67d3ca0b7baa249b9682d8",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

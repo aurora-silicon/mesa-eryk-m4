@@ -1,0 +1,198 @@
+{
+  "m4-full": [
+    {
+      "index": 327169,
+      "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty",
+      "status": "QualityWarning",
+      "detail": {
+        "index": 7169,
+        "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty",
+        "boot_id": "a584a481-a008-454f-982f-2b4155d54bc0",
+        "runner_status": "Warn",
+        "seconds": 0.011734047,
+        "eligibility": {
+          "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty",
+          "catalog_index": 327169,
+          "classification": "unclassified",
+          "requirements": [],
+          "rule": "Full frozen Linux catalog"
+        },
+        "status": "QualityWarning",
+        "message": "Allocation callbacks not called",
+        "qpa": "deqp-runner/c163.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "segment": "0320000-0330000"
+    },
+    {
+      "index": 327170,
+      "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single",
+      "status": "QualityWarning",
+      "detail": {
+        "index": 7170,
+        "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single",
+        "boot_id": "a584a481-a008-454f-982f-2b4155d54bc0",
+        "runner_status": "Warn",
+        "seconds": 0.011622135,
+        "eligibility": {
+          "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single",
+          "catalog_index": 327170,
+          "classification": "unclassified",
+          "requirements": [],
+          "rule": "Full frozen Linux catalog"
+        },
+        "status": "QualityWarning",
+        "message": "Allocation callbacks not called",
+        "qpa": "deqp-runner/c61.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "segment": "0320000-0330000"
+    },
+    {
+      "index": 327195,
+      "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty",
+      "status": "QualityWarning",
+      "detail": {
+        "index": 7195,
+        "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty",
+        "boot_id": "a584a481-a008-454f-982f-2b4155d54bc0",
+        "runner_status": "Warn",
+        "seconds": 0.012218194,
+        "eligibility": {
+          "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty",
+          "catalog_index": 327195,
+          "classification": "unclassified",
+          "requirements": [],
+          "rule": "Full frozen Linux catalog"
+        },
+        "status": "QualityWarning",
+        "message": "Allocation callbacks not called",
+        "qpa": "deqp-runner/c67.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "segment": "0320000-0330000"
+    },
+    {
+      "index": 327196,
+      "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_single",
+      "status": "QualityWarning",
+      "detail": {
+        "index": 7196,
+        "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_single",
+        "boot_id": "a584a481-a008-454f-982f-2b4155d54bc0",
+        "runner_status": "Warn",
+        "seconds": 0.012193828,
+        "eligibility": {
+          "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_single",
+          "catalog_index": 327196,
+          "classification": "unclassified",
+          "requirements": [],
+          "rule": "Full frozen Linux catalog"
+        },
+        "status": "QualityWarning",
+        "message": "Allocation callbacks not called",
+        "qpa": "deqp-runner/c84.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "segment": "0320000-0330000"
+    }
+  ],
+  "m3-pte-fix": [
+    {
+      "index": 327169,
+      "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty",
+      "status": "QualityWarning",
+      "detail": {
+        "index": 11,
+        "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty",
+        "boot_id": "266c9d42-1270-4dbc-83bc-9a1d5bbc7579",
+        "runner_status": "Warn",
+        "seconds": 0.004623884,
+        "eligibility": {
+          "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_empty",
+          "catalog_index": 327169,
+          "classification": "unclassified",
+          "requirements": [],
+          "rule": "Full frozen Linux catalog"
+        },
+        "status": "QualityWarning",
+        "message": "Allocation callbacks not called",
+        "qpa": "deqp-runner/c0.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "segment": "0327158-0327174"
+    },
+    {
+      "index": 327170,
+      "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single",
+      "status": "QualityWarning",
+      "detail": {
+        "index": 12,
+        "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single",
+        "boot_id": "266c9d42-1270-4dbc-83bc-9a1d5bbc7579",
+        "runner_status": "Warn",
+        "seconds": 0.004854841,
+        "eligibility": {
+          "case": "dEQP-VK.api.object_management.alloc_callback_fail.descriptor_set_layout_single",
+          "catalog_index": 327170,
+          "classification": "unclassified",
+          "requirements": [],
+          "rule": "Full frozen Linux catalog"
+        },
+        "status": "QualityWarning",
+        "message": "Allocation callbacks not called",
+        "qpa": "deqp-runner/c0.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "segment": "0327158-0327174"
+    },
+    {
+      "index": 327195,
+      "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty",
+      "status": "QualityWarning",
+      "detail": {
+        "index": 21,
+        "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty",
+        "boot_id": "266c9d42-1270-4dbc-83bc-9a1d5bbc7579",
+        "runner_status": "Warn",
+        "seconds": 0.004798989,
+        "eligibility": {
+          "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_empty",
+          "catalog_index": 327195,
+          "classification": "unclassified",
+          "requirements": [],
+          "rule": "Full frozen Linux catalog"
+        },
+        "status": "QualityWarning",
+        "message": "Allocation callbacks not called",
+        "qpa": "deqp-runner/c0.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "segment": "0327174-0327206"
+    },
+    {
+      "index": 327196,
+      "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_single",
+      "status": "QualityWarning",
+      "detail": {
+        "index": 22,
+        "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_single",
+        "boot_id": "266c9d42-1270-4dbc-83bc-9a1d5bbc7579",
+        "runner_status": "Warn",
+        "seconds": 0.004442969,
+        "eligibility": {
+          "case": "dEQP-VK.api.object_management.alloc_callback_fail.pipeline_layout_single",
+          "catalog_index": 327196,
+          "classification": "unclassified",
+          "requirements": [],
+          "rule": "Full frozen Linux catalog"
+        },
+        "status": "QualityWarning",
+        "message": "Allocation callbacks not called",
+        "qpa": "deqp-runner/c0.r1.qpa",
+        "worker_exit": "exit status: 0"
+      },
+      "segment": "0327174-0327206"
+    }
+  ]
+}
