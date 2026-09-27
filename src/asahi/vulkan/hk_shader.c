@@ -336,6 +336,40 @@ hk_populate_vs_key(struct hk_vs_key *key,
    }
 }
 
+/* Static vertex input must supply maintenance9's (0, 0, 0, 1) for shader
+ * inputs without an attribute description. Lower these before compacting
+ * locations so they do not require a vertex buffer or a fetch format.
+ */
+static bool
+hk_lower_unbound_vertex_inputs(nir_builder *b, nir_intrinsic_instr *intr,
+                               void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_input)
+      return false;
+
+   const struct hk_vs_key *key = data;
+   unsigned location = nir_intrinsic_io_semantics(intr).location -
+                       VERT_ATTRIB_GENERIC0;
+   nir_src offset = *nir_get_io_offset_src(intr);
+   assert(nir_src_is_const(offset));
+   location += nir_src_as_uint(offset);
+   assert(location < ARRAY_SIZE(key->attribs));
+   if (key->attribs[location].format != PIPE_FORMAT_NONE)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_alu_type type = nir_intrinsic_dest_type(intr);
+   nir_def *channels[4];
+   for (unsigned i = 0; i < intr->num_components; ++i) {
+      bool one = nir_intrinsic_component(intr) + i == 3;
+      channels[i] = nir_alu_type_get_base_type(type) == nir_type_float
+                       ? nir_imm_floatN_t(b, one, intr->def.bit_size)
+                       : nir_imm_intN_t(b, one, intr->def.bit_size);
+   }
+   nir_def_replace(&intr->def, nir_vec(b, channels, intr->num_components));
+   return true;
+}
+
 static void
 hk_populate_fs_key(struct hk_fs_key *key,
                    const struct vk_graphics_pipeline_state *state)
@@ -3379,6 +3413,15 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
          assert(
             !(nir->info.inputs_read & BITFIELD64_MASK(VERT_ATTRIB_GENERIC0)) &&
             "Fixed-function attributes not used in Vulkan");
+
+         if (key && key->vs.skip_prolog) {
+            bool progress = false;
+            NIR_PASS(progress, nir, nir_shader_intrinsics_pass,
+                     hk_lower_unbound_vertex_inputs,
+                     nir_metadata_control_flow, (void *)&key->vs);
+            if (progress)
+               nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+         }
 
          NIR_PASS(_, nir, nir_recompute_io_bases, nir_var_shader_in);
       }
