@@ -1,0 +1,30 @@
+{
+  "id": "20260927T223421174732Z-roadmap-m4-alias-bind-final",
+  "hypothesis": "Final memory allocation rollback build cleans failed alias bind and then passes checked GPU fill",
+  "command": [
+    "env",
+    "VK_DRIVER_FILES=/opt/asahi-m3m4-memory-final-20260928/asahi.json",
+    "LD_LIBRARY_PATH=/opt/asahi-m3m4-memory-final-20260928/lib",
+    "ASAHI_M4_EXPERIMENTAL=1",
+    "LD_PRELOAD=/root/asahi-bind-failure.so",
+    "/root/vk-memory-failure",
+    "0x8132",
+    "/root/asahi-evidence/20260927T223421174732Z-roadmap-m4-alias-bind-final/allocations.jsonl",
+    "bind-failure"
+  ],
+  "expected_success": "DEVICE_ALLOCATION_FAILURE_PASS",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "6b8dc9410c58f114189ca60e0da19aa3414a6857",
+      "status": " M src/asahi/vulkan/hk_device_memory.c\n",
+      "patch_sha256": "d4522f099b6f503b8151480b8cd0ffd04b140ae261dfc8fb8898bafbd8f20d89"
+    },
+    "kernel": {
+      "head": "63703468d95d5e8104570429ac2af585ca79da07",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

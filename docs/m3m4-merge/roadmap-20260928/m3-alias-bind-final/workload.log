@@ -1,0 +1,4 @@
+BIND_FAILURE injected read-only bind handle=13 address=0x8efdf20000
+DRM_IOCTL_ASAHI_VM_BIND failed: Cannot allocate memory (vm=1 count=1 addr=0x8efdf20000 size=0x4000 flags=0x2)
+BIND_FAILURE observed result=-2 injected=1
+DEVICE_ALLOCATION_FAILURE_PASS mode=bind-failure tested=0

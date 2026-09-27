@@ -1,0 +1,30 @@
+{
+  "id": "20260927T223136210547Z-roadmap-m4-alias-bind-baseline-r2",
+  "hypothesis": "Observe pre-fix read-only alias mapping error; explicit libdrm symbol scope in test interposer",
+  "command": [
+    "env",
+    "VK_DRIVER_FILES=/opt/asahi-m3m4-imports-20260928/asahi.json",
+    "LD_LIBRARY_PATH=/opt/asahi-m3m4-imports-20260928/lib",
+    "ASAHI_M4_EXPERIMENTAL=1",
+    "LD_PRELOAD=/root/asahi-bind-failure.so",
+    "/root/vk-memory-failure",
+    "0x8132",
+    "/root/asahi-evidence/20260927T223136210547Z-roadmap-m4-alias-bind-baseline-r2/allocations.jsonl",
+    "bind-failure"
+  ],
+  "expected_success": "DEVICE_ALLOCATION_FAILURE_PASS",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "6b8dc9410c58f114189ca60e0da19aa3414a6857",
+      "status": " M src/asahi/vulkan/hk_device_memory.c\n",
+      "patch_sha256": "a162b7a00adfc1466dc7cbf8b9353d917fe66905f727e42c39f71117b46c4cd6"
+    },
+    "kernel": {
+      "head": "63703468d95d5e8104570429ac2af585ca79da07",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

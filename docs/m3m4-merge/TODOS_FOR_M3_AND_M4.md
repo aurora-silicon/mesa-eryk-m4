@@ -362,3 +362,14 @@ carry enough retained evidence for another developer to reproduce them.
   Fixed in `ea84e595994`; both GPUs pass all 15 object/record/submit/idle failure
   points with zero callback-owned allocations and 88 rendering smoke cases.
   Deferred lost-device sync ownership remains separate from recoverable OOM.
+
+- 2026-09-28: Shared dma-buf import rollback (`6b8dc9410c5`) now releases
+  partial VA/fd/GEM ownership instead of leaking handles or aborting. Seven
+  offline failure boundaries pass; each GPU passes 90 external-memory CTS
+  cases plus six unsupported and 88 rendering cases.
+- 2026-09-28: Fixed Vulkan memory allocation rollback after read-only alias
+  failure, delayed imported-fd ownership transfer until final admission, and
+  rejected page-rounding overflow. Explicit ioctl-boundary failure injection
+  on both GPUs returns OOM, frees callback ownership and permits a subsequent
+  checked GPU fill/readback. Final 184-case regression: 178 Pass, six unsupported
+  per GPU. This does not inject allocation failure inside the kernel.

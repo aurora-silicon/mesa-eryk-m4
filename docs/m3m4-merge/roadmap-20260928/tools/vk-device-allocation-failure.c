@@ -153,8 +153,16 @@ cleanup:
     return result;
 }
 int main(int argc,char **argv) {
-    CHECK(argc==3 || (argc==4 && !strcmp(argv[3],"resources")));
+    CHECK(argc==3 || (argc==4 && (!strcmp(argv[3],"resources") || !strcmp(argv[3],"bind-failure"))));
     bool resources=argc==4;
+    bool bind_failure=resources && !strcmp(argv[3],"bind-failure");
+    void (*arm_bind)(void)=NULL;
+    int (*bind_injected)(void)=NULL;
+    if(bind_failure){
+        arm_bind=dlsym(RTLD_DEFAULT,"asahi_test_arm_bind_failure");
+        bind_injected=dlsym(RTLD_DEFAULT,"asahi_test_bind_failure_injected");
+        CHECK(arm_bind && bind_injected);
+    }
     char *end; unsigned long chip=strtoul(argv[1],&end,0);
     CHECK(!*end && (chip==0x6030 || chip==0x8132));
     FILE *report=fopen(argv[2],"wx"); CHECK(report);
@@ -190,17 +198,23 @@ int main(int argc,char **argv) {
             pthread_mutex_lock(&s->lock);
             s->calls=0;s->fail_at=failure;
             pthread_mutex_unlock(&s->lock);
+            if(bind_failure)arm_bind();
             result=resource_work(gipa,instance,physical,device,family,&cb);
+            if(bind_failure){
+                fprintf(stderr,"BIND_FAILURE observed result=%d injected=%d\n",result,bind_injected());
+                CHECK(bind_injected() && result==VK_ERROR_OUT_OF_DEVICE_MEMORY);
+                CHECK(resource_work(gipa,instance,physical,device,family,&cb)==VK_SUCCESS);
+            }
             vkDestroyDevice(device,&cb);device=VK_NULL_HANDLE;
         }
         CHECK(result==VK_SUCCESS || result==VK_ERROR_OUT_OF_HOST_MEMORY || result==VK_ERROR_OUT_OF_DEVICE_MEMORY);
-        if(!resources && result==VK_SUCCESS){CHECK(device);vkDestroyDevice(device,&cb);}else if(result!=VK_SUCCESS){CHECK(s->injected);}
+        if(!resources && result==VK_SUCCESS){CHECK(device);vkDestroyDevice(device,&cb);}else if(result!=VK_SUCCESS){CHECK(s->injected || bind_failure);}
         fprintf(report,"{\"fail_at\":%u,\"calls\":%u,\"result\":%d,\"injected\":%s,\"live\":%u,\"peak\":%u}\n",failure,s->calls,result,s->injected?"true":"false",s->count,s->peak);fflush(report);
         CHECK(!s->count);
-        if(!failure){CHECK(result==VK_SUCCESS);total=s->calls;CHECK(total>0 && total<=256);}
+        if(!failure){CHECK(result==VK_SUCCESS || bind_failure);total=bind_failure?0:s->calls;CHECK(total<=256 && (total>0 || bind_failure));}
         else CHECK(s->injected);
         CHECK(!pthread_mutex_destroy(&s->lock));free(s);
     }
     vkDestroyInstance(instance,NULL);fclose(report);dlclose(loader);
-    printf("DEVICE_ALLOCATION_FAILURE_PASS mode=%s tested=%u\n",resources?"resources":"device",total);return 0;
+    printf("DEVICE_ALLOCATION_FAILURE_PASS mode=%s tested=%u\n",bind_failure?"bind-failure":resources?"resources":"device",total);return 0;
 }

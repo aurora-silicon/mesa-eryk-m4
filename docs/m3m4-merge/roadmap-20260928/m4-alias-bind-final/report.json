@@ -1,0 +1,22 @@
+{
+  "id": "20260927T223421174732Z-roadmap-m4-alias-bind-final",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260927T223421174732Z-roadmap-m4-alias-bind-final",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 1,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 58.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 58.5,
+      "Ta000m": 57.25,
+      "Te000m": 55.75,
+      "Te001m": 54.5,
+      "Tp000m": 58.5,
+      "Tp001m": 54.25
+    }
+  }
+}

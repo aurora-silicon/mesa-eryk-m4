@@ -1,0 +1,4 @@
+BIND_FAILURE injected read-only bind handle=13 address=0x8efdf20000
+DRM_IOCTL_ASAHI_VM_BIND failed: Cannot allocate memory (vm=1 count=1 addr=0x8efdf20000 size=0x4000 flags=0x2)
+BIND_FAILURE observed result=-13 injected=1
+CHECK failed at line 205: bind_injected() && result==VK_ERROR_OUT_OF_DEVICE_MEMORY
