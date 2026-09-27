@@ -1,0 +1,15 @@
+{
+  "VK_DRIVER_FILES": "/opt/asahi-m3m4-cts-20260927/asahi.json",
+  "VK_ICD_FILENAMES": "/opt/asahi-m3m4-cts-20260927/asahi.json",
+  "LD_LIBRARY_PATH": "/opt/asahi-m3m4-cts-20260927/lib",
+  "ASAHI_M3_EXPERIMENTAL": "1",
+  "ASAHI_M4_EXPERIMENTAL": "1",
+  "ASAHI_MESA_DEBUG": "nocompress",
+  "HK_DEBUG_LOG": "0",
+  "AGX_MESA_DEBUG": "",
+  "VK_LAYER_PATH": "/var/empty",
+  "VK_IMPLICIT_LAYER_PATH": "/var/empty",
+  "M4_ORACLE_EXPECT_DEVICE_LOST": "1",
+  "M4_ORACLE_DEVICE": "M3",
+  "M4_ORACLE_LOSS_FENCES": "4"
+}

@@ -1,0 +1,21 @@
+{
+  "command": [
+    "python3",
+    "/root/gpu-device-loss-probe.py",
+    "/root/asahi-evidence/20260927T224021213153Z-roadmap-m4-multiple-error-fences-r2",
+    "--loss-fences",
+    "4"
+  ],
+  "seconds": 40,
+  "boot_id": "0875c314-d6d5-40b6-804d-b2ded9b689e7",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "progress_source": "debugfs-host-verified-v1"
+}

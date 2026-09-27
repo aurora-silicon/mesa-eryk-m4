@@ -1,0 +1,26 @@
+{
+  "id": "20260927T224021213153Z-roadmap-m4-multiple-error-fences-r2",
+  "hypothesis": "Four kernel error fences signal and backend queue-idle observes native device loss; CPU no-op submit is not used as initial observation",
+  "command": [
+    "python3",
+    "/root/gpu-device-loss-probe.py",
+    "/root/asahi-evidence/20260927T224021213153Z-roadmap-m4-multiple-error-fences-r2",
+    "--loss-fences",
+    "4"
+  ],
+  "expected_success": "FAULT_FENCES",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "7541b1d6147e1057d68e9cc2061c763c6cbb3c3d",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "kernel": {
+      "head": "63703468d95d5e8104570429ac2af585ca79da07",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

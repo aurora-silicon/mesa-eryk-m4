@@ -134,6 +134,10 @@ def classify(directory, facts, expected):
             watchdog.get("timeout_seconds") != 60 or not watchdog.get("armed") or
             thermal.get("failure") is not None or thermal.get("samples", 0) < 1):
         return "guard_validation_failed"
+    # Host health evidence survives kernel-log overrun. A child can exit zero
+    # before the guard's terminal health check; that must never become Pass.
+    if result.get("progress_error") is not None:
+        return "gpu_progress_failure"
     if result.get("returncode") != 0:
         return "process_failure"
     if not re.search(expected, stdout, re.M):

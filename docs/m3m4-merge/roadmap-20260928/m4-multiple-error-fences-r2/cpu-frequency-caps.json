@@ -1,0 +1,14 @@
+[
+  {
+    "policy": "policy0",
+    "old_min_khz": 912000,
+    "old_max_khz": 4104000,
+    "max_khz": 1800000
+  },
+  {
+    "policy": "policy1",
+    "old_min_khz": 900000,
+    "old_max_khz": 2892000,
+    "max_khz": 1860000
+  }
+]

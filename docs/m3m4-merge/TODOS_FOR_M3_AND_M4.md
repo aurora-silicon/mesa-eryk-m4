@@ -373,3 +373,12 @@ carry enough retained evidence for another developer to reproduce them.
   on both GPUs returns OOM, frees callback ownership and permits a subsequent
   checked GPU fill/readback. Final 184-case regression: 178 Pass, six unsupported
   per GPU. This does not inject allocation failure inside the kernel.
+
+- 2026-09-28: M3 preallocated snapshot deployed and fault-tested; full dump is
+  retained and the post-recovery 184-case selection passes (178 Pass, six NS).
+  Both GPUs accept four packets before a forced finite compute timeout; all
+  four exported Linux sync-file fences complete with errors independently of
+  Vulkan's cached loss flag. QueueIdle observes DEVICE_LOST and destruction
+  returns. The guard verdict remains fault/reboot, never rendering success.
+  Fixed report classification to reject terminal progress errors even if logs
+  roll over. GPU-only reset and proof of stopped DMA remain open.

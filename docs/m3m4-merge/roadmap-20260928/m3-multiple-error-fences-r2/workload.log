@@ -1,0 +1,13 @@
+IDLE_REBOOT_READY
+FAULT_FENCES admitted=1
+FAULT_FENCES admitted=2
+FAULT_FENCES admitted=3
+FAULT_FENCES admitted=4
+FAULT_FENCES index=0 status=-110 fences=1
+FAULT_FENCES index=1 status=-5 fences=1
+FAULT_FENCES index=2 status=-5 fences=1
+FAULT_FENCES index=3 status=-5 fences=1
+FAULT_PROBE wait_result=-4
+FAULT_PROBE submit_after_loss=-4
+FAULT_PROBE device_destroyed; expected loss observed
+device: Apple M3 Pro (G15S B1) (0x6030)

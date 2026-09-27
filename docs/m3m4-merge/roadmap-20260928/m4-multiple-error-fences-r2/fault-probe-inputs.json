@@ -1,0 +1,6 @@
+{
+  "vk-loss-fences-oracle": "fcd7b8186cca0473a30e17d62eb9602d6fd1bedbae3c67006e7fb7628a2e8f0c",
+  "probe.spv": "927bc85be03d0ab4cd50951559c66d4cd5f78b8863d9b90233683b81cf61018c",
+  "input.bin": "b225776d8dfa992d80a1b10cabe4e27aeab109b5048605b2551309d6d91a9dfc",
+  "expected.bin": "b225776d8dfa992d80a1b10cabe4e27aeab109b5048605b2551309d6d91a9dfc"
+}

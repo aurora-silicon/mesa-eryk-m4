@@ -1,0 +1,5 @@
+IDLE_REBOOT_READY
+FAULT_PROBE wait_result=-4
+FAULT_PROBE submit_after_loss=-4
+FAULT_PROBE device_destroyed; expected loss observed
+device: Apple M3 Pro (G15S B1) (0x6030)

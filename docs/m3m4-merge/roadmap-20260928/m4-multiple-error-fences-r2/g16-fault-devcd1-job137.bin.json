@@ -1,0 +1,351 @@
+{
+  "first_error": {
+    "errno": -110,
+    "inflight_commands": 2,
+    "pending_packets": 0,
+    "dma_retirement_unproven": true
+  },
+  "job": 137,
+  "created_monotonic_ns": 71244303788,
+  "length": 1970952,
+  "records": [
+    {
+      "name": "host-first-error",
+      "va": "0x0",
+      "size": 32,
+      "offset": 104,
+      "begin_monotonic_ns": 71244304414,
+      "end_monotonic_ns": 71244304498,
+      "sha256": "8a3dac8c9246cdf4fb77247d866231ccb8ec5d0ad0509126b15b3b067a7f98bb"
+    },
+    {
+      "name": "firmware-data",
+      "va": "0xfffffc0000060000",
+      "size": 1294336,
+      "offset": 200,
+      "begin_monotonic_ns": 71244328441,
+      "end_monotonic_ns": 71255900413,
+      "sha256": "5795162e416f8bffd43a9fdfacb3b67576486e1c61678bf43ef21a7e75aaac4f"
+    },
+    {
+      "name": "initdata-root",
+      "va": "0xfffffc2000000000",
+      "size": 200,
+      "offset": 1294600,
+      "begin_monotonic_ns": 71255901038,
+      "end_monotonic_ns": 71255902413,
+      "sha256": "91d67f42add1ce7e71171fa774ed0d5bbf014418c4de7431de0bbe8606217e2a"
+    },
+    {
+      "name": "runtime",
+      "va": "0xfffffc2000010000",
+      "size": 1208,
+      "offset": 1294864,
+      "begin_monotonic_ns": 71255902789,
+      "end_monotonic_ns": 71255911542,
+      "sha256": "ae5b5c504d61758a33f85e74d720b328da2e0e54ddd42e1cf9b92cf3057030ea"
+    },
+    {
+      "name": "globals",
+      "va": "0xfffffc2000018000",
+      "size": 3656,
+      "offset": 1296136,
+      "begin_monotonic_ns": 71255911833,
+      "end_monotonic_ns": 71255933109,
+      "sha256": "da50bf4c95f19fcd349a7c890826297dd99be1e0cae5fc6c22ce45ca997e19f0"
+    },
+    {
+      "name": "host-firmware-data",
+      "va": "0xfffffc2000028000",
+      "size": 60144,
+      "offset": 1299856,
+      "begin_monotonic_ns": 71255934569,
+      "end_monotonic_ns": 71256282571,
+      "sha256": "f00b1d75f2b03a2556bc240ecd7bb853fda1026e50c78405b908edf8c4697a28"
+    },
+    {
+      "name": "main",
+      "va": "0xfffffc200004c000",
+      "size": 9816,
+      "offset": 1360064,
+      "begin_monotonic_ns": 71256283196,
+      "end_monotonic_ns": 71256339421,
+      "sha256": "bc6875f2b67b6949e0f14ec409c61d698ba726c5ee23333ba316d545be448e37"
+    },
+    {
+      "name": "power-performance",
+      "va": "0xfffffc2000054000",
+      "size": 25976,
+      "offset": 1369944,
+      "begin_monotonic_ns": 71256340213,
+      "end_monotonic_ns": 71256486819,
+      "sha256": "04a9d3536327e2756b03a4199b424a4cf4c66751306bc81954a6bf9233eebabc"
+    },
+    {
+      "name": "timer",
+      "va": "0xfffffc2000060000",
+      "size": 136,
+      "offset": 1395984,
+      "begin_monotonic_ns": 71256486986,
+      "end_monotonic_ns": 71256491863,
+      "sha256": "aacf64b99d98e51c01619c789725d1f4272bc1fd0bb13e4ad36ee6849ba99ec3"
+    },
+    {
+      "name": "vertex-engine",
+      "va": "0xfffffc2000068000",
+      "size": 3096,
+      "offset": 1396184,
+      "begin_monotonic_ns": 71256492154,
+      "end_monotonic_ns": 71256509762,
+      "sha256": "89ee1b4dddc024682777a6c5276b2a2f28a0a2b2d7397984eb44b881be7c0b8e"
+    },
+    {
+      "name": "fragment-engine",
+      "va": "0xfffffc2000070000",
+      "size": 4680,
+      "offset": 1399344,
+      "begin_monotonic_ns": 71256510096,
+      "end_monotonic_ns": 71256536207,
+      "sha256": "c6fbf45e9c6ebeb2b0ac2b708af401052e3c862fd6a2659ec2022f224627e2c8"
+    },
+    {
+      "name": "compute-engine",
+      "va": "0xfffffc2000078000",
+      "size": 3600,
+      "offset": 1404088,
+      "begin_monotonic_ns": 71256536457,
+      "end_monotonic_ns": 71256556883,
+      "sha256": "ba601fbcd6a46544c880b66973a7f4bce871a4e5c38d11cede7cdaf3058f2372"
+    },
+    {
+      "name": "uma-table",
+      "va": "0xfffffc20001a8000",
+      "size": 16384,
+      "offset": 1407752,
+      "begin_monotonic_ns": 71256557466,
+      "end_monotonic_ns": 71256651224,
+      "sha256": "50593f312a37a76b95d0c3fc629da0f179eb8b240707b7db3bacc7fe5ff79585"
+    },
+    {
+      "name": "parameter-table",
+      "va": "0xfffffc20001b0000",
+      "size": 16384,
+      "offset": 1424200,
+      "begin_monotonic_ns": 71256651807,
+      "end_monotonic_ns": 71256747149,
+      "sha256": "83adfffde18dfc2f64db36e38f33cfff360a4b96c1acb0146b73591d12ce2fbd"
+    },
+    {
+      "name": "trace-state",
+      "va": "0xfffffc2000158000",
+      "size": 48,
+      "offset": 1440648,
+      "begin_monotonic_ns": 71256747358,
+      "end_monotonic_ns": 71256747692,
+      "sha256": "de8bb427ddc67741d72d8f85de3a447052ce6c0ad4fceb190d67405851c130e0"
+    },
+    {
+      "name": "trace-data",
+      "va": "0xfffffc2000160000",
+      "size": 36864,
+      "offset": 1440760,
+      "begin_monotonic_ns": 71256748584,
+      "end_monotonic_ns": 71256920742,
+      "sha256": "74406b522b9951413d063290fa0c42afecc1d7dc0002400060baf498defc9af2"
+    },
+    {
+      "name": "queue-context",
+      "va": "0xfffffc2000350000",
+      "size": 56,
+      "offset": 1477688,
+      "begin_monotonic_ns": 71256920992,
+      "end_monotonic_ns": 71256921410,
+      "sha256": "633ff41bb247f6a5414553086352051c31f64d353ad8d55047f5672154271861"
+    },
+    {
+      "name": "queue-ta",
+      "va": "0xfffffc2000368000",
+      "size": 9408,
+      "offset": 1477808,
+      "begin_monotonic_ns": 71256921951,
+      "end_monotonic_ns": 71256975925,
+      "sha256": "7b06b0544967f2e43becb829062885f536d9df8af4b316b3efb80222c058fd28"
+    },
+    {
+      "name": "ring-state-ta",
+      "va": "0xfffffc2000370000",
+      "size": 96,
+      "offset": 1487280,
+      "begin_monotonic_ns": 71256976175,
+      "end_monotonic_ns": 71256976842,
+      "sha256": "bf146dda1ddc1875c8f7b00357d2bc14c88934cb1795637237352784e13677a2"
+    },
+    {
+      "name": "queue-fragment",
+      "va": "0xfffffc20003f8000",
+      "size": 9408,
+      "offset": 1487440,
+      "begin_monotonic_ns": 71256977383,
+      "end_monotonic_ns": 71257031566,
+      "sha256": "b782d1bd956c09d2196acdd59c5f5bf1acea46f666bb191496bbee240dfa04c8"
+    },
+    {
+      "name": "ring-state-fragment",
+      "va": "0xfffffc2000400000",
+      "size": 96,
+      "offset": 1496912,
+      "begin_monotonic_ns": 71257031816,
+      "end_monotonic_ns": 71257032525,
+      "sha256": "ab7d142efa3fe42bf4d1d4c1e9198d103d23f32854ea9b148a1a4846e5bdd347"
+    },
+    {
+      "name": "queue-compute",
+      "va": "0xfffffc20003b0000",
+      "size": 9408,
+      "offset": 1497072,
+      "begin_monotonic_ns": 71257032941,
+      "end_monotonic_ns": 71257086540,
+      "sha256": "9f055ef16b1f2bf30648f3d4ba6f6882ad5a787fb754c409f4150a99de9e7229"
+    },
+    {
+      "name": "ring-state-compute",
+      "va": "0xfffffc20003b8000",
+      "size": 96,
+      "offset": 1506544,
+      "begin_monotonic_ns": 71257086707,
+      "end_monotonic_ns": 71257087332,
+      "sha256": "da8070b0b2bffdbec45890c9eda0f3d0a80d894635b6bbe6ee7cfc8c47ba5d32"
+    },
+    {
+      "name": "compute-notification",
+      "va": "0xfffffc20003a0000",
+      "size": 512,
+      "offset": 1506704,
+      "begin_monotonic_ns": 71257087623,
+      "end_monotonic_ns": 71257090667,
+      "sha256": "0197c06c32d2658982735066ee563a94f8b30c594421207d486a0d4890b03d02"
+    },
+    {
+      "name": "compute-threshold",
+      "va": "0xfffffc20003a8000",
+      "size": 8,
+      "offset": 1507280,
+      "begin_monotonic_ns": 71257090834,
+      "end_monotonic_ns": 71257093043,
+      "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc"
+    },
+    {
+      "name": "compute-user-stamp",
+      "va": "0xfffffc20003e0000",
+      "size": 8,
+      "offset": 1507352,
+      "begin_monotonic_ns": 71257093251,
+      "end_monotonic_ns": 71257094626,
+      "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc"
+    },
+    {
+      "name": "compute-firmware-stamp",
+      "va": "0xfffffc20003d8000",
+      "size": 8,
+      "offset": 1507424,
+      "begin_monotonic_ns": 71257094835,
+      "end_monotonic_ns": 71257096211,
+      "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc"
+    },
+    {
+      "name": "client-notifications",
+      "va": "0xfffffc2001340000",
+      "size": 4096,
+      "offset": 1507496,
+      "begin_monotonic_ns": 71257096711,
+      "end_monotonic_ns": 71257120280,
+      "sha256": "09069990609256f5801ca2cc86795d04ebddec1d468da6a5cd2647cdca8a50a3"
+    },
+    {
+      "name": "compute-command-mappings",
+      "va": "0x7000080000",
+      "size": 24,
+      "offset": 1511656,
+      "begin_monotonic_ns": 71257137121,
+      "end_monotonic_ns": 71257137246,
+      "sha256": "3a5e7c01061503031a3a13dd7bd078e548dda3e138086bc22a38da0b61a22e82"
+    },
+    {
+      "name": "compute-command",
+      "va": "0xfffffc2001430000",
+      "size": 8192,
+      "offset": 1511744,
+      "begin_monotonic_ns": 71257137621,
+      "end_monotonic_ns": 71257183841,
+      "sha256": "7289fb50061e7b59b20c21c1ab95e02d619f0e445477ba762f3642c7572e141f"
+    },
+    {
+      "name": "compute-preemption",
+      "va": "0xfffffc2000b20000",
+      "size": 16384,
+      "offset": 1520000,
+      "begin_monotonic_ns": 71257184591,
+      "end_monotonic_ns": 71257278391,
+      "sha256": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe"
+    },
+    {
+      "name": "compute-auxiliary",
+      "va": "0xfffffc2000b28000",
+      "size": 16384,
+      "offset": 1536448,
+      "begin_monotonic_ns": 71257279058,
+      "end_monotonic_ns": 71257374650,
+      "sha256": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe"
+    },
+    {
+      "name": "compute-context-store",
+      "va": "0xfffffc2001258000",
+      "size": 262144,
+      "offset": 1552896,
+      "begin_monotonic_ns": 71257379527,
+      "end_monotonic_ns": 71258885271,
+      "sha256": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90"
+    },
+    {
+      "name": "compute-pool-state",
+      "va": "0xfffffc200129c000",
+      "size": 131072,
+      "offset": 1815104,
+      "begin_monotonic_ns": 71258887981,
+      "end_monotonic_ns": 71259640334,
+      "sha256": "d31fbd5d0d167d67d45a8bdec3f8d394b507dbdda54c8c7fb7515466eeca3c50"
+    },
+    {
+      "name": "compute-page-list",
+      "va": "0xfffffc2000b30000",
+      "size": 16384,
+      "offset": 1946240,
+      "begin_monotonic_ns": 71259640875,
+      "end_monotonic_ns": 71259735092,
+      "sha256": "e73479ff3ed6ee60865cc5ce20d910cc3d152ba2bf2a1794f89568fe89b4a3d8"
+    },
+    {
+      "name": "compute-counter",
+      "va": "0xfffffc2000b38000",
+      "size": 8,
+      "offset": 1962688,
+      "begin_monotonic_ns": 71259735259,
+      "end_monotonic_ns": 71259735592,
+      "sha256": "7c9fa136d4413fa6173637e883b6998d32e1d675f88cddff9dcbcf331820f4b8"
+    },
+    {
+      "name": "compute-retired-command",
+      "va": "0xfffffc2001118000",
+      "size": 8192,
+      "offset": 1962760,
+      "begin_monotonic_ns": 71259736801,
+      "end_monotonic_ns": 71259784106,
+      "sha256": "c777b446ddc9c84464e280cef64d81a50b2996e443d49856dfec2c694003664a"
+    }
+  ],
+  "sha256": "8e9dbc4620fd128ccca7385670fc5a1c5fa14eb123744f6987d60a18bc9b28d5",
+  "note": "Sealed fault-only sequential observations. No atomicity or completion claim.",
+  "source": "/sys/class/devcoredump/devcd1/data",
+  "boot_id": "0875c314-d6d5-40b6-804d-b2ded9b689e7",
+  "file": "g16-fault-devcd1-job137.bin"
+}
