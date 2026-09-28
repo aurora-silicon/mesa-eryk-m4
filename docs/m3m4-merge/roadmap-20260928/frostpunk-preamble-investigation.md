@@ -250,3 +250,21 @@ Satisfactory DX11 menu now differs from the older M4 reference by up to
 and 2/255 for gameplay, suggesting the corrected helper semantics changed
 both paths. Retain the old-reference failure and collect corrected M4 output
 before approving a new reference or these timings.
+
+### Adjacent facing and Satisfactory follow-up
+
+A stronger helper test covers a 63x63 target with 98 triangles, alternating
+front/back facing across each of 49 cells. Pair
+`g16-frontface-mixed.vert` with `g16-frontface-derivative.frag`, disable culling,
+and draw three vertices per instance. Both original drivers fail at pixel 7;
+both corrected drivers pass every one of 3,969 pixels under their guards.
+This excludes that specific mixed-facing helper-lifetime hypothesis for the
+remaining small differences, rather than broadening any image tolerance.
+
+Fresh ordinary M4 Satisfactory DX11 menu agrees with corrected M3 ordinary
+and preamble output within the existing 4/255 policy. The corrected menu
+reference is reviewed and old-reference failures remain retained. Gameplay
+ordinary M4 and ordinary M3 are byte-exact in all three saved images, but
+M3 preambles change 70 pixels at frame 16 and 54 at frame 31, by at most 2/255.
+Gameplay's existing policy is exact, so this remains a failed qualification;
+no gameplay timing approval or tolerance change is made.
