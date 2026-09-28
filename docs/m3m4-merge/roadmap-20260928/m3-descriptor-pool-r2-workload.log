@@ -1,0 +1,6 @@
+Device: Apple M3 Pro (G15S B1)
+MAP_FAILURE injected fd=4 bytes=16384 offset=0x112ee4000
+DESCRIPTOR_MAP_RESULT injected=1 result=-1
+PASS: descriptor map failure then 64x64 fragment writes bad=0/4096
+
+DESCRIPTOR_MAP_DIAGNOSTIC_COMPLETE matched=True

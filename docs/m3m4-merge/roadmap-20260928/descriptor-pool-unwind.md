@@ -13,5 +13,10 @@ backing and CPU-map failures plus wide padding accounting with the fix. ARM full
 Mesa build passes. Generic util_vma allocation failure remains outside this fix.
 
 The hardware oracle now has an optional descriptor-pool failure mode followed by
-same-device retry and 4096 checked fragment outputs. Hardware validation pending;
-this binary has not replaced the running broader preamble replay candidate.
+same-device retry and 4096 checked fragment outputs. M3 passes injected mapping failure followed by same-device retry and all 4096
+fragment outputs, then 178 rendering/memory CTS cases (six unsupported). The
+first attempt failed in setup because the wrapper referenced a nonexistent
+injector filename; the guard recovered by reboot, before GPU submission. Its
+original receipt remains separate from the corrected pass. M4 qualification
+is pending its ongoing preamble replay campaign. This private binary has not
+replaced that campaign candidate or either normal desktop.

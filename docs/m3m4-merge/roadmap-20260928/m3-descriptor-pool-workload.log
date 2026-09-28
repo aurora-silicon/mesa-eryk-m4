@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/root/check-descriptor-map.py", line 5, in <module>
+    (output/'descriptor-map-identity.json').write_text(json.dumps({str(p):hashlib.file_digest(p.open('rb'),'sha256').hexdigest() for p in files},indent=2))
+                                                                                              ~~~~~~^^^^^^
+  File "/usr/lib64/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/root/asahi-descriptor-map-failure.so'
