@@ -191,3 +191,33 @@ localized to x=2081..2090/y=990..1005. The first two images match. This run fail
 the unchanged image policy and receives no timing approval. Keep the reset and
 localized mismatch open; neither invalidates the independently reproduced
 front-facing fix, and neither is grounds for enabling preambles by default.
+
+### Repeated checks and matched M3 timing
+
+After the correction, three ordinary M3 timings are 1.661571154,
+1.663252814 and 1.662818209 FPS; three read-only memory-preamble timings are
+2.432703743, 2.428856547 and 2.434135885 FPS. Medians are 1.662818209 and
+2.432703743 FPS: a 46.30% increase with the same trace, binary and policy,
+following one warmup per mode. These are timing runs without image readback,
+separate from correctness checks. Peak temperatures were 91–98.5 C under the
+user-authorized development policy. This is not a default-enable decision.
+
+Three further M3 preamble checks and three M4 ordinary checks all match the
+corrected reference at frames 1/16/31: at most 16 changed pixels and 2/255.
+Four subsequent M4 preamble checks also match (at most 19 pixels and 2/255),
+but do not explain or erase the earlier localized mismatch.
+
+An ordinary M4 replay, 20260928T140413177873Z, hits its 90-second wall bound
+with two screenshots retained. Its guard terminates and disarms normally;
+GPU retirements continue, the boot does not change, and the replay thread
+waits normally on a sync object. Peak temperature is 105.75 C, below the
+120 C emergency policy, with CPU clocks reduced to 912/1860 MHz. This is
+an incomplete runtime-limited check, not evidence of a GPU hang. The next
+three ordinary checks complete with a 170-second replay bound; the watchdog
+remains 60 seconds. Screenshot-check durations are not performance scores.
+
+The earlier cold preamble reset remains unexplained. The last retained
+process sample is in CPU compilation with reduced CPU limits; a long gap
+without GPU retirements is a possible watchdog trigger, not an established
+cause. The host now independently records process stacks during repeats.
+No watchdog renewal, temperature threshold or image tolerance was relaxed.
