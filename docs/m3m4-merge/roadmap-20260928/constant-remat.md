@@ -16,7 +16,7 @@ sometimes adding substantial instructions. No hardware speedup is inferred from
 this. The older shader statistics' threads field is not measured AGX3B occupancy.
 The opt-in implementation reproduces all experimental binary hashes; with the
 option absent, all 123 hashes match the original compiler. All 306 compiler unit
-tests pass, and both host and ARM Vulkan builds pass. Hardware checks are pending.
+tests pass, and both host and ARM Vulkan builds pass. Hardware checks are recorded below.
 
 Private input binaries remain in gpu-replay-bench. The adjacent profile records
 input hashes, private provenance paths and before/after compiler statistics.
@@ -42,4 +42,15 @@ existing sustained-power policy. No thermal/power limits were changed.
 M4 also passes all eight retained register-heavy compute/barrier oracles with
 64–1024 threads and 32/80 live values, checking every output and unchanged input
 byte. The final implementation's hash is 504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85.
-M3 hardware qualification of this experiment waits for its full CTS to finish.
+After its full CTS completed, M3 passed 178 rendering/external-memory cases
+(six unsupported) and all eight register-heavy full-buffer oracles with the r2
+binary. This establishes those correctness checks, not a performance gain.
+
+The first M3 register-oracle attempt copied a legacy M4-only executable and
+omitted the newer oracle's M4_ORACLE_DEVICE=M3 selection. It exited before
+creating a logical device or submitting a shader. Its guard retained watchdog
+recovery; original failure receipt and log are preserved. The current shared
+oracle source already supports explicit M3/M4 selection; rebuilt it from the
+recorded source and used that selector on the corrected attempt, which passed
+all eight cases with eight verified kernel retirements. This is a
+test setup failure, not a GPU correctness failure.

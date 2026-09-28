@@ -1,0 +1,9 @@
+PASS: local64-live32
+PASS: local64-live80
+PASS: local256-live32
+PASS: local256-live80
+PASS: local512-live32
+PASS: local512-live80
+PASS: local1024-live32
+PASS: local1024-live80
+PASS: 8 register-heavy barrier cases, 64..1024 threads, exact full buffers

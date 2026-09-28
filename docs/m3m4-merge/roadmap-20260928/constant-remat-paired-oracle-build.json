@@ -1,0 +1,10 @@
+{
+  "source": "tools/vk-buffer-oracle.c",
+  "source_sha256": "4b59afa7d2e46dbf405b86c7ac89dd78096ccad17306df2b37544349d75e040f",
+  "binary_sha256": "fcd7b8186cca0473a30e17d62eb9602d6fd1bedbae3c67006e7fb7628a2e8f0c",
+  "compiler": "aarch64-linux-gnu-gcc -O2 -Wall -Wextra -I mesa/m3m4-merged/include tools/vk-buffer-oracle.c -ldl",
+  "device_environment": {
+    "M3": "M4_ORACLE_DEVICE=M3",
+    "M4": "M4_ORACLE_DEVICE=M4"
+  }
+}

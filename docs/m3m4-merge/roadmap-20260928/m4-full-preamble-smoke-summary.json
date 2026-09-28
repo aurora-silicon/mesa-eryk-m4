@@ -1,0 +1,24 @@
+{
+  "selected": 184,
+  "recorded": 184,
+  "completed": 184,
+  "counts": {
+    "Pass": 178,
+    "NotSupported": 6
+  },
+  "classifications": {
+    "regression": 184
+  },
+  "elapsed_seconds": 4.94763088398031,
+  "preparation_seconds": 1.36641206900822,
+  "runner_seconds": 3.0463125629999013,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d4176ca8522cb738f77f777dbe103afdfdc816232b7d643a0cdef4cea9c4e484",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T105945819246Z-m4-full-preamble-smoke",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 67.5,
+  "healthy": true
+}

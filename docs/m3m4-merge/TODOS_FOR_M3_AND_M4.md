@@ -461,3 +461,9 @@ carry enough retained evidence for another developer to reproduce them.
   database hash,original non-pass rows and approved revision identities. This
   completes indexed coverage, not single-revision qualification or the open
   intermittent XCB audit investigation.
+
+- 2026-09-28: M3 completes rematerialization checks after the catalog: 178 Pass,
+  six unsupported and eight full-buffer register-heavy oracles pass. Retained
+  the initial wrong-device test setup failure separately. A complete shared
+  Vulkan/Zink/EGL package passes 178 render/memory cases on each GPU with
+  read-only preambles enabled (six NS each); broader game replays are running.
