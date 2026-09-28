@@ -221,3 +221,32 @@ process sample is in CPU compilation with reduced CPU limits; a long gap
 without GPU retirements is a possible watchdog trigger, not an established
 cause. The host now independently records process stacks during repeats.
 No watchdog renewal, temperature threshold or image tolerance was relaxed.
+
+### M4 timing and broader compiler qualification
+
+M4 now completes three ordinary timings (0.800853125, 0.761814353,
+0.761858402 FPS) and three preamble timings (1.221102788, 1.236407068,
+1.252184638 FPS), following one warmup per mode. Medians are 0.761858402
+and 1.236407068 FPS, a 62.29% guarded-workload improvement. The unchanged
+power policy varies the CPU/GPU limits during these runs; this is not a
+clock-normalized compiler speedup or a maximum-performance claim. Original
+clock, temperature, frame-time and completion records are retained. Earlier
+M4 mismatch/reset incidents remain open and preambles stay opt-in.
+
+Offline recompilation of the isolated original Frostpunk fragment with the
+helper-corrected compiler reduces main-shader instructions from 9,518 to 3,960
+and scratch from 36 bytes (9 spills/9 fills) to zero with read-only preambles.
+The main register count remains 191; 5,897 instructions move to the preamble,
+which uses 64 registers and no scratch. This is one shader's compiler cost,
+not a GPU timing measurement or an aggregate cost for the game.
+
+The complete rebuilt dd452c4dd66 package also passes M3's 184-case memory
+selection (178 Pass, 6 NotSupported) with preambles enabled. Ten alternating
+fresh-cache SuperTuxKart checks, five per mode, match the retained images
+exactly. They do not explain the earlier intermittent SuperTuxKart failure.
+
+Satisfactory DX11 menu now differs from the older M4 reference by up to
+123/255. Corrected M3 ordinary/preamble runs agree within 4/255 for the menu
+and 2/255 for gameplay, suggesting the corrected helper semantics changed
+both paths. Retain the old-reference failure and collect corrected M4 output
+before approving a new reference or these timings.

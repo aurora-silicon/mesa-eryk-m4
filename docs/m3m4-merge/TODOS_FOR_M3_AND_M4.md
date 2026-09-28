@@ -514,3 +514,14 @@ no per-shader workaround, tolerance relaxation or default enablement.
   M4 full preamble replay exposes one unresolved watchdog recovery and, on a
   completed repeat, a localized final-frame mismatch. Preserve both incidents
   and keep preambles opt-in while diagnosing them; no tolerance relaxation.
+
+- Helper-corrected compiler follow-up: matched Frostpunk medians improve
+  1.663 to 2.433 FPS on M3 (+46.30%) and 0.762 to 1.236 FPS on M4 (+62.29%).
+  M4 clocks vary under its unchanged power policy; these are guarded workload
+  results. Offline isolated fragment cost drops from 9,518 to 3,960 main
+  instructions and eliminates spills. Exact fresh-cache SuperTuxKart checks
+  pass ten times on M3; rebuilt-package memory CTS gives 178 Pass / 6 NS.
+  Satisfactory DX11 ordinary and optimized M3 images closely agree but differ
+  from old references, so corrected M4 reference checks are in progress.
+  Preambles remain opt-in; intermittent M4 failure causes and the roadmap
+  acceptance criteria are still open.
