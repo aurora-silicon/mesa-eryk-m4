@@ -190,9 +190,40 @@ main(void)
    expect_refused("odd src register",
                   agx3_funop_encode(AGX_ISA_ENCODING_AGX3B, AGX3_FUNOP_FLOOR,
                                     0, 3, false, false, false, 0, b, &len));
-   expect_refused("register out of range",
-                  agx3_funop_encode(AGX_ISA_ENCODING_AGX3B, AGX3_FUNOP_FLOOR,
-                                    128, 0, false, false, false, 0, b, &len));
+   /* Native Gen9 allocation admits halves 0..191; Gen10 retains the
+    * 128-half contract. Test both source and destination bounds;
+    * do not classify a valid Gen9 half-register 128 as an out-of-range input.
+    * Existing corpus vectors above remain the byte-encoding oracle.
+    */
+   for (unsigned e = 0; e < 2; ++e) {
+      const unsigned limit = e == 0 ? 192 : 128;
+      expect_refused("destination past register bank",
+                     agx3_funop_encode(encs[e], AGX3_FUNOP_FLOOR, limit, 0,
+                                       false, false, false, 0, b, &len));
+      expect_refused("source past register bank",
+                     agx3_funop_encode(encs[e], AGX3_FUNOP_FLOOR, 0, limit,
+                                       false, false, false, 0, b, &len));
+   }
+
+   uint8_t low[AGX3_FUNOP_MAX_LENGTH];
+   uint8_t low_len;
+   bool low_ok = agx3_funop_encode(AGX_ISA_ENCODING_AGX3B, AGX3_FUNOP_FLOOR,
+                                  0, 0, false, false, false, 0, low, &low_len);
+   const uint16_t high[] = {128, 190};
+   for (unsigned i = 0; i < 2; ++i) {
+      for (unsigned source = 0; source < 2; ++source) {
+         checks++;
+         bool ok = agx3_funop_encode(
+            AGX_ISA_ENCODING_AGX3B, AGX3_FUNOP_FLOOR,
+            source ? 0 : high[i], source ? high[i] : 0,
+            false, false, false, 0, b, &len);
+         if (!low_ok || !ok || len != low_len || !memcmp(b, low, len)) {
+            fprintf(stderr, "extended %s %u refused or aliases low bank (ok=%u len=%u)\n",
+                    source ? "source" : "destination", high[i], ok, len);
+            failures++;
+         }
+      }
+   }
 
    /* A derivative source has no discard field. Last-use hints must remain
     * encodable and agree with the otherwise identical retained source. */

@@ -10,16 +10,31 @@ sys.path.insert(0, str(COMPILER))
 from agx_opcodes import opcodes
 
 
-assert opcodes["mov_imm"].agx3_mnemonic == "ldimm"
-assert opcodes["stop"].agx3_mnemonic == "end"
-assert opcodes["threadgroup_barrier"].agx3_mnemonic == "barrier"
-assert opcodes["scoped_barrier_agx3"].agx3_mnemonic == "barrier"
-assert opcodes["scs_load_agx3"].agx3_mnemonic == "ldscs"
-assert opcodes["scs_store_agx3"].agx3_mnemonic == "stscs"
-assert opcodes["scs_load_uniform_indexed_agx3"].agx3_mnemonic == "ldscs"
-assert opcodes["scs_store_uniform_indexed_agx3"].agx3_mnemonic == "stscs"
-assert sum(op.agx3_mnemonic is not None for op in opcodes.values()) == 8
-print("agx3 opcode mapping: mov_imm -> ldimm, stop -> end, "
-      "threadgroup/scoped barriers -> barrier, direct/uniform-indexed SCS "
-      "-> ldscs/stscs; "
-      "all other opcodes fail closed")
+# Keep an explicit whitelist, including the native IR operations added for
+# sampler descriptors, packed colour and arithmetic. A count alone both
+# rejects valid additions and misses a substitution with the same count.
+expected = {
+    "mov_imm": "ldimm",
+    "fltnorm_agx3": "fltnorm",
+    "normflt_agx3": "normflt",
+    "imul_high_div3_agx3": "imadd",
+    "stop": "end",
+    "threadgroup_barrier": "barrier",
+    "yield_agx3": "yield",
+    "scoped_barrier_agx3": "barrier",
+    "scs_load_agx3": "ldscs",
+    "scs_store_agx3": "stscs",
+    "scs_load_uniform_indexed_agx3": "ldscs",
+    "scs_store_uniform_indexed_agx3": "stscs",
+    "pack_rgb10a2_agx3": "pack",
+    "unpack_rgb10a2_agx3": "unpack",
+    "pack_min_lod_agx3": "pack_smpir",
+    "pack_layer_agx3": "pack_smpir",
+    "pack_sample_agx3": "pack_smpir",
+    "pack_lod_offset_agx3": "pack_smpir",
+}
+actual = {name: op.agx3_mnemonic for name, op in opcodes.items()
+          if op.agx3_mnemonic is not None}
+assert actual == expected, (actual, expected)
+print(f"agx3 opcode mapping: all {len(expected)} named mappings match; "
+      "unlisted operations have no direct mnemonic mapping")

@@ -589,3 +589,20 @@ and a safe idle-aware policy remain open. See
   Two-export lifetime regression and all 219 backend packing tests pass;
   four-program 4K GPU-written uniform checks match 265,420,800 values per GPU.
   The separate memory-preamble game image discrepancy remains unresolved.
+
+
+- [x] Replace two stale host-test contracts without regenerating instruction
+  goldens: the opcode metadata test now checks all 18 explicitly reviewed
+  mnemonic mappings instead of the obsolete count of eight. Unary encoding
+  tests cover valid Gen9 half-registers 128/190 and reject source/destination
+  192, while Gen10 still rejects 128; all 66 checks and the mapping test pass.
+  The allocator already bounds Gen9 arithmetic to halves 0..191. Six of the
+  original ten host-suite failures remain; these changes add no hardware
+  instruction-support or performance claim.
+- Experimental fragment preamble publication: bounded composition and late
+  dependency release committed as `b36c4b1065a`. Both GPUs complete the same
+  2,570-case regression selection: 2,262 Pass, 308 NotSupported, zero failures.
+  M4 completes ten exact full Satisfactory replays; M3 completes nine exact
+  then the previously observed two-pixel baseline difference. Three further
+  M3 replays of the final size-hardened build are exact. Keep preambles opt-in,
+  retain the baseline difference, and finish matched performance measurements.
