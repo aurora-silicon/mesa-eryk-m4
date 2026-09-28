@@ -1,0 +1,1088 @@
+[
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/benchmark.json",
+    "session": "roadmap-20260928-preamble-control",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "check",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "nopromote",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 2.410061655,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 99250,
+      "Ta000m": 84500,
+      "Te000m": 78250,
+      "Te001m": 96750,
+      "Tp000m": 93250,
+      "Tp001m": 99250
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/evidence",
+    "measurement_environment": {},
+    "image": "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/evidence/remote/screenshot_frame_16.png",
+    "images": [
+      "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/evidence/remote/screenshot_frame_1.png",
+      "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/evidence/remote/screenshot_frame_16.png",
+      "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/evidence/remote/screenshot_frame_31.png"
+    ],
+    "review": {
+      "static_menu": false,
+      "static_menu_reason": "",
+      "images_sha256": {
+        "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/evidence/remote/screenshot_frame_1.png": "a286a3edc8e53a2fad73753a1211dccbead4546a3b629f7e8dcf4df95e5f991e",
+        "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/evidence/remote/screenshot_frame_16.png": "d95ef980755a475309b373c93fab249400c0cbba48bdf36b434cc4108ff4d97a",
+        "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/evidence/remote/screenshot_frame_31.png": "2b8c3b4702f0704ecac8768718f0cf19341b24bd40a25e659026feab33ac7a17"
+      },
+      "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+      "limitation": "Exact return to the approved 20260923T151331 M3 images after address fallback. The initial newer-reference mismatch and both comparisons are retained in provenance/full-suite-20260926; no new tolerance.",
+      "origin": "results/0ad-vulkan/m4/20260926T171751398563Z-bench-0ad-vulkan-check/benchmark.json",
+      "reference_sha256": "11009cf130ed742e879cc7890160abf38afe7d080f736dbd8b068960aee5fb67",
+      "comparisons": [
+        {
+          "maximum_error": 0,
+          "mean_absolute_error": 0.0,
+          "changed_pixels_fraction": 0.0,
+          "out_of_tolerance_fraction": 0.0
+        },
+        {
+          "maximum_error": 0,
+          "mean_absolute_error": 0.0,
+          "changed_pixels_fraction": 0.0,
+          "out_of_tolerance_fraction": 0.0
+        },
+        {
+          "maximum_error": 0,
+          "mean_absolute_error": 0.0,
+          "changed_pixels_fraction": 0.0,
+          "out_of_tolerance_fraction": 0.0
+        }
+      ],
+      "tolerance": 0,
+      "edge_max": 0,
+      "edge_fraction": 0,
+      "tolerance_reason": "",
+      "channels": "RGB"
+    }
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/benchmark.json",
+    "session": "roadmap-20260928-preamble-promote",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "check",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 2.398676724,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 102750,
+      "Ta000m": 88250,
+      "Te000m": 81500,
+      "Te001m": 101250,
+      "Tp000m": 97250,
+      "Tp001m": 102750
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/evidence",
+    "measurement_environment": {},
+    "image": "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/evidence/remote/screenshot_frame_16.png",
+    "images": [
+      "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/evidence/remote/screenshot_frame_1.png",
+      "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/evidence/remote/screenshot_frame_16.png",
+      "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/evidence/remote/screenshot_frame_31.png"
+    ],
+    "review": {
+      "static_menu": false,
+      "static_menu_reason": "",
+      "images_sha256": {
+        "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/evidence/remote/screenshot_frame_1.png": "a286a3edc8e53a2fad73753a1211dccbead4546a3b629f7e8dcf4df95e5f991e",
+        "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/evidence/remote/screenshot_frame_16.png": "d95ef980755a475309b373c93fab249400c0cbba48bdf36b434cc4108ff4d97a",
+        "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/evidence/remote/screenshot_frame_31.png": "2b8c3b4702f0704ecac8768718f0cf19341b24bd40a25e659026feab33ac7a17"
+      },
+      "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+      "limitation": "Exact return to the approved 20260923T151331 M3 images after address fallback. The initial newer-reference mismatch and both comparisons are retained in provenance/full-suite-20260926; no new tolerance.",
+      "origin": "results/0ad-vulkan/m4/20260926T171751398563Z-bench-0ad-vulkan-check/benchmark.json",
+      "reference_sha256": "11009cf130ed742e879cc7890160abf38afe7d080f736dbd8b068960aee5fb67",
+      "comparisons": [
+        {
+          "maximum_error": 0,
+          "mean_absolute_error": 0.0,
+          "changed_pixels_fraction": 0.0,
+          "out_of_tolerance_fraction": 0.0
+        },
+        {
+          "maximum_error": 0,
+          "mean_absolute_error": 0.0,
+          "changed_pixels_fraction": 0.0,
+          "out_of_tolerance_fraction": 0.0
+        },
+        {
+          "maximum_error": 0,
+          "mean_absolute_error": 0.0,
+          "changed_pixels_fraction": 0.0,
+          "out_of_tolerance_fraction": 0.0
+        }
+      ],
+      "tolerance": 0,
+      "edge_max": 0,
+      "edge_fraction": 0,
+      "tolerance_reason": "",
+      "channels": "RGB"
+    }
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094212176050Z-roadmap-m4-0ad-control-warmup-0/benchmark.json",
+    "session": "roadmap-20260928-preamble-control",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "warmup",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "nopromote",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 0.777127044,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 92500,
+      "Ta000m": 78250,
+      "Te000m": 72250,
+      "Te001m": 88250,
+      "Tp000m": 88500,
+      "Tp001m": 92500
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094212176050Z-roadmap-m4-0ad-control-warmup-0/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/benchmark.json",
+    "correctness_check_sha256": "f90904a4e4ef1a22f621e977d444d5b81cdddcdaedfd184d3f244eab5d5cfe87"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094215436032Z-roadmap-m4-0ad-control-time-1/benchmark.json",
+    "session": "roadmap-20260928-preamble-control",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "time",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "nopromote",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 0.783517259,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 98000,
+      "Ta000m": 81750,
+      "Te000m": 78000,
+      "Te001m": 93500,
+      "Tp000m": 92750,
+      "Tp001m": 98000
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094215436032Z-roadmap-m4-0ad-control-time-1/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/benchmark.json",
+    "correctness_check_sha256": "f90904a4e4ef1a22f621e977d444d5b81cdddcdaedfd184d3f244eab5d5cfe87"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094218748339Z-roadmap-m4-0ad-control-time-2/benchmark.json",
+    "session": "roadmap-20260928-preamble-control",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "time",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "nopromote",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 0.771643504,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 101250,
+      "Ta000m": 85000,
+      "Te000m": 79750,
+      "Te001m": 96750,
+      "Tp000m": 96250,
+      "Tp001m": 101250
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094218748339Z-roadmap-m4-0ad-control-time-2/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/benchmark.json",
+    "correctness_check_sha256": "f90904a4e4ef1a22f621e977d444d5b81cdddcdaedfd184d3f244eab5d5cfe87"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094221999804Z-roadmap-m4-0ad-control-time-3/benchmark.json",
+    "session": "roadmap-20260928-preamble-control",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "time",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "nopromote",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 0.772817065,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 103250,
+      "Ta000m": 86750,
+      "Te000m": 81500,
+      "Te001m": 98500,
+      "Tp000m": 98000,
+      "Tp001m": 103250
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094221999804Z-roadmap-m4-0ad-control-time-3/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094035055205Z-roadmap-m4-0ad-preamble-control/benchmark.json",
+    "correctness_check_sha256": "f90904a4e4ef1a22f621e977d444d5b81cdddcdaedfd184d3f244eab5d5cfe87"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094225314335Z-roadmap-m4-0ad-promote-warmup-0/benchmark.json",
+    "session": "roadmap-20260928-preamble-promote",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "warmup",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 0.793147547,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 105750,
+      "Ta000m": 88750,
+      "Te000m": 83000,
+      "Te001m": 101250,
+      "Tp000m": 99750,
+      "Tp001m": 105750
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094225314335Z-roadmap-m4-0ad-promote-warmup-0/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/benchmark.json",
+    "correctness_check_sha256": "a878516c69c87a4fe6724afe8209d7f18f309e4c29759d9658017fd49c89fb24"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094228623734Z-roadmap-m4-0ad-promote-time-1/benchmark.json",
+    "session": "roadmap-20260928-preamble-promote",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "time",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 0.793546876,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 104750,
+      "Ta000m": 90250,
+      "Te000m": 84250,
+      "Te001m": 102250,
+      "Tp000m": 99000,
+      "Tp001m": 104500
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094228623734Z-roadmap-m4-0ad-promote-time-1/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/benchmark.json",
+    "correctness_check_sha256": "a878516c69c87a4fe6724afe8209d7f18f309e4c29759d9658017fd49c89fb24"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094232070346Z-roadmap-m4-0ad-promote-time-2/benchmark.json",
+    "session": "roadmap-20260928-preamble-promote",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "time",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 0.793014185,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 102500,
+      "Ta000m": 88250,
+      "Te000m": 84500,
+      "Te001m": 98500,
+      "Tp000m": 99500,
+      "Tp001m": 102500
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094232070346Z-roadmap-m4-0ad-promote-time-2/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/benchmark.json",
+    "correctness_check_sha256": "a878516c69c87a4fe6724afe8209d7f18f309e4c29759d9658017fd49c89fb24"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094235320795Z-roadmap-m4-0ad-promote-time-3/benchmark.json",
+    "session": "roadmap-20260928-preamble-promote",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "time",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "true",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+    },
+    "seconds": 0.810947371,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 102250,
+      "Ta000m": 90750,
+      "Te000m": 85750,
+      "Te001m": 100000,
+      "Tp000m": 99000,
+      "Tp001m": 102250
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094235320795Z-roadmap-m4-0ad-promote-time-3/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094045726438Z-roadmap-m4-0ad-preamble-promote/benchmark.json",
+    "correctness_check_sha256": "a878516c69c87a4fe6724afe8209d7f18f309e4c29759d9658017fd49c89fb24"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/benchmark.json",
+    "session": "roadmap-20260928-preamble-default-baseline",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "check",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "false",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "false"
+    },
+    "seconds": 2.727814553,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 100500,
+      "Ta000m": 85750,
+      "Te000m": 79750,
+      "Te001m": 97500,
+      "Tp000m": 94500,
+      "Tp001m": 100500
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/evidence",
+    "measurement_environment": {},
+    "image": "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/evidence/remote/screenshot_frame_16.png",
+    "images": [
+      "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/evidence/remote/screenshot_frame_1.png",
+      "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/evidence/remote/screenshot_frame_16.png",
+      "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/evidence/remote/screenshot_frame_31.png"
+    ],
+    "review": {
+      "static_menu": false,
+      "static_menu_reason": "",
+      "images_sha256": {
+        "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/evidence/remote/screenshot_frame_1.png": "a286a3edc8e53a2fad73753a1211dccbead4546a3b629f7e8dcf4df95e5f991e",
+        "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/evidence/remote/screenshot_frame_16.png": "d95ef980755a475309b373c93fab249400c0cbba48bdf36b434cc4108ff4d97a",
+        "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/evidence/remote/screenshot_frame_31.png": "2b8c3b4702f0704ecac8768718f0cf19341b24bd40a25e659026feab33ac7a17"
+      },
+      "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+      "limitation": "Exact return to the approved 20260923T151331 M3 images after address fallback. The initial newer-reference mismatch and both comparisons are retained in provenance/full-suite-20260926; no new tolerance.",
+      "origin": "results/0ad-vulkan/m4/20260926T171751398563Z-bench-0ad-vulkan-check/benchmark.json",
+      "reference_sha256": "11009cf130ed742e879cc7890160abf38afe7d080f736dbd8b068960aee5fb67",
+      "comparisons": [
+        {
+          "maximum_error": 0,
+          "mean_absolute_error": 0.0,
+          "changed_pixels_fraction": 0.0,
+          "out_of_tolerance_fraction": 0.0
+        },
+        {
+          "maximum_error": 0,
+          "mean_absolute_error": 0.0,
+          "changed_pixels_fraction": 0.0,
+          "out_of_tolerance_fraction": 0.0
+        },
+        {
+          "maximum_error": 0,
+          "mean_absolute_error": 0.0,
+          "changed_pixels_fraction": 0.0,
+          "out_of_tolerance_fraction": 0.0
+        }
+      ],
+      "tolerance": 0,
+      "edge_max": 0,
+      "edge_fraction": 0,
+      "tolerance_reason": "",
+      "channels": "RGB"
+    }
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094549019520Z-roadmap-m4-0ad-default-baseline-warmup-0/benchmark.json",
+    "session": "roadmap-20260928-preamble-default-baseline",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "warmup",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "false",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "false"
+    },
+    "seconds": 1.102292338,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 103000,
+      "Ta000m": 86000,
+      "Te000m": 80750,
+      "Te001m": 98000,
+      "Tp000m": 98000,
+      "Tp001m": 103000
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094549019520Z-roadmap-m4-0ad-default-baseline-warmup-0/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/benchmark.json",
+    "correctness_check_sha256": "86717eb6f723f2652fd29923ebf6142f6e39cf918b1eeb0b6c95688a7a839c6c"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094552688195Z-roadmap-m4-0ad-default-baseline-time-1/benchmark.json",
+    "session": "roadmap-20260928-preamble-default-baseline",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "time",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "false",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "false"
+    },
+    "seconds": 1.109710778,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 103000,
+      "Ta000m": 86250,
+      "Te000m": 82250,
+      "Te001m": 98750,
+      "Tp000m": 97500,
+      "Tp001m": 103000
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094552688195Z-roadmap-m4-0ad-default-baseline-time-1/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/benchmark.json",
+    "correctness_check_sha256": "86717eb6f723f2652fd29923ebf6142f6e39cf918b1eeb0b6c95688a7a839c6c"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094556392314Z-roadmap-m4-0ad-default-baseline-time-2/benchmark.json",
+    "session": "roadmap-20260928-preamble-default-baseline",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "time",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "false",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "false"
+    },
+    "seconds": 1.115599836,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 105250,
+      "Ta000m": 88500,
+      "Te000m": 84000,
+      "Te001m": 100750,
+      "Tp000m": 99250,
+      "Tp001m": 105250
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094556392314Z-roadmap-m4-0ad-default-baseline-time-2/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/benchmark.json",
+    "correctness_check_sha256": "86717eb6f723f2652fd29923ebf6142f6e39cf918b1eeb0b6c95688a7a839c6c"
+  },
+  {
+    "path": "results/0ad-vulkan/m4/20260928T094600214298Z-roadmap-m4-0ad-default-baseline-time-3/benchmark.json",
+    "session": "roadmap-20260928-preamble-default-baseline",
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi2+",
+      "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+      "module_load_options": [
+        "debug_flags=0",
+        "g16_packet_commands=32"
+      ]
+    },
+    "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+    "case": "0ad-vulkan",
+    "machine": "m4",
+    "phase": "time",
+    "success": true,
+    "capture_sha256": "b9002a6ff89bcc9a0bd1dcc994018363b50772f056ba8a9f61fde5662ebe2962",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+    },
+    "driver_config_sha256": {
+      "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+    },
+    "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+    "protocol": "vulkan-completed-range-v1",
+    "environment": {
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "GALLIUM_DRIVER": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "ASAHI_MESA_DEBUG": "",
+      "AGX_MESA_DEBUG": "",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/0ad-vulkan",
+      "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+      "HK_M4_NATIVE_PREAMBLE": "false",
+      "AGX_NATIVE_MEMORY_PREAMBLE": "false"
+    },
+    "seconds": 1.124414125,
+    "measured_frames": 30,
+    "watchdog_verified": true,
+    "thermal_guard_passed": true,
+    "temperatures": {
+      "PMP aggregate die hotspot": 103750,
+      "Ta000m": 89500,
+      "Te000m": 85500,
+      "Te001m": 99500,
+      "Tp000m": 100750,
+      "Tp001m": 103750
+    },
+    "correctness": "pass",
+    "adaptations": [
+      "offscreen swapchain",
+      "memory translation: rebind",
+      "omit captured pipeline cache"
+    ],
+    "evidence": "results/0ad-vulkan/m4/20260928T094600214298Z-roadmap-m4-0ad-default-baseline-time-3/evidence",
+    "measurement_environment": {},
+    "correctness_check": "results/0ad-vulkan/m4/20260928T094538238368Z-roadmap-m4-0ad-preamble-default-baseline/benchmark.json",
+    "correctness_check_sha256": "86717eb6f723f2652fd29923ebf6142f6e39cf918b1eeb0b6c95688a7a839c6c"
+  }
+]
