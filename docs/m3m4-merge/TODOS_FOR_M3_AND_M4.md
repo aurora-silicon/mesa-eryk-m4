@@ -490,3 +490,8 @@ diagnostic object invalidated the earlier apparent wait successes; same-build
 negative control exposed it and the corrected results are retained separately.
 See `roadmap-20260928/frostpunk-preamble-investigation.md`. Preambles stay opt-in;
 no per-shader workaround, tolerance relaxation or default enablement.
+
+- Frostpunk follow-up: uniform-slot shifts, helper-marker and entry-control-flow
+  controls do not repair the error. A duplicated-load comparison repairs the
+  partial-motion boundary but not full motion; no production fix is claimed.
+  Temporary diagnostics remain outside the shared compiler defaults.

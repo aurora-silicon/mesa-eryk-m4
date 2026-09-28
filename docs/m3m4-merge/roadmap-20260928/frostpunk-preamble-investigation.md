@@ -42,18 +42,41 @@ desktop installation changed. All runs retain watchdog and thermal guards.
 ## Memory-read boundary
 
 A selected-source diagnostic cumulatively admits memory definitions by their
-indexed pre-preamble NIR definition. The last matching limit is694 (8 changed
-pixels, maximum1); limit695 reproduces17,346 pixels, maximum27. This permits one
-additional scalar32 `load_agx`: definition694, reading UBO byte offset132 after
+indexed pre-preamble NIR definition. The last matching limit is 694 (8 changed
+pixels, maximum 1); limit 695 reproduces 17,346 pixels, maximum 27. This permits one
+additional scalar 32-bit `load_agx`: definition 694, reading UBO byte offset 132 after
 native sparse-address translation. Its value contributes to the Y texture
 coordinate. The surrounding arithmetic remains per-lane. These are diagnostic
-frame1 results, not a full-capture qualification or a production restriction.
+frame 1 results, not a full-capture qualification or a production restriction.
 
 The two retained host compiles have identical floating-op counts in their
 lowered main NIR, but different address/control-flow and register allocation.
-The complete failing compiler input has404 uniform halves,64 preamble GPR
+The complete failing compiler input has 404 uniform halves, 64 preamble GPR
 halves, zero preamble scratch and no promoted-constant rodata. That rules out
 an overlap with a promoted-constant range for this shader. The compiler replay
 tool now prints those resource boundaries alongside its existing statistics;
 its generated shader binary remains byte-identical to the retained baseline.
 Disabling preamble float comparisons also retains the error.
+
+## Additional isolation controls
+
+Disabling register-cache hints, instruction scheduling or floating move folding
+retains the image error. Disabling all backend optimization cannot render this
+input: the compiler refuses an unlowered register-shift `extr`, and replay
+aborts at pipeline creation. This is an inconclusive diagnostic, not a GPU hang;
+the M3 boot and desktop remain healthy.
+
+Clearing the original-coverage marker on the backfacing special-register read
+also fails (17,541 pixels, maximum 27). An unconditional control-flow push/pop
+at main-shader entry fails (17,341, maximum 27). Shifting all generated uniform
+slots by 8 or 16 halves fails as well (18,233 / 17,344 pixels, maximum 27).
+None of these temporary changes is included in the production compiler.
+
+A second diagnostic duplicates definition 694 as a volatile main-shader read,
+compares its bits against the preamble value, and substitutes a large coordinate
+on inequality. Compiler inspection confirms both reads and the comparison remain.
+At the 695 boundary, this restores the sampled image (9 pixels, maximum 1), but
+it also changes uniform allocation and restores address control flow. With all
+memory motion admitted, the discrepancy remains (17,328, maximum 27). This does
+not establish a bad UBO value or a repair; it narrows the search toward the code
+changed by that instrumentation. All results use the existing fixed reference.
