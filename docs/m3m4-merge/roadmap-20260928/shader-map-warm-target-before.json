@@ -1,0 +1,43 @@
+{
+  "boot_id": "e50a8d84-5930-47e8-ac55-3b8bc3b4cef1",
+  "uptime_seconds": 35712.08,
+  "kernel": "7.1.9-dirtyroom-asahi2+",
+  "files": {
+    "/lib/modules/7.1.9-dirtyroom-asahi2+/kernel/drivers/gpu/drm/asahi/asahi.ko": "f7fbf4c085000da47cfa84424c72600de7dc979fdb32f24c2a00b4d73c130b48",
+    "/opt/asahi-m3m4-shader-map-20260928/asahi.json": "2651613aa1775cf9157968ee1eb5799a0d01e003abc248c55d803b3e578fb676",
+    "/opt/asahi-m3m4-shader-map-20260928/lib/libvulkan_asahi.so": "824d9206e1118758bf2612987488d462a717b9f928d973086e970c306538c33d",
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "29e658b1e23910bbba0d46ecadc7f3bfac623d9f04d7545ccf12ef0fe4fff5b9",
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "6c0be3eff86b9e4238522a3b9fe424efa366da85ad52348bb51c4e1d44e9429e",
+    "/root/asahi-map-failure.so": "fcd1e474d37c4f5ea7f5651544f1ac2cb56e36322bc66ce2654b369dd95ea771",
+    "/root/completion_progress.py": "038bc255d69622e05831ce6d96962d6f719005e310703fe0b52827471fdd4b86",
+    "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+    "/root/g16-fault-dump.py": "d27239583e956d931e6647459d30dfe0fd94c765f359283081de39604c569d43",
+    "/root/g16-submit-test/experiment_thermals.py": "ec637ec7ab390d0831a96e967f4f483833a06cfc1d3b2e2bdd5622e65e323d3d",
+    "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+    "/root/guarded-command.py": "c2a43ea67b9d12f460dea52548913fb27d048b12ae1f57aebd9282cae8643459",
+    "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471",
+    "/root/vk-command-map-failure": "41032b587e977e63ed7111a32004f5f58edf192dc332900555260cd17188a616"
+  },
+  "display_status": {
+    "/sys/kernel/debug/dri/soc:display-subsystem/m4_status": "completed 707\nfailed 0\nactive_fb 40\nimported 1\nswap_total_us 7728993\nswap_max_us 18312\n"
+  },
+  "board": {
+    "compatible": "apple,j713\u0000apple,t8132\u0000apple,arm-platform",
+    "model": "Apple MacBook Air (13-inch, M4, 2024)"
+  },
+  "boot_versions": {
+    "u-boot,version": "2026.07-g29cbf07060b9-dirty",
+    "asahi,system-fw-version": "unknown",
+    "asahi,iboot2-version": "mBoot-18000.161.10",
+    "asahi,m1n1-stage2-version": "992c1e1-dirty",
+    "asahi,os-fw-version": "unknown",
+    "asahi,iboot1-version": "mBoot-18000.161.10",
+    "asahi,m1n1-stage1-version": "a091e6f"
+  },
+  "declared_graphics_environment": {
+    "VK_DRIVER_FILES": "/opt/asahi-m3m4-shader-map-20260928/asahi.json",
+    "LD_LIBRARY_PATH": "/opt/asahi-m3m4-shader-map-20260928/lib",
+    "LD_PRELOAD": "/root/asahi-map-failure.so"
+  },
+  "unresolved_graphics_inputs": []
+}

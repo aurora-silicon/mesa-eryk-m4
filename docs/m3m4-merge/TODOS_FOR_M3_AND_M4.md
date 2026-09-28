@@ -388,3 +388,9 @@ carry enough retained evidence for another developer to reproduce them.
   injected ordinary-pool failure returns OOM and same-device fill/readback works,
   followed by 88 passing render cases. Unrestricted injection also exposed shader
   upload failure being hidden as FEATURE_NOT_PRESENT; fixing that separately.
+
+- 2026-09-28: Shader compilation/deserialization now propagates eager executable
+  upload/link errors instead of caching an incomplete shader and later reporting
+  FEATURE_NOT_PRESENT. M4 injected mapping OOM passes with and without disk cache,
+  same-device retry succeeds, and 178 render/memory cases pass (six unsupported).
+  Lazy graphics variants and complete memory-pressure qualification remain open.

@@ -2293,7 +2293,12 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
             nir_opt_if_optimize_phi_true_false | nir_opt_if_avoid_64bit_phis);
 }
 
-static void
+static struct hk_linked_shader *
+hk_fast_link_checked(struct hk_device *dev, bool fragment, struct hk_shader *main,
+                      struct agx_shader_part *prolog, struct agx_shader_part *epilog,
+                      unsigned nr_samples_shaded, VkResult *result);
+
+static VkResult
 hk_upload_shader(struct hk_device *dev, struct hk_shader *shader)
 {
    if (shader->b.info.has_preamble || shader->b.info.rodata.size_16) {
@@ -2308,7 +2313,7 @@ hk_upload_shader(struct hk_device *dev, struct hk_shader *shader)
                  "hk_upload_shader: executable preamble allocation failed "
                  "(%zu bytes, stage %u)\n",
                  size, (unsigned)shader->info.stage);
-         return;
+         return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       }
 
       void *map = agx_bo_map(shader->bo);
@@ -2319,14 +2324,14 @@ hk_upload_shader(struct hk_device *dev, struct hk_shader *shader)
                  size, (unsigned)shader->info.stage);
          agx_bo_unreference(&dev->dev, shader->bo);
          shader->bo = NULL;
-         return;
+         return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
       memcpy(map, shader->b.binary, size);
       if (agx_bo_sync_for_device(shader->bo, 0, size)) {
          agx_bo_unreference(&dev->dev, shader->bo);
          shader->bo = NULL;
-         return;
+         return vk_error(dev, VK_ERROR_UNKNOWN);
       }
       shader->preamble_addr =
          shader->bo->va->addr + shader->b.info.preamble_offset;
@@ -2334,7 +2339,11 @@ hk_upload_shader(struct hk_device *dev, struct hk_shader *shader)
 
    if (!shader->linked.ht) {
       /* If we only have a single variant, link now. */
-      shader->only_linked = hk_fast_link(dev, false, shader, NULL, NULL, 0);
+      VkResult result;
+      shader->only_linked =
+         hk_fast_link_checked(dev, false, shader, NULL, NULL, 0, &result);
+      if (!shader->only_linked)
+         return vk_error(dev, result);
    }
 
    if (shader->info.stage == MESA_SHADER_FRAGMENT) {
@@ -2348,6 +2357,8 @@ hk_upload_shader(struct hk_device *dev, struct hk_shader *shader)
          shader->b.info.sampler_state_count, false);
       cfg.texture_state_register_count = shader->b.info.texture_state_count;
    }
+
+   return VK_SUCCESS;
 }
 
 DERIVE_HASH_TABLE(hk_fast_link_key_vs);
@@ -3239,8 +3250,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    if (result != VK_SUCCESS)
       return vk_error(dev, result);
 
-   hk_upload_shader(dev, shader);
-   return VK_SUCCESS;
+   return hk_upload_shader(dev, shader);
 }
 
 static const struct vk_shader_ops hk_shader_ops;
@@ -3792,8 +3802,7 @@ hk_deserialize_shader(struct hk_device *dev, struct blob_reader *blob,
       return vk_error(dev, VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
 
    shader->b.binary = (void *)shader->code_ptr;
-   hk_upload_shader(dev, shader);
-   return VK_SUCCESS;
+   return hk_upload_shader(dev, shader);
 }
 
 static VkResult
@@ -3977,16 +3986,36 @@ const struct vk_device_shader_ops hk_device_shader_ops = {
    .cmd_bind_shaders = hk_cmd_bind_shaders,
 };
 
-struct hk_linked_shader *
-hk_fast_link(struct hk_device *dev, bool fragment, struct hk_shader *main,
-             struct agx_shader_part *prolog, struct agx_shader_part *epilog,
-             unsigned nr_samples_shaded)
+static struct hk_linked_shader *
+hk_fast_link_checked(struct hk_device *dev, bool fragment, struct hk_shader *main,
+                      struct agx_shader_part *prolog, struct agx_shader_part *epilog,
+                      unsigned nr_samples_shaded, VkResult *result)
 {
+   *result = VK_ERROR_OUT_OF_HOST_MEMORY;
    struct hk_linked_shader *s = rzalloc(NULL, struct hk_linked_shader);
    if (!s)
       return NULL;
-   if (!agx_fast_link(&s->b, &dev->dev, fragment, &main->b, prolog, epilog,
-                      nr_samples_shaded)) {
+
+   enum agx_link_result status = agx_fast_link_checked(
+      &s->b, &dev->dev, fragment, &main->b, prolog, epilog, nr_samples_shaded);
+   switch (status) {
+   case AGX_LINK_SUCCESS:
+      *result = VK_SUCCESS;
+      break;
+   case AGX_LINK_OUT_OF_HOST_MEMORY:
+      *result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      break;
+   case AGX_LINK_OUT_OF_DEVICE_MEMORY:
+      *result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+      break;
+   case AGX_LINK_INVALID:
+      *result = VK_ERROR_FEATURE_NOT_PRESENT;
+      break;
+   case AGX_LINK_UPLOAD_FAILED:
+      *result = VK_ERROR_UNKNOWN;
+      break;
+   }
+   if (status != AGX_LINK_SUCCESS) {
       ralloc_free(s);
       return NULL;
    }
@@ -4040,4 +4069,14 @@ hk_fast_link(struct hk_device *dev, bool fragment, struct hk_shader *main,
 
    s->usc.size = b.head - s->usc.data;
    return s;
+}
+
+struct hk_linked_shader *
+hk_fast_link(struct hk_device *dev, bool fragment, struct hk_shader *main,
+             struct agx_shader_part *prolog, struct agx_shader_part *epilog,
+             unsigned nr_samples_shaded)
+{
+   VkResult result;
+   return hk_fast_link_checked(dev, fragment, main, prolog, epilog,
+                               nr_samples_shaded, &result);
 }

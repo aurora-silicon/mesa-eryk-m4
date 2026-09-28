@@ -1,0 +1,4 @@
+MAP_FAILURE injected fd=5 bytes=16384 offset=0x1246a0000
+agx_fast_link: executable BO mapping failed (size 588, VA 0x1000004c000, handle 14)
+BOUNDARY_FAILURE observed result=-1 injected=1
+DEVICE_ALLOCATION_FAILURE_PASS mode=map-failure tested=1

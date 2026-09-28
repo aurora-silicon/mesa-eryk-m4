@@ -1,0 +1,5 @@
+MAP_FAILURE injected fd=5 bytes=16384 offset=0x1b4cd4000
+agx_fast_link: executable BO mapping failed (size 588, VA 0x1000004c000, handle 14)
+MESA: error: HAL200 compute rejected api-stage=5 compiled-stage=5 cs=0 indirect=0 size=0 gprs=0 preamble=0 scratch=0/0 staging=1 local=0 tex=0 sampler=0 heap=0 txf=0 indexed=0 sets=1
+BOUNDARY_FAILURE observed result=-8 injected=1
+CHECK failed at line 210: bind_injected() && result==(map_failure?VK_ERROR_OUT_OF_HOST_MEMORY:VK_ERROR_OUT_OF_DEVICE_MEMORY)

@@ -207,8 +207,8 @@ agx3_uses_code_container(const struct agx_device *dev)
    return agx_chip_uses_hal200_ioto(dev->chip);
 }
 
-bool
-agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
+enum agx_link_result
+agx_fast_link_checked(struct agx_linked_shader *linked, struct agx_device *dev,
               bool fragment, struct agx_shader_part *main,
               struct agx_shader_part *prolog, struct agx_shader_part *epilog,
               unsigned nr_samples_shaded)
@@ -229,16 +229,16 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
            nr_samples_shaded != 4)) {
          fprintf(stderr, "agx_fast_link: native sample loop rejected chip=%u samples=%u fragment=%u\n",
                  dev->chip, nr_samples_shaded, fragment);
-         return false;
+         return AGX_LINK_INVALID;
       }
       if (!agx3_pixel_release(AGX_ISA_ENCODING_AGX3B, 0, true, 0,
                              sample_release, &sample_release_size))
-         return false;
+         return AGX_LINK_INVALID;
       for (unsigned sample = 0; sample < nr_samples_shaded; ++sample) {
          if (!agx3_alu_mov16(AGX_ISA_ENCODING_AGX3B, AGX_ABI_FIN_SAMPLE_MASK,
                             1u << sample, 0, sample_setup[sample],
                             &sample_setup_size[sample]))
-            return false;
+            return AGX_LINK_INVALID;
       }
    }
 
@@ -261,7 +261,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
           gate_size != AGX3_PIXEL_MAX_LENGTH ||
           memcmp((const uint8_t *)epilog->binary + epilog->info.main_offset + off,
                  gate, gate_size))
-         return false;
+         return AGX_LINK_INVALID;
    }
    size_t size = 0;
    unsigned nr_gprs = 0, scratch_size = 0;
@@ -308,19 +308,19 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
          if (!(prolog && prolog->info.agx3_colour_link.entry_emitted) &&
              !agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX3B,
                                      sample_entry, &sample_entry_size))
-            return false;
+            return AGX_LINK_INVALID;
          if (!agx3_pixel_wait(AGX_ISA_ENCODING_AGX3B, 12, 0,
                              sample_wait, &sample_wait_size) ||
              !agx3_pixel_release(AGX_ISA_ENCODING_AGX3B, 12, true, 0,
                                 sample_release, &sample_release_size))
-            return false;
+            return AGX_LINK_INVALID;
       }
       /* Native sample-discard/DEPTHF loops acquire class1 before iterating.
        * Releasing it after the first sample loses later stencil updates. */
       if (writes_sample_mask &&
           !agx3_pixel_wait(AGX_ISA_ENCODING_AGX3B, 1, 0,
                            sample_zs_wait, &sample_zs_wait_size))
-         return false;
+         return AGX_LINK_INVALID;
       size += sample_entry_size + sample_wait_size + sample_zs_wait_size;
       for (unsigned sample = 0; sample < nr_samples_shaded; ++sample)
          size += sample_setup_size[sample];
@@ -354,7 +354,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
               "agx_fast_link: executable low-VA allocation of %zu bytes "
               "failed (shader base 0x%" PRIx64 ")\n",
               size, dev->shader_base);
-      return false;
+      return AGX_LINK_OUT_OF_DEVICE_MEMORY;
    }
 
    uint8_t *container_map = agx_bo_map(linked->bo);
@@ -367,7 +367,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
               (unsigned)linked->bo->handle);
       agx_bo_unreference(dev, linked->bo);
       linked->bo = NULL;
-      return false;
+      return AGX_LINK_OUT_OF_HOST_MEMORY;
    }
 
    if (container)
@@ -505,7 +505,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    if (agx_bo_sync_for_device(linked->bo, 0, alloc_size)) {
       agx_bo_unreference(dev, linked->bo);
       linked->bo = NULL;
-      return false;
+      return AGX_LINK_UPLOAD_FAILED;
    }
 
    agx_pack(&linked->shader, USC_SHADER, cfg) {
@@ -581,11 +581,21 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       }
    }
 
-   return true;
+   return AGX_LINK_SUCCESS;
 
 invalid_start_marker:
    fprintf(stderr, "agx_fast_link: invalid G17P part-start FLTNORM marker\n");
    agx_bo_unreference(dev, linked->bo);
    linked->bo = NULL;
-   return false;
+   return AGX_LINK_INVALID;
+}
+
+bool
+agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
+              bool fragment, struct agx_shader_part *main,
+              struct agx_shader_part *prolog, struct agx_shader_part *epilog,
+              unsigned nr_samples_shaded)
+{
+   return agx_fast_link_checked(linked, dev, fragment, main, prolog, epilog,
+                                nr_samples_shaded) == AGX_LINK_SUCCESS;
 }

@@ -70,6 +70,20 @@ struct agx_linked_shader {
 void agx3_build_container_lead(uint8_t *image);
 void agx3_build_container_lead_for_chip(uint8_t *image, enum agx_chip chip);
 
+enum agx_link_result {
+   AGX_LINK_SUCCESS,
+   AGX_LINK_INVALID,
+   AGX_LINK_OUT_OF_HOST_MEMORY,
+   AGX_LINK_OUT_OF_DEVICE_MEMORY,
+   AGX_LINK_UPLOAD_FAILED,
+};
+
+enum agx_link_result
+agx_fast_link_checked(struct agx_linked_shader *linked, struct agx_device *dev,
+                      bool fragment, struct agx_shader_part *main,
+                      struct agx_shader_part *prolog,
+                      struct agx_shader_part *epilog, unsigned nr_samples_shaded);
+
 bool agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
                    bool fragment, struct agx_shader_part *main,
                    struct agx_shader_part *prolog,
