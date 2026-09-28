@@ -16,3 +16,11 @@ mocks cover truncations, UINT32_MAX sizes, invalid stages and executable ranges,
 empty data, successful copies, and both payload allocation failures. ASan/UBSan
 pass. ARM Vulkan build passes. Hardware cache and binary-shader tests are pending;
 no desktop installation or complete hardware qualification is claimed here.
+
+M3 hardware candidate 24d5215d8886bc11ce37aa53f41b8d5bc0e66a3b1ba09dd55bface7d3fd9c4b8
+passes the complete frozen pipeline-cache families plus compute binary-shader
+basic family: 5,503 Pass, 18 NotSupported (5,521 selected cases). Each 128-case
+batch retains the normal guards, original catalog indices and selected binary.
+The main catalog was checkpointed at 3,146,672 results, then resumed on its
+unchanged allocation-20260928 binary. M4 qualification remains pending its
+current DX12 replay control finishing.

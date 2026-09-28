@@ -1,0 +1,8 @@
+{
+  "base": "/opt/asahi-m3m4-lazy-link-20260928",
+  "prefix": "/opt/asahi-m3m4-cache-bounds-20260928",
+  "sha256": "24d5215d8886bc11ce37aa53f41b8d5bc0e66a3b1ba09dd55bface7d3fd9c4b8",
+  "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+  "host": "root@fedora-m3",
+  "local_library": "/home/council/dev/dirtyroom_m4/build/mesa-m3m4-arm64/src/asahi/vulkan/libvulkan_asahi.so"
+}
