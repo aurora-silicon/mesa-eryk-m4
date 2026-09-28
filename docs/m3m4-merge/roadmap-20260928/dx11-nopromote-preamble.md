@@ -57,3 +57,27 @@ Both full image checks complete but still fail: M3 maximum errors 203/81/84;
 M4 27/79/226. Moving PIXREL alone is not a fix. The temporary source patch
 was restored and the ordinary library rebuilt; the diagnostic and images are
 retained privately. Ordinary desktop installations are unchanged.
+
+
+## Stage and independent uniform controls
+
+Two additional ordinary nopromote full runs per GPU match all three reference
+frames exactly. M3 arithmetic-only preambles also match all three. M3 with
+memory motion admitted only in fragment shaders still fails (33/33/32 maximum
+errors); M4 with memory motion admitted only in compute shaders matches all
+three. That M4 control first exhausted the 170-second bound during CPU pipeline
+compilation, with GPU idle/healthy; its cached retry completed. The original
+CPU timeout remains retained and is not a GPU fault or successful render.
+
+The frame-31 shader search reproduces discrepancies for 760, 380 and 190 selected
+sources. Complement verification is now required after a passing subset; no
+single source is identified yet.
+
+The independent `gl-uniform-wide-probe.c` fixture uses 256 U32 UBO inputs, each
+combined with a varying before accumulation. Across 32 changed UBO updates,
+all 32,768 RGBA integer readback values match CPU arithmetic on llvmpipe and
+M4. M4 compiles 480 uniform halves, 14,036 preamble instructions and no scratch.
+This excludes a blanket large-uniform/preamble-capacity failure for this shape;
+it is not qualification of conditional, derivative or game shaders. M4 evidence:
+`20260928T171643587324Z-dx11-wide-uniform-oracle`. Guard verdict pass, full thermal
+telemetry retained; M3 has not run this new fixture yet.
