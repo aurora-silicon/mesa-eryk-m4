@@ -2,7 +2,7 @@
 
 AGX_MESA_DEBUG=remat is an opt-in AGX3B compiler experiment. It uses the existing
 constant-only rematerialization pass when its conservative register estimate can
-save at least sixteen register halves. It avoids helpers, preambles and shaders
+save at least sixteen register halves. It avoids unspillable shaders, helpers, preambles and shaders
 already needing scratch spills. It does not apply the older static occupancy
 table to choose the target; the generic fallback retains the full register budget
 if the estimate unexpectedly requires scratch. Normal compilation is unchanged.
