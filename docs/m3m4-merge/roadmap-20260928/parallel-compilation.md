@@ -32,3 +32,25 @@ expectation from before dynamically uniform descriptor branches were enabled.
 Expand it to all four texture/sampler uniformity combinations; all 24 cases
 require implicit derivatives outside nonuniform branches and allow them inside
 uniform branches. Both tests pass. Eight other baseline failures remain open.
+
+
+## Cold full-capture hardware validation
+
+One paired Satisfactory DX11 gameplay run per GPU, both shader caches disabled,
+eight replay pipeline workers, nopromote, nocompress, memory translation none,
+and ordinary shader mode (native preambles off). All three 4K RGB snapshots
+match the retained reference exactly for both variants on both chips. Watchdog
+and temperature/progress gates remain mandatory; desktops restore afterwards.
+
+| GPU | Serialized total wall time | Parallel total wall time | Reduction |
+| --- | ---: | ---: | ---: |
+| M3 Pro | 100.237 s | 52.194 s | 47.9% |
+| M4 | 133.989 s | 75.632 s | 43.6% |
+
+These are total cold-replay times, including compilation and the same 30 rendered
+frames, not application FPS or pure backend compiler times. The measured frame
+ranges are 15.804/15.802 seconds on M3 and 28.562/29.591 on M4. No sustained FPS
+improvement is claimed. This is one pair, not a repeated statistical benchmark.
+The M4 test leaves boost disabled and records its effective clock/thermal policy.
+Candidate Vulkan SHA256 e79b2737ffbb8e60e3359bb022fe54220c38a1f6af365295068cdc782a84ff40,
+source d81a22084f4. Ordinary installed desktop Mesa remains unchanged.

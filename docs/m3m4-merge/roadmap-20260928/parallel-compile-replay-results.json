@@ -1,0 +1,42 @@
+{
+  "m3": [
+    {
+      "label": "serial",
+      "machine": "m3",
+      "run": "/home/council/dev/gpu-replay-bench/runs/20260928T175403804692Z-m3-satisfactory-dx11-gameplay-check",
+      "sha256": "d132d505ea9111c3173df677a4b66d7a47f335d77268b2a85a94502116297763",
+      "correctness": "pass",
+      "wall_seconds": 100.23706555700028,
+      "frame_seconds": 15.804458984
+    },
+    {
+      "label": "parallel",
+      "machine": "m3",
+      "run": "/home/council/dev/gpu-replay-bench/runs/20260928T175552998076Z-m3-satisfactory-dx11-gameplay-check",
+      "sha256": "e79b2737ffbb8e60e3359bb022fe54220c38a1f6af365295068cdc782a84ff40",
+      "correctness": "pass",
+      "wall_seconds": 52.19381123400035,
+      "frame_seconds": 15.802410949
+    }
+  ],
+  "m4": [
+    {
+      "label": "serial",
+      "machine": "m4",
+      "run": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T175404018147Z-bench-satisfactory-dx11-gameplay-check",
+      "sha256": "d132d505ea9111c3173df677a4b66d7a47f335d77268b2a85a94502116297763",
+      "correctness": "pass",
+      "wall_seconds": 133.9893135399999,
+      "frame_seconds": 28.561620865
+    },
+    {
+      "label": "parallel",
+      "machine": "m4",
+      "run": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T175629120518Z-bench-satisfactory-dx11-gameplay-check",
+      "sha256": "e79b2737ffbb8e60e3359bb022fe54220c38a1f6af365295068cdc782a84ff40",
+      "correctness": "pass",
+      "wall_seconds": 75.63190062300009,
+      "frame_seconds": 29.590607814
+    }
+  ]
+}
