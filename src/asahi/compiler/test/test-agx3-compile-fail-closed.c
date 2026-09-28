@@ -846,22 +846,17 @@ check_constant_data_compute(enum agx_isa_encoding encoding, bool soft_fault)
 }
 
 /*
- * Fail-closed companion to check_constant_data_compute(): the same shader with
- * key.no_preamble cleared must be *refused*, not miscompiled.
- *
- * agx_nir_opt_preamble hoists the uniform-invariant root and descriptor-set
- * loads into a generated preamble, whose results are written back with
- * uniform_store -- and agx3_pack_binary has no grounded AGX3 encoding for that
- * opcode, so it takes the AGX3_REFUSE fallthrough.  hk_compile_shader() avoids
- * this by setting .no_preamble for AGX_CHIP_G17P (hk_shader.c:1249); that one
- * line is load-bearing for every G17P shader that reads a descriptor, so lock
- * the coupling down here.
+ * Uniform exports now have grounded native encodings; rejection of every
+ * shader with no_preamble=false is no longer the backend contract. This
+ * memory-only candidate must instead remain in main when memory hoisting is
+ * disabled, and the explicit no_preamble key must prohibit generation too.
+ * Vulkan's separate opt-in policy remains in hk_shader.c.
  */
 static bool
-check_preamble_refused_compute(enum agx_isa_encoding encoding)
+check_preamble_disabled_compute(enum agx_isa_encoding encoding, bool disabled)
 {
    nir_builder b = nir_builder_init_simple_shader(
-      MESA_SHADER_COMPUTE, &agx_nir_options, "AGX3 preamble refusal");
+      MESA_SHADER_COMPUTE, &agx_nir_options, "AGX3 preamble disabled");
    b.shader->info.workgroup_size[0] = 32;
    b.shader->info.workgroup_size[1] = 1;
    b.shader->info.workgroup_size[2] = 1;
@@ -884,34 +879,30 @@ check_preamble_refused_compute(enum agx_isa_encoding encoding)
    key.has_scratch = true;
    key.promote_constants = true;
    key.promote_textures = true;
-   /* Deliberately NOT set: key.no_preamble. */
+   key.no_preamble = disabled;
    struct agx_shader_part part;
    memset(&part, 0xa5, sizeof(part));
 
-   if (agx_compile_shader_nir(b.shader, &key, &part)) {
-      fprintf(stderr,
-              "AGX3 accepted a generated preamble; uniform_store is now "
-              "grounded, so hk_shader.c may stop forcing no_preamble on "
-              "G17P -- update both together\n");
-      free(part.binary);
-      ralloc_free(b.shader);
-      return false;
-   }
+   const bool compiled = agx_compile_shader_nir(b.shader, &key, &part);
+   static const uint8_t stop[] = {0x0e, 0x00, 0x00, 0x00};
+   const bool valid = compiled && part.binary && !part.info.has_preamble &&
+      part.info.preamble_offset == 0 && part.info.main_offset == 0 &&
+      part.info.main_size == part.info.binary_size &&
+      part.info.main_size >= sizeof(stop) &&
+      memcmp((const uint8_t *)part.binary + part.info.main_size - sizeof(stop),
+             stop, sizeof(stop)) == 0;
+   if (!valid)
+      fprintf(stderr, "AGX3 disabled preamble metadata mismatch (%u, %u)\n",
+              encoding, disabled);
 
-   const uint8_t zero[sizeof(part)] = {0};
-   if (memcmp(&part, zero, sizeof(part)) != 0) {
-      fprintf(stderr, "AGX3 preamble rejection did not clear compiler output\n");
-      ralloc_free(b.shader);
-      return false;
-   }
-
+   free(part.binary);
    ralloc_free(b.shader);
-   return true;
+   return valid;
 }
 
 /*
- * hk_nir_lower_descriptors.c lower_load_constant (:66-93), reproduced so this
- * test can run the same ordering Honeykrisp does without linking libhk.
+ * hk_nir_lower_descriptors.c lower_load_constant, reproduced so this test can
+ * run Honeykrisp's ordering without linking libhk.
  */
 static bool
 lower_load_constant_like_hk(nir_builder *b, nir_intrinsic_instr *intr,
@@ -1001,12 +992,11 @@ g17p_backend_key(enum agx_isa_encoding encoding, struct agx_shader_key *key)
  * (hk_shader.c hk_preprocess_nir_internal).  Run it after and the array is
  * already scratch, nir_opt_large_constants has no function_temp variable left
  * to move, and the shader reaches the backend as stack_store/stack_load
- * traffic which AGX3 cannot encode and which
- * hk_g17p_compute_shader_supported() would refuse anyway.
- *
- * `ordered` reproduces the correct order and must compile with no scratch and
- * a non-empty constant blob.  `!ordered` reproduces the regression and must
- * FAIL CLOSED -- never silently produce a scratch-using shader.
+ * traffic. Native scratch is now supported, so both forms must compile while
+ * preserving the distinction in their resource metadata. The correctly ordered
+ * path must still avoid scratch and retain its non-empty constant blob. This
+ * guards the optimization ordering without reinstating the obsolete backend
+ * refusal. It does not change the device-level scratch or preamble policy.
  */
 static bool
 check_constant_array_ordering(enum agx_isa_encoding encoding, bool ordered)
@@ -1059,22 +1049,15 @@ check_constant_array_ordering(enum agx_isa_encoding encoding, bool ordered)
                  b.shader->constant_data_size, b.shader->scratch_size);
       }
 
-      /* ...and the backend must refuse it rather than emit something. */
-      if (valid && compiled) {
-         fprintf(stderr,
-                 "AGX3 accepted a scratch-using compute shader; if stack "
-                 "access is now grounded, widen "
-                 "hk_g17p_compute_shader_supported() in the same change\n");
-         valid = false;
-      }
-
-      if (valid) {
-         const uint8_t zero[sizeof(part)] = {0};
-         if (memcmp(&part, zero, sizeof(part)) != 0) {
-            fprintf(stderr, "AGX3 scratch rejection did not clear output\n");
-            valid = false;
-         }
-      }
+      /* Scratch support must declare enough per-thread storage, not silently
+       * accept this shader with the zero-scratch metadata of the ordered form.
+       */
+      valid = valid && compiled && part.binary && part.info.binary_size &&
+              part.info.scratch_size >= b.shader->scratch_size &&
+              part.info.preamble_scratch_size == 0 && !part.info.has_preamble;
+      if (!valid)
+         fprintf(stderr, "AGX3 scratch metadata mismatch for encoding %u\n",
+                 encoding);
    }
 
    if (compiled)
@@ -1628,10 +1611,14 @@ main(int argc, char **argv)
       }
       return 0;
    }
-   if (argc != 1) {
-      fprintf(stderr, "usage: %s [--device-atomics-only]\n", argv[0]);
+   const bool agx3b_only = argc == 2 && !strcmp(argv[1], "--agx3b-only");
+   if (argc != 1 && !agx3b_only) {
+      fprintf(stderr, "usage: %s [--device-atomics-only|--agx3b-only]\n", argv[0]);
       return 1;
    }
+
+   /* This fixture validates the default memory-preamble admission policy. */
+   setenv("AGX_NATIVE_MEMORY_PREAMBLE", "false", 1);
 
    if (!check_uniform_alu_policy())
       return 1;
@@ -1670,7 +1657,7 @@ main(int argc, char **argv)
    if (!check_elect_broadcast_first_compute(AGX_ISA_ENCODING_AGX2))
       return 1;
 
-   for (unsigned i = 0; i < sizeof(encodings) / sizeof(encodings[0]); ++i) {
+   for (unsigned i = 0; i < (agx3b_only ? 1 : ARRAY_SIZE(encodings)); ++i) {
       if (!check_empty_compute(encodings[i]))
          return 1;
       if (!check_unlowered_printf_address_rejected(encodings[i]))
@@ -1699,7 +1686,8 @@ main(int argc, char **argv)
       if (!check_constant_data_compute(encodings[i], false) ||
           !check_constant_data_compute(encodings[i], true))
          return 1;
-      if (!check_preamble_refused_compute(encodings[i]))
+      if (!check_preamble_disabled_compute(encodings[i], false) ||
+          !check_preamble_disabled_compute(encodings[i], true))
          return 1;
       if (!check_constant_array_ordering(encodings[i], true) ||
           !check_constant_array_ordering(encodings[i], false))
@@ -1734,7 +1722,8 @@ main(int argc, char **argv)
    glsl_type_singleton_decref();
 
    puts("agx3_compile: compute SR/shared-memory/constant-data paths emitted; "
-        "constant arrays kept out of scratch; unlowered ray queries and "
+        "ordered constant arrays avoid scratch, unordered arrays declare it; "
+        "unlowered ray queries and "
         "printf addresses rejected");
    return 0;
 }

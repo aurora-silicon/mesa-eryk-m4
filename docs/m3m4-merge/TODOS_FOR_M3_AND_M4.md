@@ -612,3 +612,11 @@ and a safe idle-aware policy remain open. See
   one encoding introduced in `25c82a8422f`. Add independent size-rounding, empty
   range and first-index examples, and exercise M3 Pro and M4 target selection.
   This is host-test qualification only; five original host-suite failures remain.
+
+- Host-test follow-up: refresh obsolete blanket preamble/scratch refusals. The
+  default memory-only preamble candidate stays in main and explicit no_preamble
+  remains enforced; correctly ordered constant arrays avoid scratch while the
+  deliberately unordered form must declare its storage. The AGX3B-only fixture
+  passes and retains unlowered printf/ray-query rejection. The full fixture
+  still fails on an AGX3C local-ID encoding; it remains an open host-suite failure,
+  not a skip or a hardware-support claim.
