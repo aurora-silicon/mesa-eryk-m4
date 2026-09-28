@@ -329,3 +329,28 @@ serialization is not a demonstrated remedy.
 
 Native memory preambles remain opt-in. No diagnostic above replaces the normal
 desktop driver or constitutes a new qualified performance result.
+
+### Isolating the appended preamble's address input
+
+A private replay-specific candidate replaces the exact 36-byte preamble with
+an existing Ioto descriptor range (set 2 + 48 bytes, 16 bytes to uniform halves
+48..55). It verifies the original preamble bytes and root layout before making
+this substitution. It is an isolation experiment, not a general compiler or
+application fix. The main shader is unchanged. Ten full M4 replays match exactly.
+M3 matches five times, then differs only at (x=2,y=1121/1123): the same two RGB
+changes seen in the earlier no-admitted-load control, byte-for-byte. This small
+baseline difference remains open; it is not discarded through a new tolerance.
+
+Copying the uniform pointer into GPR halves 8..11 before the original descriptor
+load does not fix the issue: the first M3 replay differs in 14 pixels (maximum
+8). The compiler reports 12 preamble GPR halves and no scratch. The main binary
+still has SHA256 `ad34fda1f247abd6ed7f778cb626cd1dd6f13f48dddf455c651394e3883f0d85`.
+
+Another private candidate materializes that same bound descriptor-set address
+with the existing Ioto immediate loader, then executes the register-addressed
+load and original uniform exports at the end of the constant program. Ten full
+M3 replays match exactly. M4 repetitions remain in progress. This narrows the
+investigation toward the appended program's input path; it does not establish
+a synchronization contract or justify embedding application-specific addresses
+or shader signatures in production code. The exact patches and binary hashes
+are retained locally, alongside all negative results.
