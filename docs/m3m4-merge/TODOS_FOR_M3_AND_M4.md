@@ -633,3 +633,11 @@ and a safe idle-aware policy remain open. See
   length, producing false failures. All 53 checks now pass without changing any
   Apple instruction witnesses. This fixes the fixture, not GPU ray-tracing
   behavior; three of the original ten host-suite failures remain.
+
+- [x] Refresh event-poll packing for the validated direct BREAK_IF lowering:
+  explicit load retirement, equality compare plus complementary loop mask, and
+  the corrected -34-byte backedge. The 281 control-flow witness checks pass;
+  the complete host suite now reports 118 Pass / 2 Fail (AGX3C compute and
+  graphics fixtures remain open). A pinned 26-case basic-event selection on M3
+  gives 13 Pass / 13 NotSupported under the usual guard. M4 validation follows
+  its running replay benchmark; no runtime code was changed by these fixtures.
