@@ -178,6 +178,136 @@
     "NOP spacing is an empirical mitigation, not an identified ISA latency contract.",
     "The prior known two-pixel baseline image remains an unqualified diagnostic difference.",
     "M3 timings preserve the previous optimization gain; the new fix does not add another 71 percent.",
-    "M4 timings are pending; Frostpunk baseline one-level RGB differences are being investigated before timing."
-  ]
+    "M4 Satisfactory baseline peaks at 102.5 C versus 90.75 C with preambles under the unchanged policy; this is not a clock-normalized speedup.",
+    "Frostpunk uses its pre-existing max-2/255 sparse policy (<=24 pixels at 4K); the user explicitly accepted the observed one-level differences. Original strict-only failure classification remains retained.",
+    "Native Vulkan Satisfactory baseline differs from its pre-helper reference; investigation in progress, no timing approval or reference change."
+  ],
+  "m4_satisfactory_dx11_timing": {
+    "baseline": {
+      "seconds": [
+        31.438371533,
+        32.362692441,
+        30.099002315
+      ],
+      "fps": [
+        0.9542478995297138,
+        0.9269933289602713,
+        0.9967107775213313
+      ],
+      "median_fps": 0.9542478995297138,
+      "pre_and_post_exact": true,
+      "thermal_max_mC": {
+        "PMP aggregate die hotspot": 102500,
+        "Ta000m": 98500,
+        "Te000m": 96500,
+        "Te001m": 94000,
+        "Tp000m": 102500,
+        "Tp001m": 97750
+      }
+    },
+    "preamble": {
+      "seconds": [
+        16.179600506,
+        14.975527612,
+        14.742670614
+      ],
+      "fps": [
+        1.8541866957020898,
+        2.0032683173019414,
+        2.0349094669124104
+      ],
+      "median_fps": 2.0032683173019414,
+      "pre_and_post_exact": true,
+      "thermal_max_mC": {
+        "PMP aggregate die hotspot": 90750,
+        "Ta000m": 86250,
+        "Te000m": 85000,
+        "Te001m": 83000,
+        "Tp000m": 90750,
+        "Tp001m": 86250
+      }
+    },
+    "improvement_percent": 109.93164546542059
+  },
+  "m3_frostpunk_dx11_timing": {
+    "baseline": {
+      "seconds": [
+        18.068186204,
+        18.044582224,
+        18.079807049
+      ],
+      "fps": [
+        1.6603769554554675,
+        1.662548881852129,
+        1.6593097436656168
+      ],
+      "median_fps": 1.6603769554554675,
+      "pre_and_post_approved": true,
+      "comparison_policy": {
+        "tolerance": 0,
+        "edge_max": 2,
+        "edge_fraction": 3e-06,
+        "tolerance_reason": "Unchanged corrected-reference sparse RGB rounding policy; reject larger or localized mismatches."
+      },
+      "image_maxima": [
+        [
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          2,
+          1
+        ]
+      ],
+      "thermal_max_mC": {
+        "te000m": 75000.0,
+        "te001m": 79500.0,
+        "tp000m": 83750.0,
+        "tp001m": 74250.0,
+        "tp002m": 88000.0
+      }
+    },
+    "preamble": {
+      "seconds": [
+        12.36901418,
+        12.346867793,
+        12.34360462
+      ],
+      "fps": [
+        2.425415604139925,
+        2.4297660348326047,
+        2.4304083712623
+      ],
+      "median_fps": 2.4297660348326047,
+      "pre_and_post_approved": true,
+      "comparison_policy": {
+        "tolerance": 0,
+        "edge_max": 2,
+        "edge_fraction": 3e-06,
+        "tolerance_reason": "Unchanged corrected-reference sparse RGB rounding policy; reject larger or localized mismatches."
+      },
+      "image_maxima": [
+        [
+          1,
+          2,
+          1
+        ],
+        [
+          1,
+          2,
+          1
+        ]
+      ],
+      "thermal_max_mC": {
+        "te000m": 72750.0,
+        "te001m": 78000.0,
+        "tp000m": 84000.0,
+        "tp001m": 73000.0,
+        "tp002m": 87500.0
+      }
+    },
+    "improvement_percent": 46.338217165034166
+  }
 }

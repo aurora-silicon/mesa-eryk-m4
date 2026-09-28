@@ -443,3 +443,24 @@ the earlier experimental optimization gain rather than adding another 71%.
 The interval separates normal initialization and warmup from the 30 timed frames.
 M4 timing qualification is still in progress. See the machine-readable
 `preamble-publication-validation.json`; all raw runs remain in the private suite.
+
+M4's final paired DX11 timing run also passes exact pre/post image checks. Its
+baseline FPS samples are 0.9542, 0.9270 and 0.9967; optimized samples are 1.8542,
+2.0033 and 2.0349. Medians are 0.9542 and 2.0033 FPS (+109.93%). Baseline peak
+package temperature reaches 102.5 C, versus 90.75 C in the preamble samples.
+The unchanged thermal/power policy contributes to this workload-level result;
+do not present it as a clock-normalized doubling of compiler efficiency.
+
+M3 Frostpunk medians are 1.6604 -> 2.4298 FPS (+46.34%), with the existing sparse
+RGB policy applied before and after timing. The paired helper initially used
+exact-only comparison instead of inheriting the pinned reference policy; that
+failed classification and its 9/9/16 one-level pixel differences are preserved.
+The older dd452 driver also shows sparse one-level variation. The user explicitly
+accepted these differences; no new tolerance was invented. Source traces,
+resolution, graphics settings and shader operations remain unchanged.
+
+Qualification has moved on to native Vulkan Satisfactory. Its preamble-disabled
+M3 baseline differs substantially from the pre-helper M4 reference. Current and
+dd452 M3 baseline outputs match exactly in all three frames. A private single-
+change reversal of the backfacing-helper correction and a current M4 baseline
+are being used to establish causality before approving any new reference.
