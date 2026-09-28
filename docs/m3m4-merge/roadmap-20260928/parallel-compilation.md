@@ -19,8 +19,7 @@ Vulkan builds. The Meson asahi suite reports 110 Pass and ten failures on both
 the unchanged compiler baseline and this change. The exact failures are retained
 in parallel-compile-host-results.json: they include obsolete refusal/encoding
 expectations and two crashing host tests. They remain open; neither the suite
-nor a complete driver qualification is claimed passing. Hardware cold replay
-validation and timing are pending.
+nor a complete driver qualification is claimed passing. Cold hardware replay qualification is recorded below.
 
 
 Two baseline host crashes are repaired independently of the compilation change:

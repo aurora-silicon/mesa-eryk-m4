@@ -576,3 +576,11 @@ and a safe idle-aware policy remain open. See
   bitmaps and validate implicit-derivative placement for all four descriptor
   uniformity combinations. 260 allocator and 24 minmax cases pass. Eight of
   the original ten Meson host failures still need independent qualification.
+
+- [x] Preserve parallel backend compilation for non-printing compiler flags and
+  publish debug flags once without concurrent global writes. Eight-thread host
+  compilation produces 128 byte-identical outputs. Exact cold full-capture
+  pairs improve total Satisfactory DX11 replay time from 100.237 to 52.194 s
+  on M3 and 133.989 to 75.632 s on M4. These are compilation/startup gains,
+  not FPS claims; see `roadmap-20260928/parallel-compilation.md`. Source
+  `d81a22084f4`; desktop Mesa stays unchanged.

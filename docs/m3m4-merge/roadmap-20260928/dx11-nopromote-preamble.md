@@ -150,3 +150,19 @@ while an unchanged aggregate QoS request need not schedule a refresh. This is
 an open kernel-policy issue, not a GPU failure or proof of that hypothesis.
 No workload starts on the rejected run, and no cap check is bypassed. Further
 GPU runs leave boost disabled and record the effective clock ceilings.
+
+## Repeated subgroup and pipeline-switching checks
+
+A 24-source selection reproduces the frame-31 error on M3 (231 changed RGB
+pixels). Its lower 12 sources pass three repeats; the upper 12 pass twice then
+fail with 1,424 changed pixels. Therefore one exact result cannot exclude a
+source group. On M4 the combined 24 pass twice; no cross-chip attribution is
+inferred. These are isolated diagnostic-frame checks, never timing qualification.
+
+The wide-uniform CPU oracle now supports `--programs 1..4`, cycling fragment
+programs that use 64, 48, 32 and 16 uvec4 inputs. With compute-written UBOs,
+4K output and eight rounds, llvmpipe, G15S and G16G each match all 265,420,800
+U32 values exactly. This qualifies the exercised program/footprint transitions,
+not all game shaders. Native memory preambles remain opt-in. M3 evidence:
+`m3-four-program-uniforms-20260928`; M4:
+`20260928T180752639155Z-wide-four-programs-4k`.

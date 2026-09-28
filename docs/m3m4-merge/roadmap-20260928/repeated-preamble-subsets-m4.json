@@ -1,0 +1,24 @@
+[
+  {
+    "machine": "m4",
+    "label": "all24",
+    "repeat": 0,
+    "run": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T175959300752Z-bench-satisfactory-dx11-gameplay-check",
+    "lo": "0000000000000000000000000000000000000000000000000000000000000000",
+    "hi": "056b0329a3d48c1374e1992b492902fb6ca950796517939d765506f122048450",
+    "maximum": 0,
+    "changed_pixels": 0,
+    "wall_seconds": 100.20124225500012
+  },
+  {
+    "machine": "m4",
+    "label": "all24",
+    "repeat": 1,
+    "run": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T180148620790Z-bench-satisfactory-dx11-gameplay-check",
+    "lo": "0000000000000000000000000000000000000000000000000000000000000000",
+    "hi": "056b0329a3d48c1374e1992b492902fb6ca950796517939d765506f122048450",
+    "maximum": 0,
+    "changed_pixels": 0,
+    "wall_seconds": 104.32127327900002
+  }
+]

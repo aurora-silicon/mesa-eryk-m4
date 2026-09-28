@@ -25,7 +25,7 @@ static GLuint shader(GLenum type,const char *text) {
 }
 int main(int argc, char **argv) {
    int record_only=0,gpu_updates=0;
-   unsigned width=64,height=4,rounds=32;
+   unsigned width=64,height=4,rounds=32,program_count=1;
    for(int i=1;i<argc;++i) {
       if(!strcmp(argv[i],"--record-only")) record_only=1;
       else if(!strcmp(argv[i],"--gpu-updates")) gpu_updates=1;
@@ -38,7 +38,11 @@ int main(int argc, char **argv) {
          char *end;
          unsigned long n=strtoul(argv[++i],&end,10); CHECK(*end==0 && n>=1 && n<=32);
          rounds=n;
-      } else {fprintf(stderr,"Usage: %s [--record-only] [--gpu-updates] [--size WIDTH HEIGHT] [--rounds 1..32]\n",argv[0]);return 1;}
+      } else if(!strcmp(argv[i],"--programs") && i+1<argc) {
+         char *end;
+         unsigned long n=strtoul(argv[++i],&end,10); CHECK(*end==0 && n>=1 && n<=4);
+         program_count=n;
+      } else {fprintf(stderr,"Usage: %s [--record-only] [--gpu-updates] [--size WIDTH HEIGHT] [--rounds 1..32] [--programs 1..4]\n",argv[0]);return 1;}
    }
    EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
    CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
@@ -47,18 +51,22 @@ int main(int argc, char **argv) {
    EGLContext c=eglCreateContext(d,EGL_NO_CONFIG_KHR,EGL_NO_CONTEXT,attr);
    CHECK(c!=EGL_NO_CONTEXT&&eglMakeCurrent(d,EGL_NO_SURFACE,EGL_NO_SURFACE,c));
    printf("Renderer: %s\n",glGetString(GL_RENDERER));
-   GLuint p=glCreateProgram();
+   GLuint programs[4]={0};
+   GLint ok;
+   for(unsigned program=0;program<program_count;++program) {
+   GLuint p=programs[program]=glCreateProgram();
    glAttachShader(p,shader(GL_VERTEX_SHADER,"#version 330 core\nvoid main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.0-1.0,0,1);}"));
    char fragment[16384];
    size_t len=snprintf(fragment,sizeof(fragment),"#version 330 core\nlayout(std140) uniform Values {uvec4 v[64];};out uvec4 color;void main(){uvec4 a=uvec4(0u);uint x=uint(gl_FragCoord.x);\n");
-   for(unsigned i=0;i<64;++i){
+   for(unsigned i=0;i<64-16*program;++i){
       int n=snprintf(fragment+len,sizeof(fragment)-len,"a+=(v[%u]^uvec4(x*%uu));\n",i,i*37+1);
       CHECK(n>0&&(size_t)n<sizeof(fragment)-len);len+=(size_t)n;
    }
    CHECK(snprintf(fragment+len,sizeof(fragment)-len,"color=a;}")>0);
    glAttachShader(p,shader(GL_FRAGMENT_SHADER,fragment));
-   glLinkProgram(p);GLint ok;glGetProgramiv(p,GL_LINK_STATUS,&ok);CHECK(ok);
+   glLinkProgram(p);glGetProgramiv(p,GL_LINK_STATUS,&ok);CHECK(ok);
    glUseProgram(p);glUniformBlockBinding(p,glGetUniformBlockIndex(p,"Values"),0);
+   }
    GLuint update=0;
    GLint round_location=-1;
    if(gpu_updates) {
@@ -84,6 +92,7 @@ int main(int argc, char **argv) {
    CHECK(pixels && expected);
    uint64_t bad=0;
    for(unsigned round=0;round<rounds;++round){
+      unsigned program=round%program_count;
       const uint32_t seeds[]={0,1,0x7fffffff,0x80000000,0xffffffff,0x7fc00000,0x00010001,0xdeadbeef};
       uint32_t v[64][4];
       for(unsigned j=0;j<64;++j)for(unsigned k=0;k<4;++k)
@@ -91,22 +100,23 @@ int main(int argc, char **argv) {
       if(gpu_updates) {
          glUseProgram(update);glUniform1ui(round_location,round);
          glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,buffer);glDispatchCompute(1,1,1);
-         glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);glUseProgram(p);
+         glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
       } else glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(v),v);
+      glUseProgram(programs[program]);
       glDrawArrays(GL_TRIANGLES,0,3);
       glReadPixels(0,0,width,height,GL_RGBA_INTEGER,GL_UNSIGNED_INT,pixels);CHECK(glGetError()==GL_NO_ERROR);
       for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
          expected[x*4+k]=0;
-         for(unsigned i=0;i<64;++i)expected[x*4+k]+=(v[i][k]^(x*(i*37u+1u)));
+         for(unsigned i=0;i<64-16*program;++i)expected[x*4+k]+=(v[i][k]^(x*(i*37u+1u)));
       }
       for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
          uint32_t expect=expected[x*4+k];
          uint32_t actual=pixels[(y*width+x)*4+k];
          if(actual!=expect){if(bad<8)printf("round=%u x=%u y=%u c=%u actual=%08x expected=%08x\n",round,x,y,k,actual,expect);bad++;}
       }
-      printf("round=%u bad=%"PRIu64"\n",round,bad);fflush(stdout);
+      printf("round=%u program=%u bad=%"PRIu64"\n",round,program,bad);fflush(stdout);
    }
-   printf("%s: U32 wide-uniform export oracle; updates=%s size=%ux%u rounds=%u values=%"PRIu64" mismatches=%"PRIu64"\n",bad?"FAIL":"PASS",gpu_updates?"gpu":"cpu",width,height,rounds,(uint64_t)width*height*4*rounds,bad);
+   printf("%s: U32 wide-uniform export oracle; updates=%s programs=%u size=%ux%u rounds=%u values=%"PRIu64" mismatches=%"PRIu64"\n",bad?"FAIL":"PASS",gpu_updates?"gpu":"cpu",program_count,width,height,rounds,(uint64_t)width*height*4*rounds,bad);
    free(expected);free(pixels);
    if(!record_only)CHECK(!bad);
    return 0;
