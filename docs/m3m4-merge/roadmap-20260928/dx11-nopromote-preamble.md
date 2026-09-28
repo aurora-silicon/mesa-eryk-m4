@@ -226,3 +226,34 @@ Host checks also retain the partial-coverage mode and cover uneven stripe
 heights with CPU-written inputs. M3 evidence: `m3-queued-uniforms-20260928`;
 M4: `20260928T184914284503Z-queued-wide-uniform-4k`. Watchdog and thermal guards
 remain enabled. Diagnostic replay/library identities remain with each record.
+
+
+### Four-instruction reproducer and draw readback
+
+Admitting only constant-load definition 22, while disallowing preamble ALU,
+reduces the selected preamble to one 16-byte descriptor read, two IR uniform
+exports (four native scalar COPYs), and STOP. The new uniform range is halves
+48..55; preamble scratch is zero and its GPR footprint is eight halves. This
+still fails on both GPUs: M3 2,789 changed RGB pixels, maximum 70; M4 228,
+maximum 11. Therefore long preamble arithmetic is not required to expose it.
+The identical candidate with no admitted loads gives three exact M3 repetitions
+and then two changed pixels, maximum 2; that small control discrepancy remains
+recorded. It is not classified as a perfectly stable baseline.
+
+Adding three plain NOPs after the load wait, matching the resource loader's
+four-NOP drain shape, still fails on M3 and M4 (maximum 22 / 44). Moving the
+small preamble's GPRs from halves 0..7 to 32..39, with corrected reported
+footprint, also fails on M3 after two exact runs. The main shader's 56,896 bytes
+are byte-identical across these three candidates (SHA256
+`ad34fda1f247abd6ed7f778cb626cd1dd6f13f48dddf455c651394e3883f0d85`).
+These are negative diagnostics, not production changes.
+
+Resource snapshots surround the first and last selected-shader draws in replay
+frame 31 (global calls 9,284,712 and 9,284,939). All five color attachments agree
+byte-for-byte with the no-load control, both before and after these draws, even
+in a repeated run whose final image differs in 434 pixels (maximum 24). The
+remaining search must cover earlier frames and subsequent processing rather
+than assuming these final-frame draws directly contain the bad values. The
+native centroid/nonlinear-derivative smoke probe at 31x31 passes on both GPUs;
+it does not qualify every interpolation pattern. Original raw attachments and
+all diagnostic patches are retained in the local-only benchmark repository.
