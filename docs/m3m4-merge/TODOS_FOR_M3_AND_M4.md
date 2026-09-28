@@ -606,3 +606,9 @@ and a safe idle-aware policy remain open. See
   then the previously observed two-pixel baseline difference. Three further
   M3 replays of the final size-hardened build are exact. Keep preambles opt-in,
   retain the baseline difference, and finish matched performance measurements.
+
+- [x] Repair the stale live VDM packing fixture without changing its captured
+  bytes: the direct indexed byte range must include the documented dwords-minus-
+  one encoding introduced in `25c82a8422f`. Add independent size-rounding, empty
+  range and first-index examples, and exercise M3 Pro and M4 target selection.
+  This is host-test qualification only; five original host-suite failures remain.

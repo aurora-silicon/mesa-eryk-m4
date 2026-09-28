@@ -278,6 +278,40 @@ test_agx3_cdm_launch(void)
    CHECK_EQ(decoded.pipeline, 0);
 }
 
+/* Independently computed byte-range examples, including the widened round-up
+ * at UINT32_MAX and the direct draw's first-index adjustment.  Keep the captured
+ * command bytes below unchanged; these examples test their input convention.
+ */
+static void
+test_agx3_index_range(void)
+{
+   static const struct {
+      uint32_t bytes, first_index, expected;
+      enum agx_index_size size;
+      bool valid;
+   } cases[] = {
+      {0, 0, 0, AGX_INDEX_SIZE_U32, false},
+      {1, 0, 0, AGX_INDEX_SIZE_U32, true},
+      {4, 0, 0, AGX_INDEX_SIZE_U32, true},
+      {5, 0, 1, AGX_INDEX_SIZE_U32, true},
+      {8, 1, 0, AGX_INDEX_SIZE_U32, true},
+      {8, 2, 0, AGX_INDEX_SIZE_U32, false},
+      {8, 1, 1, AGX_INDEX_SIZE_U16, true},
+      {UINT32_MAX, 0, 0x3fffffff, AGX_INDEX_SIZE_U32, true},
+      {UINT32_MAX, 1, 0x3ffffffe, AGX_INDEX_SIZE_U32, true},
+      {0x4080c104, 0, 0x10203040, AGX_INDEX_SIZE_U32, true},
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
+      const struct agx_draw draw = agx_draw_indexed(
+         1, 1, cases[i].first_index, 0, 0, 0x1000, cases[i].bytes,
+         cases[i].size, false);
+      uint32_t word = 0xa5a5a5a5;
+      CHECK_EQ(agx_draw_index_buffer_size_word(draw, &word), cases[i].valid);
+      CHECK_EQ(word, cases[i].valid ? cases[i].expected : 0xa5a5a5a5);
+   }
+}
+
 static void
 test_agx3_live_vdm_draw(void)
 {
@@ -320,9 +354,11 @@ test_agx3_live_vdm_draw(void)
       0x07, 0x00, 0x00, 0x00, 0x3f, 0x30, 0x20, 0x10,
       0x12, 0x00, 0x00, 0x00,
    };
-   const enum agx_chip chips[] = {AGX_CHIP_G15G, AGX_CHIP_G17S};
+   const enum agx_chip chips[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G16G, AGX_CHIP_G17S,
+   };
 
-   for (unsigned i = 0; i < 2; ++i) {
+   for (unsigned i = 0; i < ARRAY_SIZE(chips); ++i) {
       const bool hal300 = chips[i] == AGX_CHIP_G17S;
       uint32_t packed[9] = {0};
       const struct agx_draw nonindexed = {
@@ -344,9 +380,13 @@ test_agx3_live_vdm_draw(void)
       }
 
       memset(packed, 0, sizeof(packed));
+      /* Preserve the captured size word 0x10203040: AGX3 stores the
+       * available dwords minus one, so the corresponding byte range is
+       * (0x10203040 + 1) * 4.  Direct and indirect draws use the same rule.
+       */
       const struct agx_draw indexed =
          agx_draw_indexed(UINT32_C(0x01020304), 3, 0, UINT32_C(0xfffffff9), 0,
-                          UINT64_C(0x123456789abc), UINT32_C(0x4080c100),
+                          UINT64_C(0x123456789abc), UINT32_C(0x4080c104),
                           AGX_INDEX_SIZE_U32, true);
       CHECK_EQ(agx_vdm_draw_supported(chips[i], indexed, (enum agx_primitive)9),
                true);
@@ -849,6 +889,7 @@ main(void)
    test_generation_boundaries();
    test_sampler_generations();
    test_agx3_cdm_launch();
+   test_agx3_index_range();
    test_agx3_live_vdm_draw();
    test_agx3_live_vdm_barrier();
    test_agx3_cdm_stream_link();
