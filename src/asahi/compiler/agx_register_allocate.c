@@ -1723,6 +1723,21 @@ agx_ra(agx_context *ctx)
       }
    }
 
+   /* Diagnostic: reduce AGX3B register pressure without applying the older
+    * static occupancy table. Require at least sixteen saved halves and keep
+    * helper/preamble programs outside this experiment.
+    */
+   if ((agx_compiler_debug & AGX_DBG_REMAT) &&
+       ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B && !spilling &&
+       !ctx->key->is_helper && !ctx->is_preamble && effective_demand > 32) {
+      const unsigned slack = 4 + MAX2(2, agx_reserved_register_count(ctx));
+      unsigned target = ALIGN_POT(agx_calc_register_demand(ctx, true) + slack, 16);
+      if (target + 16 <= effective_demand) {
+         remat = true;
+         max_possible_regs = target;
+      }
+   }
+
    if (spilling || remat) {
       assert((remat || ctx->key->has_scratch) &&
              "internal shaders are unspillable");

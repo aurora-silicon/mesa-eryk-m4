@@ -1,0 +1,863 @@
+[
+  {
+    "input_sha256": "422863d88c731ba6aa834c08425519d382abd997c65fee8136bab91b9a9a1762",
+    "source": "full-suite-20260926/regression-frost-source-bad/4d23ac43eddb4b76222b602e34b63db6609932f59317c40baf01315fd5b4afbb/input.bin",
+    "baseline": "replay shader: 9204 instrs, 8235 alu, 8235 fscib, 3624 ic, 85786 code size, 191 gprs, 44 uniforms, 44 scratch, 512 threads, 6 loops, 11:11 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 9204 instrs, 8235 alu, 8235 fscib, 3624 ic, 85786 code size, 191 gprs, 44 uniforms, 44 scratch, 512 threads, 6 loops, 11:11 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "412c6bec8f6a8f2454330ae704541d7ad97f770c9e1eca14a4449fe108c9b417",
+    "source": "full-suite-20260926/regression-frost-source-good/7580cff27068b2dcbfcea41309e3f6b9727ff6538574cd50ec93be4d92f52656/input.bin",
+    "baseline": "replay shader: 9682 instrs, 8455 alu, 8455 fscib, 3624 ic, 87688 code size, 191 gprs, 44 uniforms, 44 scratch, 512 threads, 6 loops, 11:11 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 9682 instrs, 8455 alu, 8455 fscib, 3624 ic, 87688 code size, 191 gprs, 44 uniforms, 44 scratch, 512 threads, 6 loops, 11:11 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "3d57cc111f69576297d0b06a039c235b5da7f64a9114fcbf438951266171b488",
+    "source": "satisfactory-dx12-optimization-20260926/dx12-hot-compiler-m3/14882a615ce1b719c1bf09ef0897a750824611e4f950791511819a15c63e44f5/input.bin",
+    "baseline": "replay shader: 15358 instrs, 12968 alu, 12968 fscib, 3598 ic, 139296 code size, 191 gprs, 44 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 4 preamble inst",
+    "candidate": "replay shader: 15358 instrs, 12968 alu, 12968 fscib, 3598 ic, 139296 code size, 191 gprs, 44 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 4 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "ebf3605e5b5debd9231ca89072a120b76b0dcaf898e078ec16dd534c4fe344e2",
+    "source": "satisfactory-dx12-optimization-20260926/dx12-hot-compiler-m3/59ef430c0af2a8e8975e06a8400137585a40ec7791e932b4c429e02161041bbb/input.bin",
+    "baseline": "replay shader: 76789 instrs, 65379 alu, 65379 fscib, 14844 ic, 668610 code size, 191 gprs, 44 uniforms, 832 scratch, 512 threads, 2 loops, 1742:2162 spills:fills, 1 preamble inst",
+    "candidate": "replay shader: 76789 instrs, 65379 alu, 65379 fscib, 14844 ic, 668610 code size, 191 gprs, 44 uniforms, 832 scratch, 512 threads, 2 loops, 1742:2162 spills:fills, 1 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "b4cbfe1a89dad8cca8025c1fee809c5990db1ffb21ac153819e6c06d2d864e85",
+    "source": "satisfactory-dx12-optimization-20260926/dx12-hot-compiler-m3/ad36999b0d03252eda8f230daf6f38a84434fd05c4d17647782905f13b4eda11/input.bin",
+    "baseline": "replay shader: 31678 instrs, 28341 alu, 28341 fscib, 4936 ic, 274758 code size, 191 gprs, 44 uniforms, 160 scratch, 512 threads, 0 loops, 110:115 spills:fills, 1 preamble inst",
+    "candidate": "replay shader: 31678 instrs, 28341 alu, 28341 fscib, 4936 ic, 274758 code size, 191 gprs, 44 uniforms, 160 scratch, 512 threads, 0 loops, 110:115 spills:fills, 1 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "709379d30bba3dfbf7019111b5c850d3f133b1f35bb2a2634666a53f3e90a75a",
+    "source": "satisfactory-dx12-optimization-20260926/dx12-hot-compiler-m3/ec420a2e08054f20dd0944aefb6aca13dc780794e5b4947444ac2a1cf03a9d37/input.bin",
+    "baseline": "replay shader: 24416 instrs, 21684 alu, 21684 fscib, 3936 ic, 201168 code size, 191 gprs, 50 uniforms, 244 scratch, 512 threads, 0 loops, 211:246 spills:fills, 1 preamble inst",
+    "candidate": "replay shader: 24416 instrs, 21684 alu, 21684 fscib, 3936 ic, 201168 code size, 191 gprs, 50 uniforms, 244 scratch, 512 threads, 0 loops, 211:246 spills:fills, 1 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "c08639bf927b5f02f0a015a161e7424d0932d0d16cdfe50927f9aeab00fb02f4",
+    "source": "satisfactory-dx12-optimization-20260926/dx12-hot-compiler-m3/fe171cc1f0560cc17301fbc5485771506be6b82f706d375771d37f6db7d5ab50/input.bin",
+    "baseline": "replay shader: 35243 instrs, 30645 alu, 30645 fscib, 6450 ic, 299386 code size, 191 gprs, 60 uniforms, 1160 scratch, 512 threads, 3 loops, 724:943 spills:fills, 6 preamble inst",
+    "candidate": "replay shader: 35243 instrs, 30645 alu, 30645 fscib, 6450 ic, 299386 code size, 191 gprs, 60 uniforms, 1160 scratch, 512 threads, 3 loops, 724:943 spills:fills, 6 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "f842ef40cd5126323e70f04b3f72c9b34ef6d3824b91b3bb422357e17c72a831",
+    "source": "satisfactory-dx12-optimization-20260926/dx12-uniform-imad-oracle/captures/573a572814f1c3028816a51090adff6717e7f75ceecfe55dea327c7d0fa62f64/input.bin",
+    "baseline": "replay shader: 31 instrs, 22 alu, 22 fscib, 20 ic, 336 code size, 23 gprs, 8 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 31 instrs, 22 alu, 22 fscib, 20 ic, 336 code size, 23 gprs, 8 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "5cb1e97cea4af2f946e7394a03f9e973ccacaf235fb6b64a357522cc1aba32b8",
+    "source": "satisfactory-fragment-profile-20260926/preamble-sample-current-capture/32ff2d31d5c155a32ae11dca9baddf2d68fa791e7cef01fbbdc44c19387a58be/input.bin",
+    "baseline": "replay shader: 0 instrs, 0 alu, 0 fscib, 0 ic, 0 code size, 0 gprs, 32 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 0 instrs, 0 alu, 0 fscib, 0 ic, 0 code size, 0 gprs, 32 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "4e009cc2b8152fe68bfa5da968f58e5c612209d95b184d0e7aeeeaec93763882",
+    "source": "satisfactory-fragment-profile-20260926/preamble-sample-current-capture/6dfea6e89b0c74326d7451840698d01ee945ae911a3b3efaf008e9d0f15b67da/input.bin",
+    "baseline": "replay shader: 1 instrs, 0 alu, 0 fscib, 0 ic, 4 code size, 0 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1 instrs, 0 alu, 0 fscib, 0 ic, 4 code size, 0 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "7b3e0710d46e6d143f6cce7e668f8a288b9bf4bb0bfce4578dcd42683eae4bd5",
+    "source": "satisfactory-fragment-profile-20260926/preamble-sample-current-capture/655dda8bbe95767730c1f61b0931b43f5571367eee935d2f3733559b868b5d4b/input.bin",
+    "baseline": "replay shader: 14 instrs, 12 alu, 12 fscib, 0 ic, 152 code size, 15 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 14 instrs, 12 alu, 12 fscib, 0 ic, 152 code size, 15 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "1c40adaa64bc5acecb205eb68cd6a6090326cbdb512cb6546db91d9cd93b80fd",
+    "source": "satisfactory-fragment-profile-20260926/preamble-sample-current-capture/c3d1489aabd7d027dedba893fc11b5db41b2bba079477269ddcdddb86a20fcc2/input.bin",
+    "baseline": "replay shader: 1076 instrs, 843 alu, 843 fscib, 96 ic, 9302 code size, 121 gprs, 44 uniforms, 0 scratch, 832 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1076 instrs, 843 alu, 843 fscib, 96 ic, 9302 code size, 121 gprs, 44 uniforms, 0 scratch, 832 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "25ea78e0f3271f2b899428ae8a339b9ea3e5a72c7babadf68f3ac2a5cfd08637",
+    "source": "satisfactory-fragment-profile-20260926/preamble-sample-current-capture/dcc16224e1f3f491a5fe48a46dec718e414ac62b4e52569334994e018715de9b/input.bin",
+    "baseline": "replay shader: 10 instrs, 6 alu, 6 fscib, 0 ic, 94 code size, 15 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 10 instrs, 6 alu, 6 fscib, 0 ic, 94 code size, 15 gprs, 0 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "08e0958c2fffb50aa0e7dfc82fe99455e2ef5aa8cdf20887718eec643ea26279",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/77940f1c787f870390023ecc823c7f69005d20069a6b20ad6c6972f23cefea49/input.bin",
+    "baseline": "replay shader: 1786 instrs, 1393 alu, 1393 fscib, 252 ic, 16514 code size, 149 gprs, 40 uniforms, 0 scratch, 640 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 2217 instrs, 1813 alu, 1813 fscib, 252 ic, 19204 code size, 127 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "c2cb39b580d07cb7593c46c747207b311cd7247e4b18f0f7c810812c091e3a7b",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/45481cecfed33caef6c60287a50ce2374245c6f82cbf882a025812ce540bb1f6/input.bin",
+    "baseline": "replay shader: 1671 instrs, 1260 alu, 1260 fscib, 212 ic, 15416 code size, 181 gprs, 42 uniforms, 0 scratch, 576 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1671 instrs, 1260 alu, 1260 fscib, 212 ic, 15416 code size, 181 gprs, 42 uniforms, 0 scratch, 576 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "ae0789397a5c11dbcce2a2f118f792311513547b5b43dd18315a9a608e556cbf",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/c508a25fc21a7ee1450b4d8e5277a6408dfcb4aed251c85fd37dccb27959ec7d/input.bin",
+    "baseline": "replay shader: 1595 instrs, 1299 alu, 1299 fscib, 128 ic, 14812 code size, 141 gprs, 42 uniforms, 0 scratch, 704 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1595 instrs, 1299 alu, 1299 fscib, 128 ic, 14812 code size, 141 gprs, 42 uniforms, 0 scratch, 704 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "7fbe0854dcae05001e385e0881400ab37a9414369ce9d866cfd89fba02467958",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/1bfc773760fef3e22ef6863829e4bb6a021756186c4b92f56c0b0a69e7078cb9/input.bin",
+    "baseline": "replay shader: 2905 instrs, 2430 alu, 2430 fscib, 246 ic, 25544 code size, 189 gprs, 40 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 2905 instrs, 2430 alu, 2430 fscib, 246 ic, 25544 code size, 189 gprs, 40 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "819fabed2c218193163ed7de997db27188b4c82c7e9a9d7110fedfc8d8edc23c",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/32ebfc3d703f77874bbbb0c131b00dd9d175d1c8409a696bac7d99f381061a85/input.bin",
+    "baseline": "replay shader: 1501 instrs, 1219 alu, 1219 fscib, 220 ic, 13390 code size, 167 gprs, 42 uniforms, 0 scratch, 576 threads, 5 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1525 instrs, 1244 alu, 1244 fscib, 220 ic, 13488 code size, 143 gprs, 42 uniforms, 0 scratch, 704 threads, 5 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "fa5947d106c37b781633cee5415d3dc9806a5f05c92a65243f8c2e25f6c95840",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/ca9a22132a170635edcccf81897696a5e020e6d51a5e378181a1828ce788393a/input.bin",
+    "baseline": "replay shader: 1054 instrs, 816 alu, 816 fscib, 82 ic, 9814 code size, 123 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1054 instrs, 816 alu, 816 fscib, 82 ic, 9814 code size, 123 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "cfd1053e03a4e4987ddaffde340928c2217427bb6068bc4c684b0475b2354c03",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/e47c444f80dc298d1df9fc2b01935b554caa584a461985c450f133f9d0af3f1c/input.bin",
+    "baseline": "replay shader: 4051 instrs, 3588 alu, 3588 fscib, 938 ic, 33856 code size, 191 gprs, 42 uniforms, 32 scratch, 512 threads, 2 loops, 10:9 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 4051 instrs, 3588 alu, 3588 fscib, 938 ic, 33856 code size, 191 gprs, 42 uniforms, 32 scratch, 512 threads, 2 loops, 10:9 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "94799ae8907d80bb6cc8b993463e033f57d093b0714542205a5aec861000edc2",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/df9ad9b96da4d2fb56cbad271a4c19d361f3410319223746b4680da10332c61d/input.bin",
+    "baseline": "replay shader: 1094 instrs, 885 alu, 885 fscib, 16 ic, 10176 code size, 177 gprs, 40 uniforms, 0 scratch, 576 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1148 instrs, 936 alu, 936 fscib, 16 ic, 10410 code size, 159 gprs, 40 uniforms, 0 scratch, 640 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "01c93e39389ad0ed8877e26adaec74be2512e197c95d3b6162c0bb0adbb06253",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/1ac0130b5e9fbee903adeb7396f96691da76c6b0cfb81be488f15046a2dbae1c/input.bin",
+    "baseline": "replay shader: 1308 instrs, 902 alu, 902 fscib, 0 ic, 12374 code size, 111 gprs, 40 uniforms, 0 scratch, 896 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1308 instrs, 902 alu, 902 fscib, 0 ic, 12374 code size, 111 gprs, 40 uniforms, 0 scratch, 896 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "4d6c132f20e7befdc20713b4249805f1c525252962eb25da64adcfa6597f3c7c",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/10a57fe51e819ce145d1761937bb385e89bc3f48aefed9fd9e79b0792ca0e78d/input.bin",
+    "baseline": "replay shader: 1079 instrs, 857 alu, 857 fscib, 166 ic, 9768 code size, 135 gprs, 44 uniforms, 0 scratch, 768 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1133 instrs, 909 alu, 909 fscib, 170 ic, 10110 code size, 111 gprs, 44 uniforms, 0 scratch, 896 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "35e3f8803fdec6ce2e0342757dfbe16c615a05cca866b56824a9f96a169be350",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/8264116ef2e1ebfee1b33428791bb01b332b71e36499eb1b82a8eb87dcb869fc/input.bin",
+    "baseline": "replay shader: 2603 instrs, 2216 alu, 2216 fscib, 474 ic, 23102 code size, 191 gprs, 44 uniforms, 0 scratch, 512 threads, 3 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 2603 instrs, 2216 alu, 2216 fscib, 474 ic, 23102 code size, 191 gprs, 44 uniforms, 0 scratch, 512 threads, 3 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "35bb6d2f613cf1367d2fdd09d954733e132995e408be5e62f8e4b434c8a6386b",
+    "source": "satisfactory-fragment-profile-20260926/fresh-fragment-inputs-20260926/d784e0f449b71882c301c3b4588b7432bb63681f4ba6a4503c2778e4e1c62656/input.bin",
+    "baseline": "replay shader: 899 instrs, 664 alu, 664 fscib, 4 ic, 8110 code size, 87 gprs, 42 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 899 instrs, 664 alu, 664 fscib, 4 ic, 8110 code size, 87 gprs, 42 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "0e3ec18a5536202df6a9bb68611d498f4a3af80ec0f89b311062d8d3bccbdad0",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/05e1c26d67542670732b0e24eb433400e08579c89ccaafdc827f1df5a09bc61d/input.bin",
+    "baseline": "replay shader: 26850 instrs, 57824 alu, 23801 fscib, 57824 ic, 284436 code size, 191 gprs, 32 uniforms, 216 scratch, 512 threads, 3 loops, 804:594 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 26850 instrs, 57824 alu, 23801 fscib, 57824 ic, 284436 code size, 191 gprs, 32 uniforms, 216 scratch, 512 threads, 3 loops, 804:594 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "495847c330d0f87c072b691d04ebea95359dc5b3cf90ecc30ddd9560af4d4315",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/0fbdfd512c383d765c6100e13ff4ae13c0cd6b4098ae8756052629120f8c54a3/input.bin",
+    "baseline": "replay shader: 14440 instrs, 38600 alu, 13644 fscib, 38600 ic, 159452 code size, 191 gprs, 32 uniforms, 0 scratch, 512 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 14440 instrs, 38600 alu, 13644 fscib, 38600 ic, 159452 code size, 191 gprs, 32 uniforms, 0 scratch, 512 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "1ab21d20c45398593e5d1cac3185438ca242f3e32145719a0e4f9ca8842ecfd8",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/14fb811f8ac6f1600c63aa7007824b1f56a80ebeb19dd5c6a7f9d6af65c2511c/input.bin",
+    "baseline": "replay shader: 5938 instrs, 5061 alu, 5061 fscib, 900 ic, 51910 code size, 191 gprs, 32 uniforms, 8 scratch, 512 threads, 0 loops, 3:4 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5938 instrs, 5061 alu, 5061 fscib, 900 ic, 51910 code size, 191 gprs, 32 uniforms, 8 scratch, 512 threads, 0 loops, 3:4 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "2fea47c04abd98e2af3a80c77a59091eeb44bb18f4848e4ea701839202e08b0d",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/23e7252b15ef2263a0e7393bf44f1f745a936ea7a5672068683da3f44f2f2db7/input.bin",
+    "baseline": "replay shader: 14697 instrs, 38600 alu, 13773 fscib, 38600 ic, 161530 code size, 191 gprs, 32 uniforms, 0 scratch, 512 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 14697 instrs, 38600 alu, 13773 fscib, 38600 ic, 161530 code size, 191 gprs, 32 uniforms, 0 scratch, 512 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "d0465fe79fff3afc2132d30be7a73f8b03c90011797d3efb52e5f8ec38b4c4ea",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/5d550c657f662ec19979ed96ecf1412999f48a83999a82c3cec50663c958b215/input.bin",
+    "baseline": "replay shader: 1869 instrs, 1678 alu, 1626 fscib, 1678 ic, 17516 code size, 139 gprs, 36 uniforms, 0 scratch, 704 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1869 instrs, 1678 alu, 1626 fscib, 1678 ic, 17516 code size, 139 gprs, 36 uniforms, 0 scratch, 704 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "dd5f4e4d146d141d432cb72fa34951e1ead1f05ff49a3694cf5bae17aaac80d3",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/6db67dd2a3ee3ec2e39effe90c656036e94fd8a7bbbbdd27dc1959f19b742400/input.bin",
+    "baseline": "replay shader: 24649 instrs, 55004 alu, 21917 fscib, 55004 ic, 262154 code size, 191 gprs, 32 uniforms, 444 scratch, 512 threads, 1 loops, 620:583 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 24649 instrs, 55004 alu, 21917 fscib, 55004 ic, 262154 code size, 191 gprs, 32 uniforms, 444 scratch, 512 threads, 1 loops, 620:583 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "a6088c214aec0c374aa4331906921ec1858993615f01dba34b37755e09564a01",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/76752da5f48105589ee52af73e5c1d2160e8bc8813534500b2190e2b56aa22f4/input.bin",
+    "baseline": "replay shader: 11939 instrs, 8316 alu, 8316 fscib, 1052 ic, 100320 code size, 191 gprs, 28 uniforms, 702 scratch, 512 threads, 13 loops, 1061:1226 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 11939 instrs, 8316 alu, 8316 fscib, 1052 ic, 100320 code size, 191 gprs, 28 uniforms, 702 scratch, 512 threads, 13 loops, 1061:1226 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "272c4458203bb466e2999880b1f0fa1d7d33aed7725e981551ea229d1ed25420",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/8a3e4a07c2454c36ec566d4f2c3327ca6f4d023babae16b7ae455ea29d0f984b/input.bin",
+    "baseline": "replay shader: 20417 instrs, 54848 alu, 18493 fscib, 54848 ic, 223306 code size, 191 gprs, 32 uniforms, 444 scratch, 512 threads, 0 loops, 565:693 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 20417 instrs, 54848 alu, 18493 fscib, 54848 ic, 223306 code size, 191 gprs, 32 uniforms, 444 scratch, 512 threads, 0 loops, 565:693 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "e4dfe5cb7160f3a73086219342600d012097893f79dfa714ae07d8ba02c43264",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/d87fcb4c8ff5a606336a7bc521d7522c5fa00fb543195ce3390917bfd20748ec/input.bin",
+    "baseline": "replay shader: 23794 instrs, 54864 alu, 21218 fscib, 54864 ic, 253158 code size, 191 gprs, 32 uniforms, 424 scratch, 512 threads, 0 loops, 600:551 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 23794 instrs, 54864 alu, 21218 fscib, 54864 ic, 253158 code size, 191 gprs, 32 uniforms, 424 scratch, 512 threads, 0 loops, 600:551 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "fe1c9da6ecb8bffdc5d90d4281332b2aa2fb00f2539947aa96c94aea68bce7d0",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/e26bffd1e3961cb272bdc26923b3bbc54def05c3b561bf39d5f79ad436acfc48/input.bin",
+    "baseline": "replay shader: 24984 instrs, 54860 alu, 22380 fscib, 54860 ic, 265526 code size, 191 gprs, 32 uniforms, 444 scratch, 512 threads, 1 loops, 600:572 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 24984 instrs, 54860 alu, 22380 fscib, 54860 ic, 265526 code size, 191 gprs, 32 uniforms, 444 scratch, 512 threads, 1 loops, 600:572 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "4f1fcd727421168c362bd16ba5e14bf45f8c3d8cce9ba972f3b294c69260ccb7",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/e75a81b1c53155e31e764db2b149411cc3e578ce2f9c1f08191b740fe2180700/input.bin",
+    "baseline": "replay shader: 26845 instrs, 57824 alu, 23796 fscib, 57824 ic, 284306 code size, 191 gprs, 32 uniforms, 216 scratch, 512 threads, 3 loops, 804:594 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 26845 instrs, 57824 alu, 23796 fscib, 57824 ic, 284306 code size, 191 gprs, 32 uniforms, 216 scratch, 512 threads, 3 loops, 804:594 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "6a7dda973a88d0ac41ea3dbd201fce969acea5dd8797fea2b978b902203a30c6",
+    "source": "satisfactory-fresh-profile-20260926/fresh-hot-inputs-20260926/ebecc1ed33332725c92e750a119667dc4d346ed3fa90a65d0da14557e64225dc/input.bin",
+    "baseline": "replay shader: 13125 instrs, 36012 alu, 12383 fscib, 36012 ic, 145332 code size, 191 gprs, 32 uniforms, 96 scratch, 512 threads, 0 loops, 24:24 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 13125 instrs, 36012 alu, 12383 fscib, 36012 ic, 145332 code size, 191 gprs, 32 uniforms, 96 scratch, 512 threads, 0 loops, 24:24 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "1cedd94ebbf3aaa2149203b520d13ae7113a13e9807176f453a6cf04a1edcd68",
+    "source": "satisfactory-5fps-20260925/followup/native-sampler-linear32-capture/dfd571e11de46216450a3d3cfca5ff335a419b137f67b955556f112fed55b6e2/input.bin",
+    "baseline": "replay shader: 1378 instrs, 1095 alu, 1095 fscib, 224 ic, 11978 code size, 127 gprs, 44 uniforms, 0 scratch, 832 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 1378 instrs, 1095 alu, 1095 fscib, 224 ic, 11978 code size, 127 gprs, 44 uniforms, 0 scratch, 832 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "672ae3740696a027e2d57888c8c6985acf2b1a9de0651af4c1c90629962e8611",
+    "source": "satisfactory-5fps-20260925/native-cost-targets-20260925/00910a31b37e31aa6d315ff549cbc950eb3ccce798bd992ec7b82751b09ddc46/input.bin",
+    "baseline": "replay shader: 17446 instrs, 14503 alu, 14503 fscib, 2062 ic, 152468 code size, 191 gprs, 40 uniforms, 1528 scratch, 512 threads, 0 loops, 706:870 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 17446 instrs, 14503 alu, 14503 fscib, 2062 ic, 152468 code size, 191 gprs, 40 uniforms, 1528 scratch, 512 threads, 0 loops, 706:870 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "f160c51c0509d31ebc0957c0e2615745d6f38809403df2c1390ca35775661407",
+    "source": "satisfactory-5fps-20260925/native-cost-targets-20260925/4d78e670fb69f0e0dea2e0cb81a7347f6e75e3659b3dc1421861872da90b4cab/input.bin",
+    "baseline": "replay shader: 13880 instrs, 10677 alu, 10677 fscib, 1048 ic, 116708 code size, 191 gprs, 28 uniforms, 674 scratch, 512 threads, 13 loops, 901:1040 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 13880 instrs, 10677 alu, 10677 fscib, 1048 ic, 116708 code size, 191 gprs, 28 uniforms, 674 scratch, 512 threads, 13 loops, 901:1040 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "90a67df1584aaf4e840160d72516c73e5584be12d60b761fb7948b92d6b0d7ba",
+    "source": "satisfactory-5fps-20260925/native-cost-targets-20260925/9eadad859654eb0a3788a23cd8d26faf93fec158136b655ab9707a704e7f090c/input.bin",
+    "baseline": "replay shader: 12340 instrs, 10012 alu, 10012 fscib, 2256 ic, 106464 code size, 191 gprs, 42 uniforms, 522 scratch, 512 threads, 5 loops, 517:543 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 12340 instrs, 10012 alu, 10012 fscib, 2256 ic, 106464 code size, 191 gprs, 42 uniforms, 522 scratch, 512 threads, 5 loops, 517:543 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "59ad4024176085efd1e9c0aab233fafb70a6235d2c3a83a66c6bd6433da87d18",
+    "source": "satisfactory-5fps-20260925/native-cost-targets-20260925/a7c7f23227718d563a244e4702060447918042f042844d0ebca0afb07b365866/input.bin",
+    "baseline": "replay shader: 27395 instrs, 54848 alu, 25401 fscib, 54848 ic, 279242 code size, 191 gprs, 32 uniforms, 448 scratch, 512 threads, 0 loops, 600:728 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 27395 instrs, 54848 alu, 25401 fscib, 54848 ic, 279242 code size, 191 gprs, 32 uniforms, 448 scratch, 512 threads, 0 loops, 600:728 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "176ed6616ad4fbabb7de694a13da3f2b5898c466eec9e8371ab95b1df3a570db",
+    "source": "satisfactory-5fps-20260925/native-cost-targets-20260925/f5536fd4e3dc88c07b30ea2d7578feb6faef1316d2552010b15ccc7b5acb15f2/input.bin",
+    "baseline": "replay shader: 19377 instrs, 38600 alu, 18453 fscib, 38600 ic, 207554 code size, 191 gprs, 32 uniforms, 0 scratch, 512 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 19377 instrs, 38600 alu, 18453 fscib, 38600 ic, 207554 code size, 191 gprs, 32 uniforms, 0 scratch, 512 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "07022225927a5ca9b73582bc8fed44a03d0532ee8bcfbc04672f3505208f2f13",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/00a04b269264663f72469716fbd8c054b999974c57092481d2ae6da099aff066/input.bin",
+    "baseline": "replay shader: 4005 instrs, 3130 alu, 3130 fscib, 1040 ic, 35674 code size, 127 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5302 instrs, 4417 alu, 4417 fscib, 1040 ic, 44042 code size, 95 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "737fc39227f57eb25b4a2db790a661bc7c70a2db2a727c5121b6af197d85ac43",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/03272c38a874e5c3b4d8b33b657c98916b287a427bd4f1b7bbceed618ebd0a09/input.bin",
+    "baseline": "replay shader: 3793 instrs, 3048 alu, 3048 fscib, 1032 ic, 34040 code size, 167 gprs, 40 uniforms, 0 scratch, 576 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 4125 instrs, 3366 alu, 3366 fscib, 1032 ic, 36638 code size, 143 gprs, 40 uniforms, 0 scratch, 704 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "24bfd2d6d7ed4d4014820f0422872b42828957367e3b729d3d3864240428e477",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/09d31f6ad7e100e5ef77dd266c0175e58bd062709691af5bd68016687916186f/input.bin",
+    "baseline": "replay shader: 2964 instrs, 2396 alu, 2396 fscib, 922 ic, 26282 code size, 127 gprs, 44 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 2964 instrs, 2396 alu, 2396 fscib, 922 ic, 26282 code size, 127 gprs, 44 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "1f12ef9687589c24eb78326bc28cb5cdee6cd51ef6ad5f8edf59ea8a37cd13d8",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/0a12784be31825e20dc11c6c4bc65f3ae5191768bd4c9a6674caf1bd28044251/input.bin",
+    "baseline": "replay shader: 9780 instrs, 8383 alu, 8383 fscib, 2452 ic, 89092 code size, 191 gprs, 40 uniforms, 4 scratch, 512 threads, 1 loops, 1:1 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 9780 instrs, 8383 alu, 8383 fscib, 2452 ic, 89092 code size, 191 gprs, 40 uniforms, 4 scratch, 512 threads, 1 loops, 1:1 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "a460033613c2d4497d28d7592a862ac8733579fd007aeb7125a813ffa26210f2",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/0c3f36ee79a708c93fc7ec8adffe6fac7014aa9bb3a29edb64fd5c8713b911a5/input.bin",
+    "baseline": "replay shader: 5095 instrs, 4118 alu, 4118 fscib, 1584 ic, 45356 code size, 183 gprs, 40 uniforms, 0 scratch, 576 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5334 instrs, 4348 alu, 4348 fscib, 1584 ic, 46498 code size, 143 gprs, 40 uniforms, 0 scratch, 704 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "27548eeecc263dda4076f2ea09df877f898a53d7c46ccf360d8464d31fb91fcb",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/10e1da15523a1771e6a6c65ffa5f3eb66e641ba1255226e0a5c6ecd952af39ff/input.bin",
+    "baseline": "replay shader: 5269 instrs, 4330 alu, 4330 fscib, 1636 ic, 47884 code size, 191 gprs, 40 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5823 instrs, 4880 alu, 4880 fscib, 1636 ic, 51902 code size, 159 gprs, 40 uniforms, 0 scratch, 640 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "a93022d4077514a7ca33712b7886cbe4d253276d304886a0ff76368b4d7c5aa7",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/15c72dab7209d2cb114041aa2ea59b5c120740c24c5102a0eaa6344e35789230/input.bin",
+    "baseline": "replay shader: 9494 instrs, 7422 alu, 7422 fscib, 2560 ic, 84668 code size, 127 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 12877 instrs, 10777 alu, 10777 fscib, 2560 ic, 106776 code size, 95 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "6646ec74dc35bc5c9131233b5a7a7ab63b9dfc2ca783706531e5649dbf7ea3b7",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/2620053cb8f2d0b1fd8eeb107c73d6ae4bfb82f382903f33810cc5517930601b/input.bin",
+    "baseline": "replay shader: 13864 instrs, 11556 alu, 11556 fscib, 4508 ic, 123494 code size, 191 gprs, 42 uniforms, 556 scratch, 512 threads, 0 loops, 150:303 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 13864 instrs, 11556 alu, 11556 fscib, 4508 ic, 123494 code size, 191 gprs, 42 uniforms, 556 scratch, 512 threads, 0 loops, 150:303 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "5847bdfe324ab6f1483b656b7a5588475c52ef1bd3c4c7f6e412c308b049cbad",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/29c954f4b56a3eba850f291de71a066896e2160b12e2787fac5c365174c3dc60/input.bin",
+    "baseline": "replay shader: 2968 instrs, 2411 alu, 2411 fscib, 906 ic, 26862 code size, 155 gprs, 44 uniforms, 0 scratch, 640 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3409 instrs, 2850 alu, 2850 fscib, 906 ic, 29332 code size, 127 gprs, 44 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "0f8f4549436a65e6ce82af3160add202213b4dfe9139f28e684a39cfd8af0227",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/489bb077d84245db3fa05ff13f517ca34c5da9d6ed76dcbea427e4be0b24915d/input.bin",
+    "baseline": "replay shader: 3900 instrs, 3172 alu, 3172 fscib, 1036 ic, 34932 code size, 147 gprs, 44 uniforms, 0 scratch, 640 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3901 instrs, 3171 alu, 3171 fscib, 1036 ic, 34930 code size, 127 gprs, 44 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "fe98db261835b31f29cf19b6f645d30415c3f47383425d562a9a8ca1c69354f5",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/4fcdcf84035eebddde903eb789d23da99ff147b674f0711650620a73f48d0283/input.bin",
+    "baseline": "replay shader: 3395 instrs, 2775 alu, 2775 fscib, 1194 ic, 29872 code size, 123 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3395 instrs, 2775 alu, 2775 fscib, 1194 ic, 29872 code size, 123 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "330a33b9655a5894ee38d981fd3575929b187b43ef7c25417dc97dbbd4776dda",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/5056ede86d5336d2b28814c4a1a573bf880532847c0fde1eb7aef7b8485b0ea8/input.bin",
+    "baseline": "replay shader: 14140 instrs, 12610 alu, 12610 fscib, 2968 ic, 121106 code size, 191 gprs, 42 uniforms, 124 scratch, 512 threads, 2 loops, 133:100 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 14140 instrs, 12610 alu, 12610 fscib, 2968 ic, 121106 code size, 191 gprs, 42 uniforms, 124 scratch, 512 threads, 2 loops, 133:100 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "55da31ad825bd79788a6664745154e847b9cf64e5021d680d6f6fb5f1b0dfbe9",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/57ea85f5ba97c7d0c47d672f8edda4fa94acdec5e8950267ac2982c44dac10c3/input.bin",
+    "baseline": "replay shader: 12543 instrs, 10310 alu, 10310 fscib, 2330 ic, 107534 code size, 191 gprs, 44 uniforms, 792 scratch, 512 threads, 7 loops, 519:460 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 12543 instrs, 10310 alu, 10310 fscib, 2330 ic, 107534 code size, 191 gprs, 44 uniforms, 792 scratch, 512 threads, 7 loops, 519:460 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "5ccbede0ea768f11b46c1845586fa8651bebfc504d12374ac757f357a877cd79",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/6835bd11f5e6b4680a459b78bbe85c289f70e91b4cced062eb916080f011ad5e/input.bin",
+    "baseline": "replay shader: 12892 instrs, 11523 alu, 11523 fscib, 2582 ic, 110952 code size, 191 gprs, 42 uniforms, 96 scratch, 512 threads, 2 loops, 85:67 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 12892 instrs, 11523 alu, 11523 fscib, 2582 ic, 110952 code size, 191 gprs, 42 uniforms, 96 scratch, 512 threads, 2 loops, 85:67 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "c2950c5e94eb2dde54955a5bad15e3567b3b09701797882048170dbe8c8c5f73",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/6977da334e662a2d6674aef162bacd9452d02f3d4ae190370f626224668dc694/input.bin",
+    "baseline": "replay shader: 5581 instrs, 4581 alu, 4581 fscib, 1688 ic, 50604 code size, 159 gprs, 42 uniforms, 0 scratch, 640 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5754 instrs, 4754 alu, 4754 fscib, 1688 ic, 50466 code size, 127 gprs, 42 uniforms, 0 scratch, 832 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "6b28f19416f0096ff91b8b6757c22df7651f8399f725bc1b6ea260e52a744b59",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/7238823090a442a343f42c028de497d610a3dae4feb0404d12cbd0238e7c4e38/input.bin",
+    "baseline": "replay shader: 3759 instrs, 3062 alu, 3062 fscib, 1300 ic, 33772 code size, 159 gprs, 42 uniforms, 0 scratch, 640 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3974 instrs, 3277 alu, 3277 fscib, 1300 ic, 34504 code size, 127 gprs, 42 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "50c53ba4e7b9e2eec8f7bc991f07686aa56a82c254bfad5a861e46e044723d0c",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/84c349141ce3d109459646b296f08be0e10243f83b405a45a1ec02962f83a720/input.bin",
+    "baseline": "replay shader: 6313 instrs, 4934 alu, 4934 fscib, 1680 ic, 56274 code size, 127 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 8514 instrs, 7117 alu, 7117 fscib, 1680 ic, 70634 code size, 95 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "60351655eec22faa836d30198c5d3b0109e1705d7f70e61ea96382c44f5d6a02",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/976ba149b4494e31fcbdd1d8ee55cc83d5634884a493032aa48a14e99e5276be/input.bin",
+    "baseline": "replay shader: 3109 instrs, 2523 alu, 2523 fscib, 968 ic, 27416 code size, 127 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3109 instrs, 2523 alu, 2523 fscib, 968 ic, 27416 code size, 127 gprs, 40 uniforms, 0 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "eb9f913b6ae64d53635c1fd13733ec7c2454ff4612b7a22a5b1eff1f619dc2a1",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/a3c622baf2acda6fc0fd3a8ea90917ea37ef6298d07c870448bf6d8784689d51/input.bin",
+    "baseline": "replay shader: 7223 instrs, 5925 alu, 5925 fscib, 2506 ic, 65774 code size, 191 gprs, 44 uniforms, 0 scratch, 512 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 7223 instrs, 5925 alu, 5925 fscib, 2506 ic, 65774 code size, 191 gprs, 44 uniforms, 0 scratch, 512 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "88e1d53407ea57dd818ae0e896cef1e200525f2e22960e4764fba0d779216e15",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/bdff187596c909209c18cea1a8324327ec99845ac7c571eb4487949aebd1821b/input.bin",
+    "baseline": "replay shader: 5581 instrs, 4581 alu, 4581 fscib, 1688 ic, 50604 code size, 159 gprs, 42 uniforms, 0 scratch, 640 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5754 instrs, 4754 alu, 4754 fscib, 1688 ic, 50466 code size, 127 gprs, 42 uniforms, 0 scratch, 832 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "1f6ab25861f3ba2fb7bd2d743909a1b140ad3f55ea9ff8a154bf4a3a0135ce8a",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/bf170020d75e7fd48fa48d1261710a4c7b8ccb850e865a2d841f58000c7b9a37/input.bin",
+    "baseline": "replay shader: 3869 instrs, 3030 alu, 3030 fscib, 1040 ic, 34580 code size, 103 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3869 instrs, 3030 alu, 3030 fscib, 1040 ic, 34580 code size, 103 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "79ce3b10ec49b1fa55efacc7ff08eae71e45d55047cc51a477aa13ba8597d426",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/cce321358043ca0a19444f3dc731f944c48e8ae0a475c0a7b91ab67d93751796/input.bin",
+    "baseline": "replay shader: 9953 instrs, 8359 alu, 8359 fscib, 2398 ic, 87222 code size, 191 gprs, 42 uniforms, 96 scratch, 512 threads, 0 loops, 35:24 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 9953 instrs, 8359 alu, 8359 fscib, 2398 ic, 87222 code size, 191 gprs, 42 uniforms, 96 scratch, 512 threads, 0 loops, 35:24 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "fdf49bb6feb39cdbf389d314343380d5d241b4f233aa24145d16b6dc6b722739",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/d351ebdf603a794752fa69f2b9ef5b1bbed81e7cc2438626db4f375613ee1b27/input.bin",
+    "baseline": "replay shader: 6095 instrs, 5155 alu, 5155 fscib, 1352 ic, 54138 code size, 185 gprs, 42 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 6095 instrs, 5155 alu, 5155 fscib, 1352 ic, 54138 code size, 185 gprs, 42 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "0f3be50b414bd3d5795f0317d195bfbe926c3bb0efb2068f6b853c8e8406f274",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/d8a25d20b9e20cd7f8f7484beaa011cd025b6dc8c2bcdb7f2fd74cd478f0c9ae/input.bin",
+    "baseline": "replay shader: 16629 instrs, 14807 alu, 14807 fscib, 3584 ic, 145438 code size, 191 gprs, 42 uniforms, 164 scratch, 512 threads, 3 loops, 151:111 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 16629 instrs, 14807 alu, 14807 fscib, 3584 ic, 145438 code size, 191 gprs, 42 uniforms, 164 scratch, 512 threads, 3 loops, 151:111 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "fd4fb0cd71fbb0e662eeefcb2d3b12efcf25aa7207ea69869e3cdad3ec850b42",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/d981efe498ccf95a7640889cd5a521cbe6f984d1eeda934b83c556f4838286e8/input.bin",
+    "baseline": "replay shader: 3197 instrs, 2612 alu, 2612 fscib, 822 ic, 28294 code size, 191 gprs, 40 uniforms, 16 scratch, 512 threads, 0 loops, 4:7 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3197 instrs, 2612 alu, 2612 fscib, 822 ic, 28294 code size, 191 gprs, 40 uniforms, 16 scratch, 512 threads, 0 loops, 4:7 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "2eba001652fb50873c56ac40942fcb306737329c38c44dd4d6dba915ccc96000",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/e32b46940e31674a9153269352025064bb1d237cf95d00927f79bbbf4d94a009/input.bin",
+    "baseline": "replay shader: 4359 instrs, 3557 alu, 3557 fscib, 1374 ic, 39322 code size, 159 gprs, 40 uniforms, 0 scratch, 640 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5130 instrs, 4325 alu, 4325 fscib, 1374 ic, 42488 code size, 111 gprs, 40 uniforms, 0 scratch, 896 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": true
+  },
+  {
+    "input_sha256": "c965f816f9cc35a8a13000f910a106aab6a5186f980307ea78d0c1d36c620fb2",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/ee8ef5fa12493a7e2e115b0b8ac9918097512113dafb38ccbf75940b8b596e68/input.bin",
+    "baseline": "replay shader: 9424 instrs, 7388 alu, 7388 fscib, 2560 ic, 84306 code size, 103 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 9424 instrs, 7388 alu, 7388 fscib, 2560 ic, 84306 code size, 103 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "9b26b6a04847984a40cfffca82df7839360d0f5a12dc6586e38c71a116fa89c1",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/f6ceb0c02ad0be5586dcf55e567caefe9958bb9117ccb3f53b69aaaa8e682c30/input.bin",
+    "baseline": "replay shader: 6201 instrs, 4858 alu, 4858 fscib, 1680 ic, 55456 code size, 103 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 6201 instrs, 4858 alu, 4858 fscib, 1680 ic, 55456 code size, 103 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "106ba358358300fb6e73cf5fa733c86e333f087699ecfd86b869db7f3f330e95",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/f71a526842352924044422104caacd112ef09938b590cc2d12a9657ca3c400f5/input.bin",
+    "baseline": "replay shader: 8273 instrs, 6889 alu, 6889 fscib, 2398 ic, 74404 code size, 191 gprs, 40 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 8273 instrs, 6889 alu, 6889 fscib, 2398 ic, 74404 code size, 191 gprs, 40 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "f1eada4d278ce8f81fa2be3466555e3f95e69e7eb0ddc5d4be07e07520e4c784",
+    "source": "satisfactory-5fps-20260925/native-hot-fragment-20260925/faf8bc373658482b9ae5a2e32b714296c413f7bdb25f64daccb9d699558fd743/input.bin",
+    "baseline": "replay shader: 5350 instrs, 4439 alu, 4439 fscib, 1568 ic, 48154 code size, 191 gprs, 44 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5350 instrs, 4439 alu, 4439 fscib, 1568 ic, 48154 code size, 191 gprs, 44 uniforms, 0 scratch, 512 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "fcd558cd56f8e83e5f4e373c2d0a62f4d5ff0c2ee8ed112d00db3b76ff77fd6a",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/03816411f1fc2b7e35a82a7146584c973d73d38881cf818e633791c21184bda3/input.bin",
+    "baseline": "replay shader: 3695 instrs, 3043 alu, 3043 fscib, 1516 ic, 35112 code size, 111 gprs, 26 uniforms, 16 scratch, 896 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3695 instrs, 3043 alu, 3043 fscib, 1516 ic, 35112 code size, 111 gprs, 26 uniforms, 16 scratch, 896 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "5567eed0f8824725999eb8a3b4d74bed04e7bd2896d0ce3fe28a7c332199acc2",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/10fe357e9ecdc845579a71c37c203e82e6af6a3268bf65e3da983afca015ec5e/input.bin",
+    "baseline": "replay shader: 6588 instrs, 5853 alu, 5853 fscib, 1780 ic, 60960 code size, 191 gprs, 20 uniforms, 44 scratch, 512 threads, 5 loops, 21:32 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 6588 instrs, 5853 alu, 5853 fscib, 1780 ic, 60960 code size, 191 gprs, 20 uniforms, 44 scratch, 512 threads, 5 loops, 21:32 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "11d0ed59a7466bf833550b05b2c1898976646882f040e41abdef2f2d77653f44",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/15f85558f5be571444e6d3c01dde8ee94fed71754b3bc6e772ce6e27a924a681/input.bin",
+    "baseline": "replay shader: 4280 instrs, 3511 alu, 3511 fscib, 1748 ic, 40422 code size, 127 gprs, 26 uniforms, 16 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 4280 instrs, 3511 alu, 3511 fscib, 1748 ic, 40422 code size, 127 gprs, 26 uniforms, 16 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "c47995e3ac72ceca0c1da20e024852928ad7167e1f86052753ad7231e1fe4764",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/1e1ac120b523c29a76148c351f18635ce6a36d31ba0fabf672b2c83d3b95e4da/input.bin",
+    "baseline": "replay shader: 30397 instrs, 57824 alu, 27839 fscib, 57824 ic, 312840 code size, 191 gprs, 32 uniforms, 248 scratch, 512 threads, 3 loops, 797:871 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 30397 instrs, 57824 alu, 27839 fscib, 57824 ic, 312840 code size, 191 gprs, 32 uniforms, 248 scratch, 512 threads, 3 loops, 797:871 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "a388592090a4ada665fe46b1cf56fb507335d41d58a5a2bdec688996661771f9",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/3169a57568d9137840a455f988f5989534027e333a514b58989e79676dbc74e6/input.bin",
+    "baseline": "replay shader: 28164 instrs, 54864 alu, 26030 fscib, 54864 ic, 286230 code size, 191 gprs, 32 uniforms, 460 scratch, 512 threads, 0 loops, 671:799 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 28164 instrs, 54864 alu, 26030 fscib, 54864 ic, 286230 code size, 191 gprs, 32 uniforms, 460 scratch, 512 threads, 0 loops, 671:799 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "4272a3da6cda3dd0a751d44d85bc0c7e0589c9eb2b9bde51abc69f8af8c49efb",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/5397099b6958099f5e0a710e8a2f74e52d6cd835612f104d68187498db233c4c/input.bin",
+    "baseline": "replay shader: 5892 instrs, 5016 alu, 5016 fscib, 896 ic, 51300 code size, 191 gprs, 32 uniforms, 8 scratch, 512 threads, 0 loops, 3:4 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5892 instrs, 5016 alu, 5016 fscib, 896 ic, 51300 code size, 191 gprs, 32 uniforms, 8 scratch, 512 threads, 0 loops, 3:4 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "338dad6b527600dd9e29194cf9542d4b90039e979571f93d2d1ddd4cf6ee9abd",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/583dd2a1d3b92ae1b499a78bfde168928937d4f50d256f7cfadec667ff5fbab5/input.bin",
+    "baseline": "replay shader: 19120 instrs, 38600 alu, 18324 fscib, 38600 ic, 205476 code size, 191 gprs, 32 uniforms, 0 scratch, 512 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 19120 instrs, 38600 alu, 18324 fscib, 38600 ic, 205476 code size, 191 gprs, 32 uniforms, 0 scratch, 512 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "e2bd160dec71baf35cd58dd86a89aed774de6b0ed03c15a7e6385bb576535b25",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/5cdec14ad068c3d7257e6ed2df099016c4425f24dd96fde2586b1171d6791ab5/input.bin",
+    "baseline": "replay shader: 28127 instrs, 54860 alu, 25932 fscib, 54860 ic, 287386 code size, 191 gprs, 32 uniforms, 476 scratch, 512 threads, 1 loops, 692:835 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 28127 instrs, 54860 alu, 25932 fscib, 54860 ic, 287386 code size, 191 gprs, 32 uniforms, 476 scratch, 512 threads, 1 loops, 692:835 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "49aab1d09d12077cce9f572a4c75034bd8e3582f56cda655e26400c7ab9b9142",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/5ef5fd6b876b8156adcdef66e050bdc39f893fcde97e6ece88691d79eb35a56e/input.bin",
+    "baseline": "replay shader: 30415 instrs, 57824 alu, 27857 fscib, 57824 ic, 312232 code size, 191 gprs, 32 uniforms, 248 scratch, 512 threads, 3 loops, 797:871 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 30415 instrs, 57824 alu, 27857 fscib, 57824 ic, 312232 code size, 191 gprs, 32 uniforms, 248 scratch, 512 threads, 3 loops, 797:871 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "78bd15fa0482a33107cec9c5ab4ab5053f395e578cec33a1eee782ade8537949",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/a54f3e2e6b6fb8142f63bd428bf0410edb62b25e3dfcbe7c0da53b6c6ab1a455/input.bin",
+    "baseline": "replay shader: 28471 instrs, 55004 alu, 26177 fscib, 55004 ic, 291774 code size, 191 gprs, 32 uniforms, 476 scratch, 512 threads, 1 loops, 692:835 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 28471 instrs, 55004 alu, 26177 fscib, 55004 ic, 291774 code size, 191 gprs, 32 uniforms, 476 scratch, 512 threads, 1 loops, 692:835 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "cb007a720fb0026ab9020081c425bea7277bc17abc69893c13cce20713cbc2a3",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/b0512095441a7100e093fe4b164a20701cb0aeaacf7f1dcd352f561a03cb8a13/input.bin",
+    "baseline": "replay shader: 28483 instrs, 55004 alu, 26189 fscib, 55004 ic, 291888 code size, 191 gprs, 32 uniforms, 476 scratch, 512 threads, 1 loops, 692:835 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 28483 instrs, 55004 alu, 26189 fscib, 55004 ic, 291888 code size, 191 gprs, 32 uniforms, 476 scratch, 512 threads, 1 loops, 692:835 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "7a7c40f039e81dca9c2117a9975ed2ddb96596c99c8b20f04af035ae45a4f01a",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/ca4374f7e512ff806c1fb0dd7e5efd04200d9eca8fd54e2ff903208d026acd46/input.bin",
+    "baseline": "replay shader: 18876 instrs, 36012 alu, 18116 fscib, 36012 ic, 196954 code size, 191 gprs, 32 uniforms, 120 scratch, 512 threads, 1 loops, 30:32 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 18876 instrs, 36012 alu, 18116 fscib, 36012 ic, 196954 code size, 191 gprs, 32 uniforms, 120 scratch, 512 threads, 1 loops, 30:32 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "8eef4986bd5ef56ed3041e31d6ac8851a0619b0152e7748b2be934dadd540208",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/d2bf5be9226f35bc812074a080f61bb74741024ade86ea5c7510aeb2e7c7f60a/input.bin",
+    "baseline": "replay shader: 18482 instrs, 36012 alu, 17738 fscib, 36012 ic, 193462 code size, 191 gprs, 32 uniforms, 100 scratch, 512 threads, 0 loops, 25:25 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 18482 instrs, 36012 alu, 17738 fscib, 36012 ic, 193462 code size, 191 gprs, 32 uniforms, 100 scratch, 512 threads, 0 loops, 25:25 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "879f672b6b2bd0a354aa179eac2ad8a81576ba0635ae2f3b84050244b6ac3193",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/dff1fc3352d3825688228c507f3c75e32949df108bfe9612cf8fa3ff92680a28/input.bin",
+    "baseline": "replay shader: 8639 instrs, 7258 alu, 7258 fscib, 790 ic, 72812 code size, 191 gprs, 28 uniforms, 626 scratch, 512 threads, 8 loops, 201:282 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 8639 instrs, 7258 alu, 7258 fscib, 790 ic, 72812 code size, 191 gprs, 28 uniforms, 626 scratch, 512 threads, 8 loops, 201:282 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "2ffdf0607bbebd376eb25de193740f9d0d7270a543f76fe953400de7f286ef37",
+    "source": "satisfactory-5fps-20260925/native-hot-compute-20260925/ebcd31c0420f0103e532ac329fbfacc60f3fb46e54e5dd1ba7c9abe66cff1aaf/input.bin",
+    "baseline": "replay shader: 28127 instrs, 54860 alu, 25932 fscib, 54860 ic, 287386 code size, 191 gprs, 32 uniforms, 476 scratch, 512 threads, 1 loops, 692:835 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 28127 instrs, 54860 alu, 25932 fscib, 54860 ic, 287386 code size, 191 gprs, 32 uniforms, 476 scratch, 512 threads, 1 loops, 692:835 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "4606ca5f2cbe933011416b3f4597480827fa03d3cf859b4c33e704f315e3389a",
+    "source": "satisfactory-native-performance-20260925/fragment-ubo-qualified/native-rounding-direct-20260925/050488ee7b13d0a58a3235de1775bef9cee18e666f2d62bda64eea91971318e9/input.bin",
+    "baseline": "replay shader: 232 instrs, 190 alu, 190 fscib, 64 ic, 1936 code size, 43 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 232 instrs, 190 alu, 190 fscib, 64 ic, 1936 code size, 43 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "0876b8ede77012b2e41bccb62611f0f5a190c33329f28800847d6cbe8f89ce15",
+    "source": "satisfactory-native-performance-20260925/fragment-ubo-qualified/native-rounding-direct-20260925/2c82655102b550f4215f869d15f8bca9fa30bcab673991a7aa4aa04d9187967b/input.bin",
+    "baseline": "replay shader: 232 instrs, 190 alu, 190 fscib, 64 ic, 1936 code size, 43 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 232 instrs, 190 alu, 190 fscib, 64 ic, 1936 code size, 43 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "b5bd41736d96ad56bc2f566ec66121cb2e090332b03228d8d8ec0b362064def1",
+    "source": "satisfactory-native-performance-20260925/fragment-ubo-qualified/native-rounding-direct-20260925/2f5de5d2a4c049d01adafe595c3752d4f604db26fd4e8e8302f09bcda3c4005a/input.bin",
+    "baseline": "replay shader: 232 instrs, 190 alu, 190 fscib, 64 ic, 1936 code size, 43 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 232 instrs, 190 alu, 190 fscib, 64 ic, 1936 code size, 43 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "48780df92bfe1c418f14c1eccf617997443bfb84d9666f7234cdfc7be11e35d4",
+    "source": "satisfactory-native-performance-20260925/fragment-ubo-qualified/native-rounding-baseline-20260925/3de8da9343c5e27b1e47073c4d939fb2c816ee184cf87941c718d7ed2b26935e/input.bin",
+    "baseline": "replay shader: 586 instrs, 472 alu, 472 fscib, 224 ic, 5104 code size, 63 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 586 instrs, 472 alu, 472 fscib, 224 ic, 5104 code size, 63 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "e61a61b00022e61ba3aaa642efdb39855c7569530885076a45a3fd582e35d5e5",
+    "source": "satisfactory-native-performance-20260925/fragment-ubo-qualified/native-rounding-baseline-20260925/8b956b0fa8dd32b053e6b802c4cd155b5e34a1ffeea1079486b545dba7af4f10/input.bin",
+    "baseline": "replay shader: 586 instrs, 472 alu, 472 fscib, 224 ic, 5104 code size, 63 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 586 instrs, 472 alu, 472 fscib, 224 ic, 5104 code size, 63 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "051deff36396fbe3376a44fbd52a3fd6bb8895aaf76e4ca65017cc3991fc393f",
+    "source": "satisfactory-native-performance-20260925/fragment-ubo-qualified/native-rounding-baseline-20260925/ff656fe44902cba99b0a8cc242308d4e22346c4725253825f221545a435f2381/input.bin",
+    "baseline": "replay shader: 586 instrs, 472 alu, 472 fscib, 224 ic, 5104 code size, 63 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 586 instrs, 472 alu, 472 fscib, 224 ic, 5104 code size, 63 gprs, 40 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "6056af8ed0c359952d58a2bb87c8e8a1bae598ca13c39ea52a3ea8ecce68e6ca",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/1bce1df2c7d893f470c431c542ecad3f6ad0fd4edf5493670a4ee89006df9035/input.bin",
+    "baseline": "replay shader: 22300 instrs, 19223 alu, 19223 fscib, 6070 ic, 203814 code size, 191 gprs, 28 uniforms, 664 scratch, 512 threads, 8 loops, 410:491 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 22300 instrs, 19223 alu, 19223 fscib, 6070 ic, 203814 code size, 191 gprs, 28 uniforms, 664 scratch, 512 threads, 8 loops, 410:491 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "588362bc20992ee6ff40013a88b4cf4d1f3a2426c3ca02d4e359e8ba29e11293",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/1f7139549341aca6fdb2d7424ad55d6da5c78a655a2553a1f02b2002efe50c1b/input.bin",
+    "baseline": "replay shader: 54842 instrs, 50892 alu, 50051 fscib, 50892 ic, 531872 code size, 191 gprs, 32 uniforms, 1008 scratch, 512 threads, 2 loops, 440:260 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 54842 instrs, 50892 alu, 50051 fscib, 50892 ic, 531872 code size, 191 gprs, 32 uniforms, 1008 scratch, 512 threads, 2 loops, 440:260 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "209b27f2f0a959d79f01a7ad87d90a692ca5241b65b253458d8631775235919b",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/2a8a3b98408606fa8cec64fe8bcf42ca11bf5062abcf0c5343dae0becb6da761/input.bin",
+    "baseline": "replay shader: 3421 instrs, 3040 alu, 3040 fscib, 1102 ic, 31460 code size, 135 gprs, 24 uniforms, 0 scratch, 768 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3421 instrs, 3040 alu, 3040 fscib, 1102 ic, 31460 code size, 135 gprs, 24 uniforms, 0 scratch, 768 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "a2744af01bbd3e4bd42d075347971f0c8b621931119b574301149d982915b19c",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/3490ee6d9f452d96bf945e64185d40782589e0c5d304678fcfefd5c30d8ca542/input.bin",
+    "baseline": "replay shader: 6312 instrs, 5497 alu, 5497 fscib, 1478 ic, 55362 code size, 191 gprs, 24 uniforms, 108 scratch, 512 threads, 0 loops, 36:31 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 6312 instrs, 5497 alu, 5497 fscib, 1478 ic, 55362 code size, 191 gprs, 24 uniforms, 108 scratch, 512 threads, 0 loops, 36:31 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "79f872d5ade2183ad64e01eb0422911392c7d7f2828d9dcc56ddd504d64554f6",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/34fa7629d5542bbf7f2ff29b36db7783161b893df8be7034b7db6e177520adea/input.bin",
+    "baseline": "replay shader: 32941 instrs, 27025 alu, 27025 fscib, 7792 ic, 296874 code size, 191 gprs, 28 uniforms, 704 scratch, 512 threads, 13 loops, 1399:1572 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 32941 instrs, 27025 alu, 27025 fscib, 7792 ic, 296874 code size, 191 gprs, 28 uniforms, 704 scratch, 512 threads, 13 loops, 1399:1572 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "407ee20eab3c12ce86db19c27fffebc46f4dfa5dcce3c312276adde7a5d0465c",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/37facb05963b6f241d0e6d5d33ed276d6957c2ff819c592dca45e230e596f97b/input.bin",
+    "baseline": "replay shader: 3893 instrs, 3439 alu, 3439 fscib, 1878 ic, 37002 code size, 139 gprs, 18 uniforms, 16 scratch, 704 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3893 instrs, 3439 alu, 3439 fscib, 1878 ic, 37002 code size, 139 gprs, 18 uniforms, 16 scratch, 704 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "18a80ce1cc3f82dbf33841c6c4699b7bbb00b3de52e379a5789fd948a5cf49ca",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/425124df403ae68932f0956ea0a4fbc4a7cff6f7ef7ec54d10dc24fb8979f7f4/input.bin",
+    "baseline": "replay shader: 54585 instrs, 50892 alu, 49922 fscib, 50892 ic, 529772 code size, 191 gprs, 32 uniforms, 1008 scratch, 512 threads, 2 loops, 440:260 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 54585 instrs, 50892 alu, 49922 fscib, 50892 ic, 529772 code size, 191 gprs, 32 uniforms, 1008 scratch, 512 threads, 2 loops, 440:260 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "2992e6586bb51b64fd706ff103c074b2822921ae17438ea8f24bc996ace356e2",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/43267b90f8c804079aeec1f83a23bb7a2eb9e032565e5851fc6f11499233d4df/input.bin",
+    "baseline": "replay shader: 3743 instrs, 3308 alu, 3308 fscib, 1366 ic, 34574 code size, 181 gprs, 26 uniforms, 0 scratch, 576 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3743 instrs, 3308 alu, 3308 fscib, 1366 ic, 34574 code size, 181 gprs, 26 uniforms, 0 scratch, 576 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "e1f2aa4e2d33ab5f74b9ed60bebf0fb3ab9f5181cce48346afa3c148c42380ca",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/5d697c98e0986d0265a837616cc2d4febc98401e02d4acd351b656d3270677c5/input.bin",
+    "baseline": "replay shader: 4138 instrs, 3699 alu, 3699 fscib, 1672 ic, 39086 code size, 159 gprs, 28 uniforms, 0 scratch, 640 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 4138 instrs, 3699 alu, 3699 fscib, 1672 ic, 39086 code size, 159 gprs, 28 uniforms, 0 scratch, 640 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "ce2fab7ce4dc0f08b24080accfc44f83cfcab2d728dd3fde5c177ec764ab6a6f",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/6e642549ec7a6ca428482c591086e09e13ec6f0585317d9d1c1a94de115d6cb1/input.bin",
+    "baseline": "replay shader: 65147 instrs, 67020 alu, 58803 fscib, 67020 ic, 612772 code size, 191 gprs, 32 uniforms, 524 scratch, 512 threads, 1 loops, 1169:1319 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 65147 instrs, 67020 alu, 58803 fscib, 67020 ic, 612772 code size, 191 gprs, 32 uniforms, 524 scratch, 512 threads, 1 loops, 1169:1319 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "21764b2aba6eb13c6da5d63d2f8bfba641a2edb1e6dec4c8d0c06547174c81df",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/71cc1b38370f9051648e1bdabc2f662f29dbda2dd68e52530b22ac237797ae0f/input.bin",
+    "baseline": "replay shader: 6254 instrs, 5402 alu, 5402 fscib, 2808 ic, 60038 code size, 127 gprs, 26 uniforms, 16 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 6254 instrs, 5402 alu, 5402 fscib, 2808 ic, 60038 code size, 127 gprs, 26 uniforms, 16 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "749e1d5b9a9e759e15d8833747d4f8d08c61e4a35ecd2fc732530f5a5ab20247",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/86b289c001989717e2b4bb6a8a336d633b04ce644c5083373adec30fced62d5a/input.bin",
+    "baseline": "replay shader: 7757 instrs, 7029 alu, 7029 fscib, 2834 ic, 72498 code size, 131 gprs, 26 uniforms, 16 scratch, 768 threads, 5 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 7757 instrs, 7029 alu, 7029 fscib, 2834 ic, 72498 code size, 131 gprs, 26 uniforms, 16 scratch, 768 threads, 5 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "3375c50dcf8faad29f0c99dad340ecfa60326d3b689c36315c36ea4c1db4e8d1",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/8b1d3a32ec185beca6fa56a81952d73274c70d74f42d2b9a758e139ec9ccb78a/input.bin",
+    "baseline": "replay shader: 65147 instrs, 67020 alu, 58803 fscib, 67020 ic, 612772 code size, 191 gprs, 32 uniforms, 524 scratch, 512 threads, 1 loops, 1169:1319 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 65147 instrs, 67020 alu, 58803 fscib, 67020 ic, 612772 code size, 191 gprs, 32 uniforms, 524 scratch, 512 threads, 1 loops, 1169:1319 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "fdde1bbf0ba363899353015ad167a7a2f2a14079b5bea2892bf25e5052717be7",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/8c3dbcbd354096fb7a787b447fce02c99d3a43c1f54170e9f4a9cc40474ffa77/input.bin",
+    "baseline": "replay shader: 3861 instrs, 3377 alu, 3377 fscib, 1396 ic, 34768 code size, 147 gprs, 26 uniforms, 0 scratch, 640 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3861 instrs, 3377 alu, 3377 fscib, 1396 ic, 34768 code size, 147 gprs, 26 uniforms, 0 scratch, 640 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "f3a96aaf061d7db47a8ecdf7fed67c0280735e8ee7bbfbeb136552fd4826ff4f",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/914a5cb62342188da33cb20628afa04858409014cb250b976fb4c6c371802327/input.bin",
+    "baseline": "replay shader: 5542 instrs, 4795 alu, 4795 fscib, 2496 ic, 53482 code size, 127 gprs, 26 uniforms, 16 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5542 instrs, 4795 alu, 4795 fscib, 2496 ic, 53482 code size, 127 gprs, 26 uniforms, 16 scratch, 832 threads, 0 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "c309ab687a35960fffb08146b09f9aaaa6f9261b04e47eb95ff3446474c0200a",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/a1f5795a94298278cffd87c4bf30e7f2214eaf21e533eccd21fce2fd3287daf1/input.bin",
+    "baseline": "replay shader: 13510 instrs, 11998 alu, 11998 fscib, 4660 ic, 128600 code size, 191 gprs, 20 uniforms, 88 scratch, 512 threads, 5 loops, 63:88 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 13510 instrs, 11998 alu, 11998 fscib, 4660 ic, 128600 code size, 191 gprs, 20 uniforms, 88 scratch, 512 threads, 5 loops, 63:88 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "6696d9429a12823b06af5e8ac16ace0de5d99ac46bc08045157ac70799caaeee",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/a5e00e02ea7d9992585e9a212e34c87c16f1edb45e60ae2c2cb2c6274b59df46/input.bin",
+    "baseline": "replay shader: 5959 instrs, 5295 alu, 5295 fscib, 2220 ic, 54798 code size, 181 gprs, 26 uniforms, 0 scratch, 576 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5959 instrs, 5295 alu, 5295 fscib, 2220 ic, 54798 code size, 181 gprs, 26 uniforms, 0 scratch, 576 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "eae20b6c230b0cb1a7c2ea40b3dda20c428d09b415d7c5384c481b992b5413ee",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/a9179a513980bc5b6891109cec32da14c45015040dc6f9e431fd4c72b0584f08/input.bin",
+    "baseline": "replay shader: 65485 instrs, 67024 alu, 59258 fscib, 67024 ic, 618666 code size, 191 gprs, 32 uniforms, 504 scratch, 512 threads, 0 loops, 1100:1228 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 65485 instrs, 67024 alu, 59258 fscib, 67024 ic, 618666 code size, 191 gprs, 32 uniforms, 504 scratch, 512 threads, 0 loops, 1100:1228 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "d0fc064acda6e145291f8b94865ca77079d87c2f48247ac29f8db79f834fba71",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/aa16a3d85d1764ccb2f28cefeeae76e91debd3321dceb886792b45a243e95d47/input.bin",
+    "baseline": "replay shader: 6907 instrs, 6149 alu, 6149 fscib, 2742 ic, 64164 code size, 151 gprs, 26 uniforms, 0 scratch, 640 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 6907 instrs, 6149 alu, 6149 fscib, 2742 ic, 64164 code size, 151 gprs, 26 uniforms, 0 scratch, 640 threads, 2 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "562db7bb288dc833201edfc16c32805040e960217b5fe22e2f4657a0d1ee543c",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/b06b5eebddab034070bba3937e3e0631f9f68af976ad03f8faa0a40e78fee28f/input.bin",
+    "baseline": "replay shader: 47448 instrs, 48172 alu, 43699 fscib, 48172 ic, 481050 code size, 191 gprs, 32 uniforms, 168 scratch, 512 threads, 1 loops, 57:59 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 47448 instrs, 48172 alu, 43699 fscib, 48172 ic, 481050 code size, 191 gprs, 32 uniforms, 168 scratch, 512 threads, 1 loops, 57:59 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "3c2517c793d0c3fbc17ff5faab730ea9acde6816ec5147bf7671c32abfd2b5bb",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/b0fcd2b0c3243aaba7304290468f073a51604f92f2b7150e64396dfc80a71934/input.bin",
+    "baseline": "replay shader: 46580 instrs, 48172 alu, 42882 fscib, 48172 ic, 473032 code size, 191 gprs, 32 uniforms, 148 scratch, 512 threads, 0 loops, 37:37 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 46580 instrs, 48172 alu, 42882 fscib, 48172 ic, 473032 code size, 191 gprs, 32 uniforms, 148 scratch, 512 threads, 0 loops, 37:37 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "7d5e83bef133267df48321c1aa8b9d8b589b981cc1be1fe7b30ade1a1ba6e910",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/b29d33b110cc203a59de2cf2e2259bd4f9c9c429ae0f4c6e22cb1ec135c33e0c/input.bin",
+    "baseline": "replay shader: 81853 instrs, 72798 alu, 72798 fscib, 70388 ic, 745940 code size, 191 gprs, 32 uniforms, 1168 scratch, 512 threads, 3 loops, 1966:2336 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 81853 instrs, 72798 alu, 72798 fscib, 70388 ic, 745940 code size, 191 gprs, 32 uniforms, 1168 scratch, 512 threads, 3 loops, 1966:2336 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "bd3850757fc8c3797e18304be0ea33de290d3b46b27a0fb31fc8617d768d2a82",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/b4933c39084a096b77399efebc66986b709933a27f01dd7a735e2f9df7144d9a/input.bin",
+    "baseline": "replay shader: 6154 instrs, 5270 alu, 5270 fscib, 908 ic, 54198 code size, 191 gprs, 32 uniforms, 8 scratch, 512 threads, 0 loops, 3:4 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 6154 instrs, 5270 alu, 5270 fscib, 908 ic, 54198 code size, 191 gprs, 32 uniforms, 8 scratch, 512 threads, 0 loops, 3:4 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "7eff46cd543728e0b8d228205ec5178f0d82d2f380c1149c0b2ba944ec3cd342",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/c132280bf74f7c09da4d5874a607ee8244394b27bcaf791fc45df922ed4ca366/input.bin",
+    "baseline": "replay shader: 77962 instrs, 70396 alu, 69004 fscib, 70396 ic, 716808 code size, 191 gprs, 32 uniforms, 1168 scratch, 512 threads, 3 loops, 1966:2336 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 77962 instrs, 70396 alu, 69004 fscib, 70396 ic, 716808 code size, 191 gprs, 32 uniforms, 1168 scratch, 512 threads, 3 loops, 1966:2336 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "6714718fcc41d15a33ed12757236d48aa313f83da16e14ba4e61d89ff2f69885",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/c6160b1abd8cdf96b70f2bee6b74b1a67a5e3b0c8644b66f204f9facbec56935/input.bin",
+    "baseline": "replay shader: 3380 instrs, 3020 alu, 3020 fscib, 2298 ic, 32436 code size, 159 gprs, 36 uniforms, 0 scratch, 640 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 3380 instrs, 3020 alu, 3020 fscib, 2298 ic, 32436 code size, 159 gprs, 36 uniforms, 0 scratch, 640 threads, 1 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "94d3efb79a50ae4aabc16bd0aabec5db24905c88b0d536631b96aff21ae2897e",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/cdd45bf2c3b053ecc72f2a44733e369b198ec5438b5cabc0e21c7e3bd864f5fe/input.bin",
+    "baseline": "replay shader: 6513 instrs, 5759 alu, 5759 fscib, 2916 ic, 63480 code size, 191 gprs, 20 uniforms, 20 scratch, 512 threads, 3 loops, 1:1 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 6513 instrs, 5759 alu, 5759 fscib, 2916 ic, 63480 code size, 191 gprs, 20 uniforms, 20 scratch, 512 threads, 3 loops, 1:1 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "c2332cfb91ed4befb5b689a7e205f2bd543f3a350698694ead48ed17810bce4e",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/d2ca447d69b2ddc6abef479dd29fc3fcc74d52432cc22ef254308723cd63979d/input.bin",
+    "baseline": "replay shader: 65240 instrs, 67164 alu, 58789 fscib, 67164 ic, 606398 code size, 191 gprs, 32 uniforms, 524 scratch, 512 threads, 1 loops, 1175:1325 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 65240 instrs, 67164 alu, 58789 fscib, 67164 ic, 606398 code size, 191 gprs, 32 uniforms, 524 scratch, 512 threads, 1 loops, 1175:1325 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "79bfb7322aed2946bffb95eb3ec5d42864e26464b4870740d05c29355692f1e4",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/e55d80ff209951f31d0258ea4794564440178b23d91f513e5c298e1207748ce8/input.bin",
+    "baseline": "replay shader: 5696 instrs, 5327 alu, 5327 fscib, 2300 ic, 52646 code size, 123 gprs, 26 uniforms, 16 scratch, 832 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 5696 instrs, 5327 alu, 5327 fscib, 2300 ic, 52646 code size, 123 gprs, 26 uniforms, 16 scratch, 832 threads, 4 loops, 0:0 spills:fills, 0 preamble inst",
+    "changed": false
+  },
+  {
+    "input_sha256": "0ae8fe651de39df5088b860689a809cb96cf1e391dfb8c5de3df77a3de3c8e10",
+    "source": "satisfactory-native-performance-20260925/20260925T170502850260Z-satisfactory-native-compute-capture/remote/compiler/f60cc24437f924a784cb4abeebc610263cf4761956bdff95f4123707fa0c1c0b/input.bin",
+    "baseline": "replay shader: 62635 instrs, 67008 alu, 56620 fscib, 67008 ic, 590420 code size, 191 gprs, 32 uniforms, 492 scratch, 512 threads, 0 loops, 1029:1157 spills:fills, 0 preamble inst",
+    "candidate": "replay shader: 62635 instrs, 67008 alu, 56620 fscib, 67008 ic, 590420 code size, 191 gprs, 32 uniforms, 492 scratch, 512 threads, 0 loops, 1029:1157 spills:fills, 0 preamble inst",
+    "changed": false
+  }
+]
