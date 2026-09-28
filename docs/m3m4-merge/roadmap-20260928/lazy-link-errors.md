@@ -20,8 +20,7 @@ operations and does not claim kernel pressure or hardware execution coverage.
 
 Hardware candidate b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e
 staged separately at /opt/asahi-m3m4-lazy-link-20260928. Active preamble CTS
-continues using its unchanged allocation-20260928 binary. Hardware lazy-map
-failure/retry validation is pending its next clean test checkpoint.
+continues using its unchanged allocation-20260928 binary. Hardware lazy-map failure/retry validation on both GPUs is recorded below.
 
 ## M3 hardware qualification
 
@@ -33,8 +32,7 @@ and checks all 4,096 fragment SSBO values. Both guards finish normally. The
 new binary also passes 178 rendering/external-memory CTS cases (six NS).
 Full kernel pressure and hash-table allocator injection on hardware remain
 separate from this userspace mapping boundary. Host cache-insertion ownership
-tests cover that branch. M4 hardware qualification remains pending its active
-preamble campaign finishing.
+tests cover that branch. M4 hardware qualification is recorded below.
 
 Reproducer: compile tools/vulkan-lazy-map-failure.c beside the retained
 lazy-map-shaders/{vertex,fragment}.h, linking Vulkan and dl. LD_PRELOAD the

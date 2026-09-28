@@ -1,0 +1,49 @@
+{
+  "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+  "uptime_seconds": 2103.62,
+  "kernel": "7.1.9-dirtyroom-asahi2+",
+  "files": {
+    "/lib/modules/7.1.9-dirtyroom-asahi2+/kernel/drivers/gpu/drm/asahi/asahi.ko": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+    "/opt/asahi-m3m4-e6a74082f1d/lib/libEGL_mesa.so": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+    "/opt/asahi-m3m4-e6a74082f1d/lib/libEGL_mesa.so.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+    "/opt/asahi-m3m4-e6a74082f1d/lib/libEGL_mesa.so.0.0.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+    "/opt/asahi-m3m4-e6a74082f1d/lib/libgallium-26.1.4.so": "116b7c6ccd6fc86bb763a1a20ce599ba85553349bb615388f93ec744c717df31",
+    "/opt/asahi-m3m4-e6a74082f1d/lib/libgbm.so": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+    "/opt/asahi-m3m4-e6a74082f1d/lib/libgbm.so.1": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+    "/opt/asahi-m3m4-e6a74082f1d/lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+    "/opt/asahi-m3m4-e6a74082f1d/lib/libvulkan_asahi.so": "401cf080b77b674661a80208722b4e9fe7cd7c709741ca2353863479563f2860",
+    "/opt/asahi-m3m4-lazy-link-20260928/asahi.json": "fcfdfdbf60c3ad3ba184ddddfe226b847cd1780aad8e5092a3e9869bd4295222",
+    "/opt/asahi-m3m4-lazy-link-20260928/lib/libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e",
+    "/opt/asahi-m4-port/lib/libgallium-26.1.4.so": "29e658b1e23910bbba0d46ecadc7f3bfac623d9f04d7545ccf12ef0fe4fff5b9",
+    "/opt/asahi-m4-port/lib/libvulkan_asahi.so": "6c0be3eff86b9e4238522a3b9fe424efa366da85ad52348bb51c4e1d44e9429e",
+    "/root/completion_progress.py": "038bc255d69622e05831ce6d96962d6f719005e310703fe0b52827471fdd4b86",
+    "/root/firmware-snapshot.py": "37fb9b9de46fddab7e71703dafdbef5e9ab9ada6bddea7409632d4e8aae69d0f",
+    "/root/g16-fault-dump.py": "d27239583e956d931e6647459d30dfe0fd94c765f359283081de39604c569d43",
+    "/root/g16-submit-test/experiment_thermals.py": "ec637ec7ab390d0831a96e967f4f483833a06cfc1d3b2e2bdd5622e65e323d3d",
+    "/root/g16-submit-test/experiment_watchdog.py": "28600768bceb930a3528471fd7982db9247ec86c00f4a522456b70e38001e18d",
+    "/root/guarded-command.py": "c2a43ea67b9d12f460dea52548913fb27d048b12ae1f57aebd9282cae8643459",
+    "/root/roadmap-sampler-ubo": "3fed2901d46320568583873815f3fa4e2d5793fd73a9bc12d484abc63bc592ba",
+    "/root/run-m4-gl.py": "6842d9bb244b52e7b358b63af9548c1a08d6c6a3244da61efe1b157006df8471"
+  },
+  "display_status": {
+    "/sys/kernel/debug/dri/soc:display-subsystem/m4_status": "completed 139\nfailed 0\nactive_fb 40\nimported 1\nswap_total_us 1876712\nswap_max_us 18336\n"
+  },
+  "board": {
+    "compatible": "apple,j713\u0000apple,t8132\u0000apple,arm-platform",
+    "model": "Apple MacBook Air (13-inch, M4, 2024)"
+  },
+  "boot_versions": {
+    "u-boot,version": "2026.07-g29cbf07060b9-dirty",
+    "asahi,system-fw-version": "unknown",
+    "asahi,iboot2-version": "mBoot-18000.161.10",
+    "asahi,m1n1-stage2-version": "992c1e1-dirty",
+    "asahi,os-fw-version": "unknown",
+    "asahi,iboot1-version": "mBoot-18000.161.10",
+    "asahi,m1n1-stage1-version": "a091e6f"
+  },
+  "declared_graphics_environment": {
+    "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib:/opt/asahi-m3m4-e6a74082f1d/lib",
+    "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json"
+  },
+  "unresolved_graphics_inputs": []
+}

@@ -1,0 +1,34 @@
+{
+  "id": "20260928T094851049866Z-roadmap-m4-preamble-boolean",
+  "hypothesis": "Recheck native Boolean uniform export and changing UBO values with current Mesa",
+  "command": [
+    "env",
+    "LD_LIBRARY_PATH=/opt/asahi-m3m4-lazy-link-20260928/lib:/opt/asahi-m3m4-e6a74082f1d/lib",
+    "VK_DRIVER_FILES=/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+    "__EGL_VENDOR_LIBRARY_FILENAMES=/opt/asahi-m3m4-e6a74082f1d/egl.json",
+    "LIBGL_DRIVERS_PATH=/opt/asahi-m3m4-e6a74082f1d/lib/dri",
+    "GALLIUM_DRIVER=zink",
+    "MESA_LOADER_DRIVER_OVERRIDE=zink",
+    "ASAHI_M4_EXPERIMENTAL=1",
+    "HK_M4_NATIVE_PREAMBLE=true",
+    "AGX_NATIVE_MEMORY_PREAMBLE=true",
+    "MESA_SHADER_CACHE_DISABLE=true",
+    "/root/roadmap-boolean-uniform"
+  ],
+  "expected_success": "^PASS:",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "c490603ead6825c9067ffb5f3da4e5ce25b2c68a",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "kernel": {
+      "head": "8f1de23c1e73a4d5f31e2c5b5a0e90c95eea0372",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "identity_probe_sha256": "ec1c04779b19d845903f213de2e543471765080357d5b6178257a2788532da2e"
+}

@@ -415,3 +415,23 @@ carry enough retained evidence for another developer to reproduce them.
   default enablement yet; broader 14,741-case qualification running. Global
   retirement spans include overlapping work and are not utilization.
   See roadmap-20260928/timing-counters.md and retained comparison records.
+
+- 2026-09-28: The complete 14,741-case preamble selection finished on each GPU:
+  10,445 Pass and 4,296 NotSupported, no failures. Coverage is the frozen UBO,
+  robustness.buffer_access and descriptor-copy families, with ordinary compiler
+  defaults. M4 also passes sampler/custom-border executable switching and Boolean
+  uniform readback probes. Default enablement still waits for broader replay
+  correctness; Satisfactory currently has small image differences to investigate.
+- 2026-09-28: Lazy graphics links now retain allocation errors and roll back failed
+  cache admission. Both GPUs reproduce the old incorrect FEATURE_NOT_PRESENT,
+  return OUT_OF_HOST_MEMORY with the fix, then render/read back 4,096 values on
+  the same device. Each also passes 178 rendering/memory cases plus six NS.
+- 2026-09-28: M3 headless X11 audit retained all 3,997 indexed outcomes. Fixed Xlib
+  multi-swapchain occlusion and reused-window-ID handling without changing CTS or
+  deadlines; the original failing selection passes. The separate intermittent
+  XCB acquisition timeout remains open despite 80 passing repeats. Full catalog
+  continues with original non-pass records retained.
+- 2026-09-28: Archived 9,112 older M4 experiment directories using checksum-verified
+  transfer before removing target copies. Added trace-staging disk preflight and
+  retained a 1-GiB reserve; successful replay cleanup only removes hash-verified
+  target capture copies, preserving the complete local capture corpus.
