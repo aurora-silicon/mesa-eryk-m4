@@ -196,3 +196,33 @@ all 265,420,800 values. The complete M4 game check still fails (maxima 79/48/108
 and is retained as a failure, with no timing approval. Preambles stay opt-in
 and desktop packages are unchanged. Candidate library SHA256:
 152a2b5f00c922bf6ed29a1fd46721e84ff3706096ad4410a1dd52f97d4a80b0.
+
+
+## Single-source and queued-draw isolation
+
+Repeated source selection now reproduces the discrepancy on both GPUs with
+only fragment source `031ea01afc88a023deef3fcd327278eda00c6249f4d264147a1cdd84dd1ef39e`
+eligible for memory motion. Its compiler inputs are retained privately. This
+is an actual reproducer, unlike the earlier unverified bisection inference;
+it does not prove this is the only affected source.
+
+After the post-RA uniform-discard correction, selected-source checks still
+fail: M3 maximum 2 in 2 pixels, M4 maximum 44 in 1,379 pixels. Permitting only
+the first bounded UBO load plus constant-address dependencies also fails on
+M3 (maximum 7 in 161 pixels). That scalar supplies texture LOD bias, but it
+is **not** established as the cause: excluding all bounded loads while
+retaining constant loads passes once, then fails (maximum 4 in 27 pixels).
+The earlier unbounded-only passes therefore do not exclude that path.
+Individual constant loads and their resulting arithmetic are the next boundary.
+All selections are isolated frame-31 diagnostics, never timing qualification.
+
+The independent uniform oracle now offers `--queued-draws`. It prepares distinct
+aligned UBO ranges, optionally via compute writes, then queues up to 32 striped
+draws with changing ranges and four program footprints. A single final readback
+checks every pixel, without a CPU readback between draws. At 3840x2160 and 32
+draws, llvmpipe, M3 and M4 each match all 33,177,600 U32 values. This closes a
+gap in the earlier per-draw-readback tests but is not a game-shader qualification.
+Host checks also retain the partial-coverage mode and cover uneven stripe
+heights with CPU-written inputs. M3 evidence: `m3-queued-uniforms-20260928`;
+M4: `20260928T184914284503Z-queued-wide-uniform-4k`. Watchdog and thermal guards
+remain enabled. Diagnostic replay/library identities remain with each record.

@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: MIT
  * CPU-checked wide uniform exports: 256 U32 loads, each used with a varying.
  * Tests the full preamble uniform footprint over changing UBO contents.
+ * --queued-draws uses distinct UBO ranges and striped viewports, with one
+ * final readback instead of a CPU synchronization after every draw. It cannot
+ * combine with --partial-coverage, and needs at least one row per draw.
  * --record-only reports pixel FAIL without requesting watchdog recovery;
  * GL/API errors still return failure. This mode is diagnostic, not a pass.
  * Run only under gpu-experiment.py's watchdog and temperature guard.
@@ -23,13 +26,37 @@ static GLuint shader(GLenum type,const char *text) {
    if(!ok){char log[4096];glGetShaderInfoLog(s,sizeof(log),NULL,log);fputs(log,stderr);}
    CHECK(ok);return s;
 }
+static void fill_values(uint32_t v[64][4],unsigned round) {
+   const uint32_t seeds[]={0,1,0x7fffffff,0x80000000,0xffffffff,0x7fc00000,0x00010001,0xdeadbeef};
+   for(unsigned j=0;j<64;++j)for(unsigned k=0;k<4;++k)
+      v[j][k]=seeds[(round+j+k)%8]^(round*0x9e3779b9u+j*0x10001u+k);
+}
+static uint64_t verify(const uint32_t *pixels,uint32_t *expected,unsigned width,
+                      unsigned height,unsigned round,unsigned program,
+                      unsigned vx,unsigned vy,unsigned vw,unsigned vh,int queued,
+                      uint64_t bad) {
+   uint32_t v[64][4];fill_values(v,round);
+   for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
+      expected[x*4+k]=0;
+      for(unsigned i=0;i<64-16*program;++i)expected[x*4+k]+=(v[i][k]^(x*(i*37u+1u)));
+   }
+   for(unsigned y=queued?vy:0;y<(queued?vy+vh:height);++y)
+   for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
+      uint32_t expect=(x>=vx && x<vx+vw && y>=vy && y<vy+vh)?expected[x*4+k]:0;
+      uint32_t actual=pixels[(y*width+x)*4+k];
+      if(actual!=expect){if(bad<8)printf("round=%u x=%u y=%u c=%u actual=%08x expected=%08x\n",round,x,y,k,actual,expect);bad++;}
+   }
+   printf("round=%u program=%u bad=%"PRIu64"\n",round,program,bad);fflush(stdout);
+   return bad;
+}
 int main(int argc, char **argv) {
-   int record_only=0,gpu_updates=0,partial_coverage=0;
+   int record_only=0,gpu_updates=0,partial_coverage=0,queued_draws=0;
    unsigned width=64,height=4,rounds=32,program_count=1;
    for(int i=1;i<argc;++i) {
       if(!strcmp(argv[i],"--record-only")) record_only=1;
       else if(!strcmp(argv[i],"--gpu-updates")) gpu_updates=1;
       else if(!strcmp(argv[i],"--partial-coverage")) partial_coverage=1;
+      else if(!strcmp(argv[i],"--queued-draws")) queued_draws=1;
       else if(!strcmp(argv[i],"--size") && i+2<argc) {
          char *end;
          unsigned long w=strtoul(argv[++i],&end,10); CHECK(*end==0 && w>=1 && w<=4096);
@@ -43,8 +70,9 @@ int main(int argc, char **argv) {
          char *end;
          unsigned long n=strtoul(argv[++i],&end,10); CHECK(*end==0 && n>=1 && n<=4);
          program_count=n;
-      } else {fprintf(stderr,"Usage: %s [--record-only] [--gpu-updates] [--partial-coverage] [--size WIDTH HEIGHT] [--rounds 1..32] [--programs 1..4]\n",argv[0]);return 1;}
+      } else {fprintf(stderr,"Usage: %s [--record-only] [--gpu-updates] [--partial-coverage] [--queued-draws] [--size WIDTH HEIGHT] [--rounds 1..32] [--programs 1..4]\n",argv[0]);return 1;}
    }
+   CHECK(!queued_draws || (!partial_coverage && height>=rounds));
    EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
    CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
    EGLint attr[]={EGL_CONTEXT_MAJOR_VERSION,gpu_updates?4:3,EGL_CONTEXT_MINOR_VERSION,3,
@@ -80,7 +108,9 @@ int main(int argc, char **argv) {
       round_location=glGetUniformLocation(update,"round_index");CHECK(round_location>=0);
    }
    GLuint buffer;glGenBuffers(1,&buffer);glBindBuffer(GL_UNIFORM_BUFFER,buffer);
-   glBufferData(GL_UNIFORM_BUFFER,1024,NULL,GL_DYNAMIC_DRAW);glBindBufferBase(GL_UNIFORM_BUFFER,0,buffer);
+   GLint alignment;glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT,&alignment);CHECK(alignment>0);
+   unsigned stride=((1024+alignment-1)/alignment)*alignment;
+   glBufferData(GL_UNIFORM_BUFFER,queued_draws?stride*rounds:1024,NULL,GL_DYNAMIC_DRAW);glBindBufferBase(GL_UNIFORM_BUFFER,0,buffer);
    GLuint vao,tex,fb;glGenVertexArrays(1,&vao);glBindVertexArray(vao);
    glGenTextures(1,&tex);glBindTexture(GL_TEXTURE_2D,tex);
    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA32UI,width,height,0,GL_RGBA_INTEGER,GL_UNSIGNED_INT,NULL);
@@ -92,19 +122,32 @@ int main(int argc, char **argv) {
    uint32_t *expected=malloc((size_t)width*4*sizeof(*expected));
    CHECK(pixels && expected);
    uint64_t bad=0;
+   if(queued_draws) {
+      for(unsigned round=0;round<rounds;++round) {
+         uint32_t v[64][4];fill_values(v,round);
+         if(gpu_updates) {
+            glUseProgram(update);glUniform1ui(round_location,round);
+            glBindBufferRange(GL_SHADER_STORAGE_BUFFER,0,buffer,(GLintptr)stride*round,1024);
+            glDispatchCompute(1,1,1);
+         } else glBufferSubData(GL_UNIFORM_BUFFER,(GLintptr)stride*round,sizeof(v),v);
+      }
+      if(gpu_updates) glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
+   }
    for(unsigned round=0;round<rounds;++round){
       unsigned program=round%program_count;
-      const uint32_t seeds[]={0,1,0x7fffffff,0x80000000,0xffffffff,0x7fc00000,0x00010001,0xdeadbeef};
-      uint32_t v[64][4];
-      for(unsigned j=0;j<64;++j)for(unsigned k=0;k<4;++k)
-         v[j][k]=seeds[(round+j+k)%8]^(round*0x9e3779b9u+j*0x10001u+k);
-      if(gpu_updates) {
+      uint32_t v[64][4];fill_values(v,round);
+      if(queued_draws) {
+         glBindBufferRange(GL_UNIFORM_BUFFER,0,buffer,(GLintptr)stride*round,1024);
+      } else if(gpu_updates) {
          glUseProgram(update);glUniform1ui(round_location,round);
          glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,buffer);glDispatchCompute(1,1,1);
          glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
       } else glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(v),v);
       glUseProgram(programs[program]);
       unsigned vx=0,vy=0,vw=width,vh=height;
+      if(queued_draws) {
+         vy=round*height/rounds;vh=(round+1)*height/rounds-vy;
+      }
       if(partial_coverage) {
          const unsigned sizes[]={1,2,3,5,31,32,33,127};
          vw=sizes[round%8]<width?sizes[round%8]:width;
@@ -115,19 +158,19 @@ int main(int argc, char **argv) {
       }
       glViewport(vx,vy,vw,vh);
       glDrawArrays(GL_TRIANGLES,0,3);
-      glReadPixels(0,0,width,height,GL_RGBA_INTEGER,GL_UNSIGNED_INT,pixels);CHECK(glGetError()==GL_NO_ERROR);
-      for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
-         expected[x*4+k]=0;
-         for(unsigned i=0;i<64-16*program;++i)expected[x*4+k]+=(v[i][k]^(x*(i*37u+1u)));
+      if(!queued_draws) {
+         glReadPixels(0,0,width,height,GL_RGBA_INTEGER,GL_UNSIGNED_INT,pixels);CHECK(glGetError()==GL_NO_ERROR);
+         bad=verify(pixels,expected,width,height,round,program,vx,vy,vw,vh,0,bad);
       }
-      for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
-         uint32_t expect=(x>=vx && x<vx+vw && y>=vy && y<vy+vh)?expected[x*4+k]:0;
-         uint32_t actual=pixels[(y*width+x)*4+k];
-         if(actual!=expect){if(bad<8)printf("round=%u x=%u y=%u c=%u actual=%08x expected=%08x\n",round,x,y,k,actual,expect);bad++;}
-      }
-      printf("round=%u program=%u bad=%"PRIu64"\n",round,program,bad);fflush(stdout);
    }
-   printf("%s: U32 wide-uniform export oracle; updates=%s programs=%u partial=%d size=%ux%u rounds=%u values=%"PRIu64" mismatches=%"PRIu64"\n",bad?"FAIL":"PASS",gpu_updates?"gpu":"cpu",program_count,partial_coverage,width,height,rounds,(uint64_t)width*height*4*rounds,bad);
+   if(queued_draws) {
+      glReadPixels(0,0,width,height,GL_RGBA_INTEGER,GL_UNSIGNED_INT,pixels);CHECK(glGetError()==GL_NO_ERROR);
+      for(unsigned round=0;round<rounds;++round) {
+         unsigned vy=round*height/rounds,vh=(round+1)*height/rounds-vy;
+         bad=verify(pixels,expected,width,height,round,round%program_count,0,vy,width,vh,1,bad);
+      }
+   }
+   printf("%s: U32 wide-uniform export oracle; updates=%s programs=%u partial=%d queued=%d size=%ux%u rounds=%u values=%"PRIu64" mismatches=%"PRIu64"\n",bad?"FAIL":"PASS",gpu_updates?"gpu":"cpu",program_count,partial_coverage,queued_draws,width,height,rounds,(uint64_t)width*height*4*(queued_draws?1:rounds),bad);
    free(expected);free(pixels);
    if(!record_only)CHECK(!bad);
    return 0;

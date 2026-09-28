@@ -1,0 +1,10 @@
+Renderer: llvmpipe (LLVM 22.1.8, 256 bits)
+round=0 program=0 bad=0
+round=1 program=1 bad=0
+round=2 program=2 bad=0
+round=3 program=3 bad=0
+round=4 program=0 bad=0
+round=5 program=1 bad=0
+round=6 program=2 bad=0
+round=7 program=3 bad=0
+PASS: U32 wide-uniform export oracle; updates=gpu programs=4 partial=1 queued=0 size=64x4 rounds=8 values=8192 mismatches=0
