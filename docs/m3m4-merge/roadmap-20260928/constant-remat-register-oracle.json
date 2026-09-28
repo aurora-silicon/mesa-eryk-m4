@@ -1,0 +1,32 @@
+{
+  "id": "20260928T105516055554Z-roadmap-remat-register-budget",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T105516055554Z-roadmap-remat-register-budget",
+  "observations": {
+    "pixel_results": [
+      "PASS: local64-live32",
+      "PASS: local64-live80",
+      "PASS: local256-live32",
+      "PASS: local256-live80",
+      "PASS: local512-live32",
+      "PASS: local512-live80",
+      "PASS: local1024-live32",
+      "PASS: local1024-live80",
+      "PASS: 8 register-heavy barrier cases, 64..1024 threads, exact full buffers"
+    ],
+    "pixel_result_count": 9,
+    "thermal_samples": 2,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 72.5,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 72.5,
+      "Ta000m": 72.5,
+      "Te000m": 69.5,
+      "Te001m": 67.75,
+      "Tp000m": 71.5,
+      "Tp001m": 67.5
+    }
+  }
+}

@@ -446,3 +446,10 @@ carry enough retained evidence for another developer to reproduce them.
   retained compiler inputs and 306 host tests pass; default hashes are unchanged.
   Sixteen shaders use fewer registers with varying instruction cost. Hardware
   performance and correctness qualification remains in progress.
+
+- 2026-09-28: M4 constant-rematerialization experiment preserves exact Satisfactory
+  images and eight complete register-heavy buffer oracles. Five timings per mode
+  give 3.4385 vs 3.4548 FPS, an inconclusive 0.47% change within sample variation.
+  Keep the option disabled by default; do not count this as a performance gain.
+  Exact output-byte comparison confirms all 123 ordinary compiler outputs remain
+  unchanged. The next performance gate broadens preamble replay qualification.

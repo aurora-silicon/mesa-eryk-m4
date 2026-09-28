@@ -1,0 +1,1698 @@
+[
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104258838333Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": false,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "63059069944e1ec161814f52186fb2ba25115623d70c0ae918e7a52e01600e6b"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 36.745694563,
+      "measured_frames": 1,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 107250,
+        "Ta000m": 93000,
+        "Te000m": 88250,
+        "Te001m": 105250,
+        "Tp000m": 101500,
+        "Tp001m": 107250
+      },
+      "correctness": "pending",
+      "adaptations": [
+        "diagnostic single frame 1; not benchmark qualification",
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104258838333Z-bench-satisfactory-vulkan-gameplay-check/evidence",
+      "measurement_environment": {},
+      "diagnostic_only": true,
+      "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104258838333Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+      "images": [
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104258838333Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png"
+      ]
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "63059069944e1ec161814f52186fb2ba25115623d70c0ae918e7a52e01600e6b"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 9.921342743,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 107250,
+        "Ta000m": 95750,
+        "Te000m": 92500,
+        "Te001m": 105500,
+        "Tp000m": 104750,
+        "Tp001m": 107250
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence",
+      "measurement_environment": {},
+      "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+      "images": [
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png"
+      ],
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png": "6ca03b683de7c27d96f72cd42b55d5adfae8de019764f63371a1838e6a6825a4",
+          "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png": "ccd3b4e10e9b98d5930e0b5ee4f675419a997a806ff046c6ffe9e2599891e366",
+          "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png": "f6ccecbfdabe6b4e7337f5838eea7a97542efe4002ec619d796eeae7fdfc94e4"
+        },
+        "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+        "limitation": "Adapted native Vulkan capture disables depth-bounds AO and distance/height-field shadows; not unmodified game qualification. This explicitly supersedes the old buggy vertex-input reference, whose comparison is retained in provenance/satisfactory-image64-20260925/native-gameplay-old-reference-comparison.json.",
+        "origin": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+        "reference_sha256": "172f396d7124cdf53875fd03e891eb5f4270de9ab017f89d5613dc43b4ab34d5",
+        "comparisons": [
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 0,
+        "edge_fraction": 0,
+        "tolerance_reason": "",
+        "channels": "RGB"
+      }
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104406489979Z-bench-satisfactory-vulkan-gameplay-warmup/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "warmup",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "63059069944e1ec161814f52186fb2ba25115623d70c0ae918e7a52e01600e6b"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.821834112,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 106250,
+        "Ta000m": 95500,
+        "Te000m": 92500,
+        "Te001m": 105500,
+        "Tp000m": 104250,
+        "Tp001m": 106250
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104406489979Z-bench-satisfactory-vulkan-gameplay-warmup/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "ed3e8856016fa65050e5c7cf92f99c66558dcc457bd909e9675b328bed382bb0"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104425811277Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "63059069944e1ec161814f52186fb2ba25115623d70c0ae918e7a52e01600e6b"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.647101602,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 107000,
+        "Ta000m": 96500,
+        "Te000m": 94250,
+        "Te001m": 105500,
+        "Tp000m": 105000,
+        "Tp001m": 107000
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104425811277Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "ed3e8856016fa65050e5c7cf92f99c66558dcc457bd909e9675b328bed382bb0"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104445473272Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "63059069944e1ec161814f52186fb2ba25115623d70c0ae918e7a52e01600e6b"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.797622464,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 108000,
+        "Ta000m": 96750,
+        "Te000m": 94500,
+        "Te001m": 105250,
+        "Tp000m": 106000,
+        "Tp001m": 108000
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104445473272Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "ed3e8856016fa65050e5c7cf92f99c66558dcc457bd909e9675b328bed382bb0"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104506728500Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "63059069944e1ec161814f52186fb2ba25115623d70c0ae918e7a52e01600e6b"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.963223069,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 106500,
+        "Ta000m": 96500,
+        "Te000m": 94750,
+        "Te001m": 106000,
+        "Tp000m": 105000,
+        "Tp001m": 106750
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104506728500Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104342194412Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "ed3e8856016fa65050e5c7cf92f99c66558dcc457bd909e9675b328bed382bb0"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104620911874Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": false,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 14.987960992,
+      "measured_frames": 1,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 107750,
+        "Ta000m": 94500,
+        "Te000m": 89000,
+        "Te001m": 107000,
+        "Tp000m": 101000,
+        "Tp001m": 107750
+      },
+      "correctness": "pending",
+      "adaptations": [
+        "diagnostic single frame 1; not benchmark qualification",
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104620911874Z-bench-satisfactory-vulkan-gameplay-check/evidence",
+      "measurement_environment": {},
+      "diagnostic_only": true,
+      "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104620911874Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+      "images": [
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104620911874Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png"
+      ]
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 9.921442004,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 106500,
+        "Ta000m": 98750,
+        "Te000m": 95500,
+        "Te001m": 106000,
+        "Tp000m": 104250,
+        "Tp001m": 106500
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence",
+      "measurement_environment": {},
+      "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+      "images": [
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png"
+      ],
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png": "6ca03b683de7c27d96f72cd42b55d5adfae8de019764f63371a1838e6a6825a4",
+          "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png": "ccd3b4e10e9b98d5930e0b5ee4f675419a997a806ff046c6ffe9e2599891e366",
+          "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png": "f6ccecbfdabe6b4e7337f5838eea7a97542efe4002ec619d796eeae7fdfc94e4"
+        },
+        "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+        "limitation": "Adapted native Vulkan capture disables depth-bounds AO and distance/height-field shadows; not unmodified game qualification. This explicitly supersedes the old buggy vertex-input reference, whose comparison is retained in provenance/satisfactory-image64-20260925/native-gameplay-old-reference-comparison.json.",
+        "origin": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+        "reference_sha256": "172f396d7124cdf53875fd03e891eb5f4270de9ab017f89d5613dc43b4ab34d5",
+        "comparisons": [
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 0,
+        "edge_fraction": 0,
+        "tolerance_reason": "",
+        "channels": "RGB"
+      }
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104706610547Z-bench-satisfactory-vulkan-gameplay-warmup/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "warmup",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 9.318593808,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 88250,
+        "Ta000m": 83500,
+        "Te000m": 83250,
+        "Te001m": 86750,
+        "Tp000m": 88250,
+        "Tp001m": 88000
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104706610547Z-bench-satisfactory-vulkan-gameplay-warmup/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "5cc73be6dbeba81b038b5adc993cee4b7436927fbd1d8ca6d3c97a66006083a4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104729725356Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 9.42966065,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 84250,
+        "Ta000m": 79500,
+        "Te000m": 79750,
+        "Te001m": 78000,
+        "Tp000m": 84250,
+        "Tp001m": 80000
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104729725356Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "5cc73be6dbeba81b038b5adc993cee4b7436927fbd1d8ca6d3c97a66006083a4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104754677186Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 9.028256403,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 86000,
+        "Ta000m": 80250,
+        "Te000m": 80750,
+        "Te001m": 82500,
+        "Tp000m": 86000,
+        "Tp001m": 83250
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104754677186Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "5cc73be6dbeba81b038b5adc993cee4b7436927fbd1d8ca6d3c97a66006083a4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104817382135Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.398803544,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 90250,
+        "Ta000m": 83250,
+        "Te000m": 83750,
+        "Te001m": 84000,
+        "Tp000m": 90250,
+        "Tp001m": 87250
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104817382135Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "5cc73be6dbeba81b038b5adc993cee4b7436927fbd1d8ca6d3c97a66006083a4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104902025173Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": false,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 44.568713002,
+      "measured_frames": 1,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 108500,
+        "Ta000m": 93000,
+        "Te000m": 87750,
+        "Te001m": 108500,
+        "Tp000m": 99250,
+        "Tp001m": 106000
+      },
+      "correctness": "pending",
+      "adaptations": [
+        "diagnostic single frame 1; not benchmark qualification",
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104902025173Z-bench-satisfactory-vulkan-gameplay-check/evidence",
+      "measurement_environment": {},
+      "diagnostic_only": true,
+      "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104902025173Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+      "images": [
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104902025173Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png"
+      ]
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 10.464858726,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 101500,
+        "Ta000m": 89500,
+        "Te000m": 86500,
+        "Te001m": 100250,
+        "Tp000m": 95000,
+        "Tp001m": 101500
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence",
+      "measurement_environment": {},
+      "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+      "images": [
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+        "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png"
+      ],
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png": "6ca03b683de7c27d96f72cd42b55d5adfae8de019764f63371a1838e6a6825a4",
+          "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png": "ccd3b4e10e9b98d5930e0b5ee4f675419a997a806ff046c6ffe9e2599891e366",
+          "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png": "f6ccecbfdabe6b4e7337f5838eea7a97542efe4002ec619d796eeae7fdfc94e4"
+        },
+        "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+        "limitation": "Adapted native Vulkan capture disables depth-bounds AO and distance/height-field shadows; not unmodified game qualification. This explicitly supersedes the old buggy vertex-input reference, whose comparison is retained in provenance/satisfactory-image64-20260925/native-gameplay-old-reference-comparison.json.",
+        "origin": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+        "reference_sha256": "172f396d7124cdf53875fd03e891eb5f4270de9ab017f89d5613dc43b4ab34d5",
+        "comparisons": [
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m4/20260926T083445674367Z-bench-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 0,
+        "edge_fraction": 0,
+        "tolerance_reason": "",
+        "channels": "RGB"
+      }
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T105021166937Z-bench-satisfactory-vulkan-gameplay-warmup/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "warmup",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 9.214300893,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 88250,
+        "Ta000m": 81750,
+        "Te000m": 81250,
+        "Te001m": 87750,
+        "Tp000m": 86750,
+        "Tp001m": 88250
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T105021166937Z-bench-satisfactory-vulkan-gameplay-warmup/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "b3c01827f45fa30444e1ea74dd1ed83dc6f647255e6786436736def8df9853f4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T105043420497Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.619459443,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 89250,
+        "Ta000m": 83750,
+        "Te000m": 83000,
+        "Te001m": 85250,
+        "Tp000m": 89250,
+        "Tp001m": 86250
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T105043420497Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "b3c01827f45fa30444e1ea74dd1ed83dc6f647255e6786436736def8df9853f4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T105105843251Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 9.168803743,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 85500,
+        "Ta000m": 80250,
+        "Te000m": 80500,
+        "Te001m": 80750,
+        "Tp000m": 85750,
+        "Tp001m": 83000
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T105105843251Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "b3c01827f45fa30444e1ea74dd1ed83dc6f647255e6786436736def8df9853f4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T105128524076Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.409041409,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 91000,
+        "Ta000m": 83750,
+        "Te000m": 83750,
+        "Te001m": 85750,
+        "Tp000m": 91000,
+        "Tp001m": 88500
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T105128524076Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "b3c01827f45fa30444e1ea74dd1ed83dc6f647255e6786436736def8df9853f4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T105256312538Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.567016226,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 105750,
+        "Ta000m": 94000,
+        "Te000m": 91000,
+        "Te001m": 105000,
+        "Tp000m": 102750,
+        "Tp001m": 105750
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T105256312538Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "5cc73be6dbeba81b038b5adc993cee4b7436927fbd1d8ca6d3c97a66006083a4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T105320466532Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.683534381,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 109000,
+        "Ta000m": 95750,
+        "Te000m": 93000,
+        "Te001m": 105500,
+        "Tp000m": 104500,
+        "Tp001m": 109000
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T105320466532Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "b3c01827f45fa30444e1ea74dd1ed83dc6f647255e6786436736def8df9853f4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T105345069401Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.724669243,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 107750,
+        "Ta000m": 100250,
+        "Te000m": 96000,
+        "Te001m": 104000,
+        "Tp000m": 105250,
+        "Tp001m": 107750
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T105345069401Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104642319446Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "5cc73be6dbeba81b038b5adc993cee4b7436927fbd1d8ca6d3c97a66006083a4"
+    }
+  },
+  {
+    "path": "results/satisfactory-vulkan-gameplay/m4/20260928T105409586719Z-bench-satisfactory-vulkan-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-remat-r2-native",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=32"
+        ]
+      },
+      "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+      "case": "satisfactory-vulkan-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "3329540a212a02b1968eab8bdb49e988fa635256ea69cc21b169b609ae2b7627",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-remat-r2-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-remat-r2-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "remat",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-vulkan-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-remat-r2-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+        "HK_M4_PREFETCH_DESCRIPTORS": "true",
+        "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH": "true",
+        "HK_NATIVE_BRANCH_SCALED": "true",
+        "HK_DIAGNOSTIC_DIRECT_BUFFERS": "true"
+      },
+      "seconds": 8.999397482,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 92500,
+        "Ta000m": 88250,
+        "Te000m": 86500,
+        "Te001m": 92000,
+        "Tp000m": 91750,
+        "Tp001m": 92500
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-vulkan-gameplay/m4/20260928T105409586719Z-bench-satisfactory-vulkan-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-vulkan-gameplay/m4/20260928T104955386569Z-bench-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "b3c01827f45fa30444e1ea74dd1ed83dc6f647255e6786436736def8df9853f4"
+    }
+  }
+]

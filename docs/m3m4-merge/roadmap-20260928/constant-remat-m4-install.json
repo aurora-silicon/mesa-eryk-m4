@@ -1,0 +1,8 @@
+{
+  "base": "/opt/asahi-m3m4-cache-bounds-20260928",
+  "prefix": "/opt/asahi-m3m4-remat-r2-20260928",
+  "sha256": "504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85",
+  "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+  "host": "root@omarchy-m4",
+  "local_library": "/home/council/dev/dirtyroom_m4/build/mesa-m3m4-arm64/src/asahi/vulkan/libvulkan_asahi.so"
+}

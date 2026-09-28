@@ -20,3 +20,26 @@ tests pass, and both host and ARM Vulkan builds pass. Hardware checks are pendin
 
 Private input binaries remain in gpu-replay-bench. The adjacent profile records
 input hashes, private provenance paths and before/after compiler statistics.
+
+The final scratch-eligible implementation also passes exact byte-for-byte
+comparison of all 123 ordinary (option absent) compiler outputs against the
+original compiler. This is stronger than the initial 32-bit diagnostic-hash
+comparison. The single ancillary host-timing round is not a compile-speed claim.
+
+M4's initial opt-in binary passes 178 rendering/external-memory CTS cases (six
+unsupported) and distinct/stable normal versus remat cache-UUID checks. The final
+r2 binary produces exact Satisfactory native Vulkan reference images at frames
+1/16/31 under the pre-existing six-option replay profile. This does not qualify
+that profile or rematerialization as a general default. Completed timings are recorded below.
+
+Final M4 measurements, five samples per mode with the last two pairs alternating:
+normal median 3.4385 FPS (3.1815–3.5719), remat median 3.4548 (3.2720–3.5676).
+The 0.47% median difference is smaller than the run variation: no demonstrated
+Satisfactory speedup, so remat remains opt-in. Earlier 3.4100 FPS candidate runs
+used remaining power-credit bursts; the matched r2 samples mostly use the
+existing sustained-power policy. No thermal/power limits were changed.
+
+M4 also passes all eight retained register-heavy compute/barrier oracles with
+64–1024 threads and 32/80 live values, checking every output and unchanged input
+byte. The final implementation's hash is 504a857ab73665be58a0f3d3a64800d2b92401e0a9a3009f9eae8f07b0917d85.
+M3 hardware qualification of this experiment waits for its full CTS to finish.
