@@ -1,0 +1,24 @@
+{
+  "selected": 184,
+  "recorded": 184,
+  "completed": 184,
+  "counts": {
+    "Pass": 178,
+    "NotSupported": 6
+  },
+  "classifications": {
+    "regression": 184
+  },
+  "elapsed_seconds": 6.57371885800967,
+  "preparation_seconds": 1.2994542850065045,
+  "runner_seconds": 3.8608258470048895,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "d4176ca8522cb738f77f777dbe103afdfdc816232b7d643a0cdef4cea9c4e484",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T083833192497Z-m4-allocation-regression",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 59.0,
+  "healthy": true
+}

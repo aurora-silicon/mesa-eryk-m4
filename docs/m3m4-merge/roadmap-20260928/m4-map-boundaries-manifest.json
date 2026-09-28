@@ -1,0 +1,30 @@
+{
+  "id": "20260928T083829202324Z-roadmap-m4-final-map-boundaries",
+  "hypothesis": "Final shared binary handles command and eager shader mapping failures and same-device retry, with warm/cold cache",
+  "command": [
+    "env",
+    "VK_DRIVER_FILES=/opt/asahi-m3m4-allocation-20260928/asahi.json",
+    "LD_LIBRARY_PATH=/opt/asahi-m3m4-allocation-20260928/lib",
+    "LD_PRELOAD=/root/asahi-map-failure.so",
+    "python3",
+    "/root/check-map-boundaries.py",
+    "0x8132",
+    "/root/asahi-evidence/20260928T083829202324Z-roadmap-m4-final-map-boundaries/checks"
+  ],
+  "expected_success": "ALL_MAP_BOUNDARIES_PASS",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "8d7f8eeeaf4deae2aa1a15fd4ad6df12f6ece353",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "kernel": {
+      "head": "63703468d95d5e8104570429ac2af585ca79da07",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "identity_probe_sha256": "ec1c04779b19d845903f213de2e543471765080357d5b6178257a2788532da2e"
+}

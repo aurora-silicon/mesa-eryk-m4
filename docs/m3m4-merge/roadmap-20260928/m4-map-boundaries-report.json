@@ -1,0 +1,22 @@
+{
+  "id": "20260928T083829202324Z-roadmap-m4-final-map-boundaries",
+  "verdict": "process_failure",
+  "transport_returncode": 1,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T083829202324Z-roadmap-m4-final-map-boundaries",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 3,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 58.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 58.25,
+      "Ta000m": 56.75,
+      "Te000m": 55.75,
+      "Te001m": 54.0,
+      "Tp000m": 58.25,
+      "Tp001m": 53.75
+    }
+  }
+}

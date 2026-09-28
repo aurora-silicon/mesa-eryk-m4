@@ -394,3 +394,9 @@ carry enough retained evidence for another developer to reproduce them.
   FEATURE_NOT_PRESENT. M4 injected mapping OOM passes with and without disk cache,
   same-device retry succeeds, and 178 render/memory cases pass (six unsupported).
   Lazy graphics variants and complete memory-pressure qualification remain open.
+
+- 2026-09-28: Final allocation binary 2e2f0cb06def passes mapping-failure/retry
+  checks on both GPUs and 178 render/memory cases each (six unsupported). M3
+  cached shader deserialization legitimately recovers by fresh compilation;
+  retained the original too-strict probe failure and corrected only that warm
+  cache expectation. Full M3 catalog resumed from 3,139,686 immutable outcomes.

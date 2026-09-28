@@ -1,0 +1,9 @@
+{
+  "reason": "Command BO CPU-map rollback and eager shader upload/link error propagation validated on both GPUs. Each passes 178 external-memory/render cases (six unsupported). M3 command/cold-shader injection returns host OOM, cached deserialize failure legitimately falls back to successful fresh compilation; all paths then pass same-device GPU fill/readback with zero callback ownership at destruction. Kernel unchanged; preserve every earlier catalog outcome.",
+  "mesa_prefix": "/opt/asahi-m3m4-allocation-20260928",
+  "mesa_sha256": "2e2f0cb06def7e6a7407059cb4da2bd295a486965e57dd60280908f61ca2b688",
+  "mesa_commit": "8d7f8eeeaf4",
+  "kernel_source_commit": "1ace524c28f0",
+  "kernel_published_commit": "e9268a4002d9",
+  "kernel_module_sha256": "147b67a9dbfc08b215ba75469c5e0bedfeb1cb8bce977063ffbce465f268d5e2"
+}

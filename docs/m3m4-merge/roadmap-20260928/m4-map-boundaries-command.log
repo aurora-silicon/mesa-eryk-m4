@@ -1,0 +1,15 @@
+MAP_FAILURE injected fd=5 bytes=131072 offset=0x1252f4000
+BOUNDARY_FAILURE observed result=-1 injected=1
+DEVICE_ALLOCATION_FAILURE_PASS mode=map-failure tested=1
+MAP_FAILURE injected fd=5 bytes=16384 offset=0x11e070000
+agx_fast_link: executable BO mapping failed (size 588, VA 0x1000004c000, handle 14)
+BOUNDARY_FAILURE observed result=0 injected=1
+CHECK failed at line 210: bind_injected() && result==(map_failure?VK_ERROR_OUT_OF_HOST_MEMORY:VK_ERROR_OUT_OF_DEVICE_MEMORY)
+Traceback (most recent call last):
+  File "/root/check-map-boundaries.py", line 8, in <module>
+    subprocess.run(['/root/vk-command-map-failure',chip,str(out/(name+'.jsonl')),'map-failure'],env=dict(env,**extra),check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/root/vk-command-map-failure', '0x8132', '/root/asahi-evidence/20260928T083829202324Z-roadmap-m4-final-map-boundaries/checks/shader.jsonl', 'map-failure']' died with <Signals.SIGABRT: 6>.
