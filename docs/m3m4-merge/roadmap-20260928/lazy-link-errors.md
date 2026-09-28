@@ -54,3 +54,5 @@ classifier intentionally calls the old binary's unsupported-shader log a
 shader_error; these two baseline diagnostics are not new GPU faults or claimed
 passing driver behavior. Candidate diagnostics classify pass. Exact receipts
 are in m4-lazy-map-{old,new}-{1,2}.
+
+Final M4 candidate rendering/memory regression: 178 Pass, six NotSupported.

@@ -52,8 +52,10 @@ def headless(out, env):
                    prefix/'lib/libgbm.so.1',prefix/'lib/gbm/dri_gbm.so',
                    prefix/'lib/libgallium-26.1.4.so',Path(shutil.which('weston')),
                    Path(shutil.which('Xwayland'))]
+            if display.get('M3_CTS_TILE_X11') == '1':
+                files.append(Path(__file__).with_name('cts_x11_layout.py'))
             (out/'headless-binary-hashes.json').write_text(json.dumps({str(p):hashlib.file_digest(p.open('rb'),'sha256').hexdigest() for p in files},indent=2)+'\n')
-            (out/'headless-environment.json').write_text(json.dumps({k:v for k,v in display.items() if k.startswith(('XDG_','WAYLAND','DISPLAY','VK_','LD_','GALLIUM','MESA_','GBM_','LIBGL_','__EGL_'))},indent=2)+'\n')
+            (out/'headless-environment.json').write_text(json.dumps({k:v for k,v in display.items() if k.startswith(('XDG_','WAYLAND','DISPLAY','VK_','LD_','GALLIUM','MESA_','GBM_','LIBGL_','__EGL_','M3_CTS_'))},indent=2)+'\n')
             if display.get('M3_CTS_TILE_X11') == '1':
                 layout_log=(out/'x11-layout.jsonl').open('w')
                 layout=subprocess.Popen(['python3',str(Path(__file__).with_name('cts_x11_layout.py'))],env=display,stdout=layout_log,stderr=subprocess.STDOUT)

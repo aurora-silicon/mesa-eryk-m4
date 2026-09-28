@@ -1,0 +1,20 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.bind_image_multi_swapchain",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Pass",
+    "seconds": 0.25292248,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.bind_image_multi_swapchain",
+      "catalog_index": 3140212,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.bind_image_multi_swapchain.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

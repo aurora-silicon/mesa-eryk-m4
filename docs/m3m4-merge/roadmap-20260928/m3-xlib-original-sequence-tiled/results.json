@@ -1,0 +1,290 @@
+[
+  {
+    "index": 0,
+    "case": "dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.post_multiplied.incremental_present",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.11809491,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.post_multiplied.incremental_present",
+      "catalog_index": 3140202,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Transform not supported at vktWsiIncrementalPresentTests.cpp:658",
+    "qpa": "deqp-runner/c4.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 1,
+    "case": "dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.post_multiplied.reference",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.13062781,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.post_multiplied.reference",
+      "catalog_index": 3140203,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Transform not supported at vktWsiIncrementalPresentTests.cpp:658",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.post_multiplied.reference.c3.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 2,
+    "case": "dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.pre_multiplied.incremental_present",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.1217932,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.pre_multiplied.incremental_present",
+      "catalog_index": 3140204,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Transform not supported at vktWsiIncrementalPresentTests.cpp:658",
+    "qpa": "deqp-runner/c8.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 3,
+    "case": "dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.pre_multiplied.reference",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.13043562,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.pre_multiplied.reference",
+      "catalog_index": 3140205,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Transform not supported at vktWsiIncrementalPresentTests.cpp:658",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.incremental_present.scale_none.mailbox.rotate_90.pre_multiplied.reference.c2.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 4,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.continuous.basic",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.012673165,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.continuous.basic",
+      "catalog_index": 3140206,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Present mode not supported at vktWsiMaintenance1Tests.cpp:821",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.continuous.basic.c1.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 5,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.continuous.bind_image_multi_swapchain",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.011918353,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.continuous.bind_image_multi_swapchain",
+      "catalog_index": 3140207,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Present mode not supported at vktWsiMaintenance1Tests.cpp:821",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.continuous.bind_image_multi_swapchain.c0.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 6,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.demand.basic",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.009435123,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.demand.basic",
+      "catalog_index": 3140208,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Present mode not supported at vktWsiMaintenance1Tests.cpp:821",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.demand.basic.c9.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 7,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.demand.bind_image_multi_swapchain",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.008979235,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.demand.bind_image_multi_swapchain",
+      "catalog_index": 3140209,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Present mode not supported at vktWsiMaintenance1Tests.cpp:821",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.demand.bind_image_multi_swapchain.c13.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 8,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.basic",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Pass",
+    "seconds": 0.16613528,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.basic",
+      "catalog_index": 3140210,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.basic.c12.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 9,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.bind_image",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Pass",
+    "seconds": 0.1793346,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.bind_image",
+      "catalog_index": 3140211,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.bind_image.c15.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 10,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.bind_image_multi_swapchain",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Pass",
+    "seconds": 0.22516732,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.bind_image_multi_swapchain",
+      "catalog_index": 3140212,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo.bind_image_multi_swapchain.c7.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 11,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_latest_ready.basic",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.008623526,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_latest_ready.basic",
+      "catalog_index": 3140213,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Present mode not supported at vktWsiMaintenance1Tests.cpp:821",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_latest_ready.basic.c11.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 12,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_latest_ready.bind_image",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.007136559,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_latest_ready.bind_image",
+      "catalog_index": 3140214,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Present mode not supported at vktWsiMaintenance1Tests.cpp:821",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_latest_ready.bind_image.c5.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 13,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_latest_ready.bind_image_multi_swapchain",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Skip",
+    "seconds": 0.011626803,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_latest_ready.bind_image_multi_swapchain",
+      "catalog_index": 3140215,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "NotSupported",
+    "message": "Present mode not supported at vktWsiMaintenance1Tests.cpp:821",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_latest_ready.bind_image_multi_swapchain.c6.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 14,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_relaxed.basic",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Pass",
+    "seconds": 0.17653134,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_relaxed.basic",
+      "catalog_index": 3140216,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_relaxed.basic.c14.r1.qpa",
+    "worker_exit": "exit status: 0"
+  },
+  {
+    "index": 15,
+    "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_relaxed.bind_image",
+    "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+    "runner_status": "Pass",
+    "seconds": 0.1772936,
+    "eligibility": {
+      "case": "dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_relaxed.bind_image",
+      "catalog_index": 3140217,
+      "classification": "unclassified",
+      "requirements": [],
+      "rule": "Full frozen Linux catalog"
+    },
+    "status": "Pass",
+    "message": "Pass",
+    "qpa": "deqp-runner/dEQP-VK.wsi.xlib.maintenance1.deferred_alloc.fifo_relaxed.bind_image.c10.r1.qpa",
+    "worker_exit": "exit status: 0"
+  }
+]

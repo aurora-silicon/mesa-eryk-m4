@@ -1,0 +1,9 @@
+{
+  "/opt/asahi-m3m4-e6a74082f1d/egl.json": "b19f9ac61f355bb4feaa53ee12a63dd286ed5136caeeb89781466f6a5f17a14b",
+  "/opt/asahi-m3m4-e6a74082f1d/lib/libEGL_mesa.so.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+  "/opt/asahi-m3m4-e6a74082f1d/lib/libgbm.so.1": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+  "/opt/asahi-m3m4-e6a74082f1d/lib/gbm/dri_gbm.so": "37c924aee42202dcbdf11b941661935d251c8c3876fb534de4b6e2d212a5a012",
+  "/opt/asahi-m3m4-e6a74082f1d/lib/libgallium-26.1.4.so": "116b7c6ccd6fc86bb763a1a20ce599ba85553349bb615388f93ec744c717df31",
+  "/usr/bin/weston": "1275f86ba8338f8b7c92408a89fcbdd374438c1162e5c355ef5b1621f224b2a8",
+  "/usr/bin/Xwayland": "8daa20f90ed3e34a9dd4868bd849ce41010e8e1a37f5e07beb053523a6db5cdd"
+}
