@@ -1,0 +1,6 @@
+Device: Apple M3 Pro (G15S B1)
+MAP_FAILURE injected fd=4 bytes=16384 offset=0x1129c0000
+agx_fast_link: executable BO mapping failed (size 206, VA 0x10000070000, handle 17)
+MESA: error: failed to compile or link required vertex shader parts
+LAZY_MAP_RESULT injected=1 result=-8 expected=-8
+PASS: lazy map failure then 64x64 fragment writes bad=0/4096

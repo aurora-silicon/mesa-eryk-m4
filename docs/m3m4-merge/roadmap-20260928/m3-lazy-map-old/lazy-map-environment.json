@@ -1,0 +1,15 @@
+{
+  "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+  "HK_DEBUG_LOG": "0",
+  "ASAHI_M3_EXPERIMENTAL": "1",
+  "VK_DRIVER_FILES": "/opt/asahi-m3m4-allocation-20260928/asahi.json",
+  "AGX_MESA_DEBUG": "",
+  "LD_LIBRARY_PATH": "/opt/asahi-m3m4-allocation-20260928/lib",
+  "VK_ICD_FILENAMES": "/opt/asahi-m3m4-allocation-20260928/asahi.json",
+  "LD_PRELOAD": "/root/asahi-map-failure.so",
+  "ASAHI_TEST_MAP_SIZE": "16384",
+  "ASAHI_TEST_EXPECTED_RESULT": "-8",
+  "MESA_SHADER_CACHE_DISABLE": "true",
+  "ASAHI_M4_EXPERIMENTAL": "1",
+  "ASAHI_MESA_DEBUG": "nocompress"
+}
