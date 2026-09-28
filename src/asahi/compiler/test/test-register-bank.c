@@ -13,6 +13,8 @@ struct fixture {
    enum ra_class classes[512];
    uint16_t assignments[512], origins[512], values[AGX_NUM_REGS];
    BITSET_DECLARE(used, AGX_NUM_REGS);
+   BITSET_DECLARE(tex_low128, 512);
+   BITSET_DECLARE(low_gpr, 512);
    unsigned variables, high_water, memory_count;
 };
 
@@ -31,6 +33,7 @@ init(struct fixture *f, unsigned bound, unsigned reserved)
       .ncomps = f->widths, .sizes = f->sizes, .classes = f->classes,
       .used_regs[RA_GPR] = f->used, .bound[RA_GPR] = bound,
       .count[RA_GPR] = &f->high_water, .count[RA_MEM] = &f->memory_count,
+      .tex_low128 = f->tex_low128, .low_gpr = f->low_gpr,
    };
    BITSET_SET_COUNT(f->used, 0, reserved);
 }
@@ -76,6 +79,8 @@ check(struct fixture *f, unsigned count)
    for (unsigned ssa = 0; ssa < f->variables; ++ssa) {
       unsigned reg = f->assignments[ssa], width = f->widths[ssa];
       assert(reg + width <= f->ra.bound[RA_GPR] && reg % width == 0);
+      assert(!BITSET_TEST(f->tex_low128, ssa) || reg + width <= 128);
+      assert(!BITSET_TEST(f->low_gpr, ssa) || reg + width <= 16);
       assert(!BITSET_TEST_COUNT(assigned, reg, width));
       BITSET_SET_COUNT(assigned, reg, width);
       assert(f->ra.reg_to_ssa[reg] == ssa);
@@ -109,6 +114,13 @@ main(void)
    init(&f, 256, 0);
    for (unsigned reg = 0; reg < 128; reg += 2)
       value(&f, reg, 2, AGX_SIZE_32);
+   check(&f, 8);
+
+   init(&f, 256, 0);
+   for (unsigned reg = 0; reg < 128; reg += 2)
+      value(&f, reg, 2, AGX_SIZE_32);
+   BITSET_SET(f.tex_low128, 0);
+   BITSET_SET(f.low_gpr, 4);
    check(&f, 8);
 
    init(&f, 256, 0);
@@ -147,6 +159,6 @@ main(void)
       }
       check(&f, count);
    }
-   puts("TEX register bank: 259 pressure/permutation cases PASS");
+   puts("TEX register bank: 260 pressure/permutation cases PASS");
    return 0;
 }

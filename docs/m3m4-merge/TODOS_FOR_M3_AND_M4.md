@@ -571,3 +571,8 @@ and a safe idle-aware policy remain open. See
   suite (including register-bank SIGSEGV and minmax SIGABRT), with independent
   encoding expectations. Baseline and parallel-compiler candidate both give
   110 Pass/10 Fail; see `roadmap-20260928/parallel-compile-host-results.json`.
+
+- [x] Repair two crashing host-test fixtures: initialize allocator constraint
+  bitmaps and validate implicit-derivative placement for all four descriptor
+  uniformity combinations. 260 allocator and 24 minmax cases pass. Eight of
+  the original ten Meson host failures still need independent qualification.

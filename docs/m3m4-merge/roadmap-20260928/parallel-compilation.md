@@ -21,3 +21,14 @@ in parallel-compile-host-results.json: they include obsolete refusal/encoding
 expectations and two crashing host tests. They remain open; neither the suite
 nor a complete driver qualification is claimed passing. Hardware cold replay
 validation and timing are pending.
+
+
+Two baseline host crashes are repaired independently of the compilation change:
+`agx_register_bank` left the allocator's tex_low128/low_gpr bitmaps null in its
+standalone fixture. Production allocation already initializes both. Initialize
+the fixture and add a constrained-register shuffle checked by the independent
+parallel-copy oracle (260 cases). `hk_minmax_control_flow` had an obsolete
+expectation from before dynamically uniform descriptor branches were enabled.
+Expand it to all four texture/sampler uniformity combinations; all 24 cases
+require implicit derivatives outside nonuniform branches and allow them inside
+uniform branches. Both tests pass. Eight other baseline failures remain open.

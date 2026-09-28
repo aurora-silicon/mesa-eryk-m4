@@ -10,7 +10,7 @@ bool hk_nir_lower_minmax(nir_shader *nir, bool view_min);
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "FAIL line %u: %s\n", __LINE__, #x); abort(); } } while (0)
 
 static void
-test(nir_texop op, bool view_min)
+test(nir_texop op, bool view_min, bool texture_non_uniform, bool sampler_non_uniform)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
                                                  &agx_nir_options, "reduction footprint control flow");
@@ -26,6 +26,8 @@ test(nir_texop op, bool view_min)
    tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
    tex->dest_type = nir_type_float32;
    tex->coord_components = 2;
+   tex->texture_non_uniform = texture_non_uniform;
+   tex->sampler_non_uniform = sampler_non_uniform;
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref, deref);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref, deref);
    tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
@@ -42,19 +44,24 @@ test(nir_texop op, bool view_min)
    CHECK(hk_nir_lower_minmax(b.shader, view_min));
    nir_validate_shader(b.shader, "after reduction lowering");
    unsigned sizes = 0, derivatives = 0;
+   /* Quad derivatives may be conditional when the descriptor-dependent
+    * branch is uniform. A nonuniform texture OR sampler requires them above
+    * the branch, regardless of whether the other descriptor is uniform. */
+   const bool unconditional = op == nir_texop_tex &&
+                              (texture_non_uniform || sampler_non_uniform);
    nir_foreach_function_impl(impl, b.shader) {
       nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             bool top_level = block->cf_node.parent->type == nir_cf_node_function;
             if (instr->type == nir_instr_type_tex && nir_instr_as_tex(instr)->op == nir_texop_txs) {
                ++sizes;
-               CHECK(top_level == (op == nir_texop_tex));
+               CHECK(top_level == unconditional);
             }
             if (instr->type == nir_instr_type_intrinsic) {
                nir_intrinsic_op op = nir_instr_as_intrinsic(instr)->intrinsic;
                if (op == nir_intrinsic_ddx || op == nir_intrinsic_ddy) {
                   ++derivatives;
-                  CHECK(top_level);
+                  CHECK(top_level == unconditional);
                }
             }
          }
@@ -69,11 +76,15 @@ int main(void)
 {
    glsl_type_singleton_init_or_ref();
    for (unsigned view = 0; view < 2; ++view) {
-      test(nir_texop_txl, view);
-      test(nir_texop_txd, view);
-      test(nir_texop_tex, view);
+      for (unsigned texture = 0; texture < 2; ++texture) {
+         for (unsigned sampler = 0; sampler < 2; ++sampler) {
+            test(nir_texop_txl, view, texture, sampler);
+            test(nir_texop_txd, view, texture, sampler);
+            test(nir_texop_tex, view, texture, sampler);
+         }
+      }
    }
    glsl_type_singleton_decref();
-   puts("PASS: explicit footprints are conditional; implicit derivatives remain outside");
+   puts("PASS: 24 descriptor/LOD cases keep quad derivatives outside nonuniform branches");
    return 0;
 }
