@@ -1,0 +1,183 @@
+{
+  "mesa_commit": "b36c4b1065a",
+  "binary_sha256": "b656c92fb83e0839698ade836e18aa0c41fb805d9013dba5f516bfe4453e09b0",
+  "opt_in": true,
+  "desktop_changed": false,
+  "catalog": {
+    "schema": 1,
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "source": "/home/council/dev/dirtyroom_m4/build/cts-1.4-baseline/mustpass/mustpass.txt",
+    "source_sha256": "fe29a62a97e128542b3c6cf46c892ba168d7856f3e57f130b40b82f25cfb40a6",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "count": 3206030,
+    "source_count": 3247552,
+    "excluded_count": 41522,
+    "order": "ASCII lexicographic (LC_ALL=C)",
+    "linux_only": true,
+    "exclusion_rule": "win32 or .android. in case name",
+    "capability_filter": false,
+    "result_filter": false,
+    "index_convention": "zero-based; start inclusive, end exclusive"
+  },
+  "selection_sha256": "c272933563f649ddc1004779c20a9459a7b6113954a3e7960419f9da2e3ee203",
+  "machines": {
+    "m3": {
+      "cts": {
+        "healthy": true,
+        "counts": {
+          "Pass": 2262,
+          "NotSupported": 308
+        },
+        "selected": 2570,
+        "completed_batches_end": 2570,
+        "stopped_on_test_failure": false
+      },
+      "prior_status_changes": [],
+      "unmatched_cases": [],
+      "installation": {
+        "base": "/opt/asahi-m3m4-dd452c4dd66",
+        "prefix": "/opt/asahi-m3m4-preamble-publication-v2-20260928",
+        "sha256": "b656c92fb83e0839698ade836e18aa0c41fb805d9013dba5f516bfe4453e09b0",
+        "boot_id": "1ea468d8-2c34-4751-8153-85437784fa0b",
+        "host": "root@fedora-m3",
+        "local_library": "/home/council/dev/dirtyroom_m4/build/driver-roadmap-20260928/libvulkan-preamble-publication-v2.so"
+      }
+    },
+    "m4": {
+      "cts": {
+        "healthy": true,
+        "counts": {
+          "Pass": 2262,
+          "NotSupported": 308
+        },
+        "selected": 2570,
+        "completed_batches_end": 2570,
+        "stopped_on_test_failure": false
+      },
+      "prior_status_changes": [],
+      "unmatched_cases": [],
+      "installation": {
+        "base": "/opt/asahi-m3m4-dd452c4dd66",
+        "prefix": "/opt/asahi-m3m4-preamble-publication-v2-20260928",
+        "sha256": "b656c92fb83e0839698ade836e18aa0c41fb805d9013dba5f516bfe4453e09b0",
+        "boot_id": "36257ad9-ed5d-41b1-8a2c-4f3c1a41ed4c",
+        "host": "root@omarchy-m4",
+        "local_library": "/home/council/dev/dirtyroom_m4/build/driver-roadmap-20260928/libvulkan-preamble-publication-v2.so"
+      }
+    }
+  },
+  "m3_final_size_replays": [
+    {
+      "run": "/home/council/dev/gpu-replay-bench/runs/20260928T211017176182Z-m3-satisfactory-dx11-gameplay-check",
+      "frames": [
+        {
+          "frame": 1,
+          "maximum": 0,
+          "changed_pixels": 0
+        },
+        {
+          "frame": 16,
+          "maximum": 0,
+          "changed_pixels": 0
+        },
+        {
+          "frame": 31,
+          "maximum": 0,
+          "changed_pixels": 0
+        }
+      ]
+    },
+    {
+      "run": "/home/council/dev/gpu-replay-bench/runs/20260928T211110595684Z-m3-satisfactory-dx11-gameplay-check",
+      "frames": [
+        {
+          "frame": 1,
+          "maximum": 0,
+          "changed_pixels": 0
+        },
+        {
+          "frame": 16,
+          "maximum": 0,
+          "changed_pixels": 0
+        },
+        {
+          "frame": 31,
+          "maximum": 0,
+          "changed_pixels": 0
+        }
+      ]
+    },
+    {
+      "run": "/home/council/dev/gpu-replay-bench/runs/20260928T211132328643Z-m3-satisfactory-dx11-gameplay-check",
+      "frames": [
+        {
+          "frame": 1,
+          "maximum": 0,
+          "changed_pixels": 0
+        },
+        {
+          "frame": 16,
+          "maximum": 0,
+          "changed_pixels": 0
+        },
+        {
+          "frame": 31,
+          "maximum": 0,
+          "changed_pixels": 0
+        }
+      ]
+    }
+  ],
+  "m3_satisfactory_dx11_timing": {
+    "baseline": {
+      "seconds": [
+        14.681644375,
+        14.704982947,
+        14.69524109
+      ],
+      "fps": [
+        2.0433678431200932,
+        2.040124773223241,
+        2.041477224923841
+      ],
+      "median_fps": 2.041477224923841,
+      "pre_and_post_exact": true,
+      "thermal_max_mC": {
+        "te000m": 74000.0,
+        "te001m": 79000.0,
+        "tp000m": 86000.0,
+        "tp001m": 74000.0,
+        "tp002m": 85500.0
+      }
+    },
+    "preamble": {
+      "seconds": [
+        8.607882431,
+        8.575270573,
+        8.579410447
+      ],
+      "fps": [
+        3.4851777124603247,
+        3.498431885573111,
+        3.496743766407659
+      ],
+      "median_fps": 3.496743766407659,
+      "pre_and_post_exact": true,
+      "thermal_max_mC": {
+        "te000m": 75750.0,
+        "te001m": 77500.0,
+        "tp000m": 84250.0,
+        "tp001m": 73000.0,
+        "tp002m": 94000.0
+      }
+    },
+    "improvement_percent": 71.28497559105065
+  },
+  "limitations": [
+    "Memory preambles remain opt-in; no full-catalog qualification or desktop deployment.",
+    "NOP spacing is an empirical mitigation, not an identified ISA latency contract.",
+    "The prior known two-pixel baseline image remains an unqualified diagnostic difference.",
+    "M3 timings preserve the previous optimization gain; the new fix does not add another 71 percent.",
+    "M4 timings are pending; Frostpunk baseline one-level RGB differences are being investigated before timing."
+  ]
+}

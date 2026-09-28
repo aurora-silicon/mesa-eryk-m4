@@ -425,3 +425,21 @@ It is being checked against a pinned 2,570-case selection: all 2,058 retained
 front-facing/helper regression cases plus 512 evenly indexed descriptor/UBO
 cases. Catalog indices and original outcomes remain unchanged. Neither this
 checkpoint nor the diagnostic replay timings enables preambles in the desktop.
+
+### Final bounded-helper qualification checkpoint
+
+Both GPUs finish the 2,570-case selection with 2,262 Pass and 308 NotSupported.
+Every individual case has the same status as its retained earlier descriptor/UBO
+or helper regression result: no pass was hidden by a new unsupported outcome.
+All batches finish under the ordinary watchdog and thermal guards. M4 completes
+ten exact full replays of the first helper build; M3's final size-hardened build
+also completes three exact full checks after its earlier baseline difference.
+
+For M3, the final build with ordinary constant promotion has exact image checks
+before and after alternating timings. With all capture settings fixed, the
+baseline's three FPS samples are 2.0434, 2.0401, 2.0415; preambles give 3.4852,
+3.4984, 3.4967. The medians are 2.0415 and 3.4967 FPS (+71.28%). This preserves
+the earlier experimental optimization gain rather than adding another 71%.
+The interval separates normal initialization and warmup from the 30 timed frames.
+M4 timing qualification is still in progress. See the machine-readable
+`preamble-publication-validation.json`; all raw runs remain in the private suite.
