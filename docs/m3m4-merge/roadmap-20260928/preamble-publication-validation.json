@@ -309,5 +309,65 @@
       }
     },
     "improvement_percent": 46.338217165034166
+  },
+  "m4_frostpunk_timing": {
+    "baseline": {
+      "fps": [
+        0.7042752556851145,
+        0.8356404045985193,
+        0.8281123471282538
+      ],
+      "median_fps": 0.8281123471282538,
+      "seconds": [
+        42.596981447,
+        35.900609682,
+        36.226968604
+      ]
+    },
+    "preamble": {
+      "fps": [
+        1.344089848066546,
+        1.3601293518957338,
+        1.3040486272677336
+      ],
+      "median_fps": 1.344089848066546,
+      "seconds": [
+        22.319936456,
+        22.056725677,
+        23.005277083
+      ]
+    },
+    "improvement_percent": 62.307669089539644,
+    "qualification": "Existing sparse reference policy before/after timing; unchanged capture and guards; no clock normalization"
+  },
+  "m3_satisfactory_native_vulkan_timing": {
+    "baseline": {
+      "fps": [
+        2.3104289222435046,
+        2.3094283241495908,
+        2.3005797364541576
+      ],
+      "median_fps": 2.3094283241495908,
+      "seconds": [
+        12.984601998,
+        12.990227792,
+        13.040191359
+      ]
+    },
+    "preamble": {
+      "fps": [
+        3.27277897097202,
+        3.273431866318906,
+        3.2528403700188675
+      ],
+      "median_fps": 3.27277897097202,
+      "seconds": [
+        9.166521866,
+        9.164693577,
+        9.222708952
+      ]
+    },
+    "improvement_percent": 41.71381448597966,
+    "qualification": "Exact pre/post image checks, unchanged capture and guards; no clock normalization"
   }
 }

@@ -464,3 +464,12 @@ M3 baseline differs substantially from the pre-helper M4 reference. Current and
 dd452 M3 baseline outputs match exactly in all three frames. A private single-
 change reversal of the backfacing-helper correction and a current M4 baseline
 are being used to establish causality before approving any new reference.
+
+M4 Frostpunk now completes both pre/post checks under its existing sparse
+policy. Median 0.8281 -> 1.3441 FPS (+62.31%); baseline samples span 0.7043-0.8356,
+so retain thermal/power context rather than claiming a clock-normalized gain.
+Native Vulkan Satisfactory's reference change is isolated and reviewed in
+`native-helper-reference.md`. M3 passes exact pre/post checks with median
+2.3094 -> 3.2728 FPS (+41.71%). M4's matched measurement is still running.
+These measurements use normal constant promotion and the same b656c92 binary;
+they do not replace earlier runs made with other compiler configurations.
