@@ -12,6 +12,7 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,8 +24,21 @@ static GLuint shader(GLenum type,const char *text) {
    CHECK(ok);return s;
 }
 int main(int argc, char **argv) {
-   int record_only=argc==2&&!strcmp(argv[1],"--record-only");
-   CHECK(argc==1||record_only);
+   int record_only=0;
+   unsigned width=64,height=4,rounds=32;
+   for(int i=1;i<argc;++i) {
+      if(!strcmp(argv[i],"--record-only")) record_only=1;
+      else if(!strcmp(argv[i],"--size") && i+2<argc) {
+         char *end;
+         unsigned long w=strtoul(argv[++i],&end,10); CHECK(*end==0 && w>=1 && w<=4096);
+         unsigned long h=strtoul(argv[++i],&end,10); CHECK(*end==0 && h>=1 && h<=4096);
+         width=w; height=h;
+      } else if(!strcmp(argv[i],"--rounds") && i+1<argc) {
+         char *end;
+         unsigned long n=strtoul(argv[++i],&end,10); CHECK(*end==0 && n>=1 && n<=32);
+         rounds=n;
+      } else {fprintf(stderr,"Usage: %s [--record-only] [--size WIDTH HEIGHT] [--rounds 1..32]\n",argv[0]);return 1;}
+   }
    EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
    CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
    EGLint attr[]={EGL_CONTEXT_MAJOR_VERSION,3,EGL_CONTEXT_MINOR_VERSION,3,
@@ -48,27 +62,35 @@ int main(int argc, char **argv) {
    glBufferData(GL_UNIFORM_BUFFER,1024,NULL,GL_DYNAMIC_DRAW);glBindBufferBase(GL_UNIFORM_BUFFER,0,buffer);
    GLuint vao,tex,fb;glGenVertexArrays(1,&vao);glBindVertexArray(vao);
    glGenTextures(1,&tex);glBindTexture(GL_TEXTURE_2D,tex);
-   glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA32UI,64,4,0,GL_RGBA_INTEGER,GL_UNSIGNED_INT,NULL);
+   glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA32UI,width,height,0,GL_RGBA_INTEGER,GL_UNSIGNED_INT,NULL);
    glGenFramebuffers(1,&fb);glBindFramebuffer(GL_FRAMEBUFFER,fb);
    glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,tex,0);
    CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE);
-   glViewport(0,0,64,4);uint32_t pixels[64*4*4];unsigned bad=0;
-   for(unsigned round=0;round<32;++round){
+   glViewport(0,0,width,height);
+   uint32_t *pixels=malloc((size_t)width*height*4*sizeof(*pixels));
+   uint32_t *expected=malloc((size_t)width*4*sizeof(*expected));
+   CHECK(pixels && expected);
+   uint64_t bad=0;
+   for(unsigned round=0;round<rounds;++round){
       const uint32_t seeds[]={0,1,0x7fffffff,0x80000000,0xffffffff,0x7fc00000,0x00010001,0xdeadbeef};
       uint32_t v[64][4];
       for(unsigned j=0;j<64;++j)for(unsigned k=0;k<4;++k)
          v[j][k]=seeds[(round+j+k)%8]^(round*0x9e3779b9u+j*0x10001u+k);
       glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(v),v);glDrawArrays(GL_TRIANGLES,0,3);
-      glReadPixels(0,0,64,4,GL_RGBA_INTEGER,GL_UNSIGNED_INT,pixels);CHECK(glGetError()==GL_NO_ERROR);
-      for(unsigned y=0;y<4;++y)for(unsigned x=0;x<64;++x)for(unsigned k=0;k<4;++k){
-         uint32_t expect=0;
-         for(unsigned i=0;i<64;++i)expect+=(v[i][k]^(x*(i*37u+1u)));
-         uint32_t actual=pixels[(y*64+x)*4+k];
+      glReadPixels(0,0,width,height,GL_RGBA_INTEGER,GL_UNSIGNED_INT,pixels);CHECK(glGetError()==GL_NO_ERROR);
+      for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
+         expected[x*4+k]=0;
+         for(unsigned i=0;i<64;++i)expected[x*4+k]+=(v[i][k]^(x*(i*37u+1u)));
+      }
+      for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
+         uint32_t expect=expected[x*4+k];
+         uint32_t actual=pixels[(y*width+x)*4+k];
          if(actual!=expect){if(bad<8)printf("round=%u x=%u y=%u c=%u actual=%08x expected=%08x\n",round,x,y,k,actual,expect);bad++;}
       }
-      printf("round=%u bad=%u\n",round,bad);fflush(stdout);
+      printf("round=%u bad=%"PRIu64"\n",round,bad);fflush(stdout);
    }
-   printf("%s: U32 wide-uniform export oracle; mismatches=%u\n",bad?"FAIL":"PASS",bad);
+   printf("%s: U32 wide-uniform export oracle; size=%ux%u rounds=%u values=%"PRIu64" mismatches=%"PRIu64"\n",bad?"FAIL":"PASS",width,height,rounds,(uint64_t)width*height*4*rounds,bad);
+   free(expected);free(pixels);
    if(!record_only)CHECK(!bad);
    return 0;
 }

@@ -81,3 +81,38 @@ This excludes a blanket large-uniform/preamble-capacity failure for this shape;
 it is not qualification of conditional, derivative or game shaders. M4 evidence:
 `20260928T171643587324Z-dx11-wide-uniform-oracle`. Guard verdict pass, full thermal
 telemetry retained; M3 has not run this new fixture yet.
+
+
+## Multi-tile and dependency controls
+
+The frame-31 search fails successively at 95/48/24 sources, but each 12-source
+half passes. A repeat of the combined 24-source selection fails again (777
+changed pixels, maximum 32). Both searches are therefore inconclusive for
+single-source attribution: this may be an interaction or intermittent behavior.
+The M4 generated-source-only cold run exhausts the compilation bound with GPU
+idle and healthy; it provides no image verdict. Its CPU ceilings remain
+1.8/1.86 GHz despite requesting the normal policy maxima; this is recorded,
+not silently treated as a full-clock performance sample.
+
+Disabling fragment register-cache hints does not fix the images. Changing
+replay memory translation to rebind also leaves differences (maximum 0/36/48
+at frames 1/16/31). These are negative controls, not production changes.
+
+The generic AGX_DBG_WAIT flag does not serialize native AGX3 instruction
+emission. An additional diagnostic explicitly drains outstanding native
+scoreboard slots before each preamble instruction. M3 completes, but still
+differs at frames 16/31 (maximum 24/31); preamble serialization alone is not a
+fix. All temporary compiler changes were restored after building the isolated
+candidate. No compiler optimization default or reference tolerance changed.
+
+The wide-uniform oracle now accepts bounded `--size WIDTH HEIGHT` and
+`--rounds N` arguments. At 3840x2160, four changing UBO updates check
+132,710,400 integer values exactly on **each** M3 and M4, with native memory
+preambles and nopromote. Both pass; the main fragment uses 480 uniform halves,
+75 GPR halves and no scratch. This broadens the earlier tiny framebuffer check
+to thousands of tiles. llvmpipe independently passes two 4K updates. It still
+does not qualify conditional, derivative, or game shaders.
+
+Evidence: M3 `/root/m3-wide-uniform-4k-20260928`, M4 experiment
+`dx11-wide-uniform-4k-oracle`; both retain watchdog and all-channel thermal logs.
+The fixture source is `src/asahi/compiler/test/probes/gl-uniform-wide-probe.c`.
