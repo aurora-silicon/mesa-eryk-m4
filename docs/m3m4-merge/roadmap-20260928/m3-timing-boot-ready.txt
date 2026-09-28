@@ -1,0 +1,5 @@
+version=1 generation_ns=17395423701 healthy=1 busy=0 unit=ns scope=native_retirement
+render retirements=235 commands=558 nonzero_gpu_samples=235 prepare_ns=82891368 active_ns=1039460381 gpu_span_ns=871543926 tiling_ns=7292697 fragment_ns=848511863 stage_gap_ns=5457485
+compute retirements=136 commands=157 nonzero_gpu_samples=136 prepare_ns=5849629 active_ns=20912811 gpu_span_ns=977618 tiling_ns=0 fragment_ns=0 stage_gap_ns=0
+active
+950a52f4b8a0188cf65b9ad2db12e427110dffb7a03fb8a47eb0a93ddb85d474  /root/m3-gpu-tools/asahi.ko

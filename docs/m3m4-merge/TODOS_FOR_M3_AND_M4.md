@@ -406,3 +406,12 @@ carry enough retained evidence for another developer to reproduce them.
   added DRI3/Present preflight and compositor-stack hashes; all six pass. Main
   catalog paused at 3,139,946 while separately auditing all 3,997 earlier XCB/Xlib
   outcomes, including misleading presentation-related NotSupported records.
+
+- 2026-09-28: Added bounded read-only native timing counters on both GPUs;
+  all three kernel builds and concurrent-reader test pass. Both deployed modules
+  retain normal desktops and pass 178 render/memory CTS cases (six NS each).
+  Exact-reference 4K 0 A.D. replay improves with experimental read-only preambles:
+  M3 42.10 -> 58.80 FPS, M4 27.20 -> 38.47 FPS, three warm samples each. No
+  default enablement yet; broader 14,741-case qualification running. Global
+  retirement spans include overlapping work and are not utilization.
+  See roadmap-20260928/timing-counters.md and retained comparison records.

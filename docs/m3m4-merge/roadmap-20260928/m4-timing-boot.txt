@@ -1,0 +1,16 @@
+5aacf7fb-f845-403e-8245-2b07d26d58d7
+active
+{
+  "boot_id": "5aacf7fb-f845-403e-8245-2b07d26d58d7",
+  "release": "7.1.9-dirtyroom-asahi2+",
+  "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+  "options": [
+    "debug_flags=0",
+    "g16_packet_commands=32"
+  ],
+  "load_plan": "insmod /lib/modules/7.1.9-dirtyroom-asahi2+/kernel/drivers/gpu/drm/asahi/asahi.ko debug_flags=0 g16_packet_commands=32 \n"
+}
+version=1 generation_ns=10270255231 healthy=1 busy=0 unit=ns scope=native_retirement
+render retirements=276 commands=276 nonzero_gpu_samples=276 prepare_ns=166536762 active_ns=460474147 gpu_span_ns=98988236 tiling_ns=4523411 fragment_ns=64203616 stage_gap_ns=30261033
+compute retirements=25 commands=25 nonzero_gpu_samples=25 prepare_ns=31429804 active_ns=28266665 gpu_span_ns=1929407 tiling_ns=0 fragment_ns=0 stage_gap_ns=0
+version=1 generation_ns=10270255231 completed=140 last_completion_ns=15223158006 healthy=1

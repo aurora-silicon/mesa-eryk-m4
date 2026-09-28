@@ -1,0 +1,294 @@
+[
+  {
+    "machine": "m3",
+    "session": "roadmap-20260928-timing-counters",
+    "median_fps": 42.10047262636111,
+    "records": [
+      {
+        "path": "results/0ad-vulkan/m3/20260928T091914534305Z-m3-0ad-vulkan-time/benchmark.json",
+        "fps": 42.243497161369355,
+        "seconds": 0.710168476,
+        "correctness": "pass",
+        "temperatures": {
+          "te000m": 52250.0,
+          "te001m": 55500.0,
+          "tp000m": 55000.0,
+          "tp001m": 51000.0,
+          "tp002m": 66000.0
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi1+",
+          "module_sha256": "950a52f4b8a0188cf65b9ad2db12e427110dffb7a03fb8a47eb0a93ddb85d474",
+          "module_load_options": [
+            "m3_early_tiling=1",
+            "m3_render_batch_size=16",
+            "m3_compute_batch_size=16"
+          ]
+        }
+      },
+      {
+        "path": "results/0ad-vulkan/m3/20260928T091918246374Z-m3-0ad-vulkan-time/benchmark.json",
+        "fps": 42.09533740228174,
+        "seconds": 0.712668002,
+        "correctness": "pass",
+        "temperatures": {
+          "te000m": 50750.0,
+          "te001m": 56000.0,
+          "tp000m": 51250.0,
+          "tp001m": 51000.0,
+          "tp002m": 61500.0
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi1+",
+          "module_sha256": "950a52f4b8a0188cf65b9ad2db12e427110dffb7a03fb8a47eb0a93ddb85d474",
+          "module_load_options": [
+            "m3_early_tiling=1",
+            "m3_render_batch_size=16",
+            "m3_compute_batch_size=16"
+          ]
+        }
+      },
+      {
+        "path": "results/0ad-vulkan/m3/20260928T091921892706Z-m3-0ad-vulkan-time/benchmark.json",
+        "fps": 42.10047262636111,
+        "seconds": 0.712581074,
+        "correctness": "pass",
+        "temperatures": {
+          "te000m": 51000.0,
+          "te001m": 56500.0,
+          "tp000m": 53500.0,
+          "tp001m": 52000.0,
+          "tp002m": 56750.0
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi1+",
+          "module_sha256": "950a52f4b8a0188cf65b9ad2db12e427110dffb7a03fb8a47eb0a93ddb85d474",
+          "module_load_options": [
+            "m3_early_tiling=1",
+            "m3_render_batch_size=16",
+            "m3_compute_batch_size=16"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "machine": "m3",
+    "session": "roadmap-20260928-preamble",
+    "median_fps": 58.80196626954177,
+    "records": [
+      {
+        "path": "results/0ad-vulkan/m3/20260928T092019080037Z-m3-0ad-vulkan-time/benchmark.json",
+        "fps": 58.54809654995641,
+        "seconds": 0.512399237,
+        "correctness": "pass",
+        "temperatures": {
+          "te000m": 52000.0,
+          "te001m": 56250.0,
+          "tp000m": 53250.0,
+          "tp001m": 51000.0,
+          "tp002m": 58250.0
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi1+",
+          "module_sha256": "950a52f4b8a0188cf65b9ad2db12e427110dffb7a03fb8a47eb0a93ddb85d474",
+          "module_load_options": [
+            "m3_early_tiling=1",
+            "m3_render_batch_size=16",
+            "m3_compute_batch_size=16"
+          ]
+        }
+      },
+      {
+        "path": "results/0ad-vulkan/m3/20260928T092022721051Z-m3-0ad-vulkan-time/benchmark.json",
+        "fps": 58.80196626954177,
+        "seconds": 0.510187021,
+        "correctness": "pass",
+        "temperatures": {
+          "te000m": 51250.0,
+          "te001m": 56500.0,
+          "tp000m": 54750.0,
+          "tp001m": 51500.0,
+          "tp002m": 65250.0
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi1+",
+          "module_sha256": "950a52f4b8a0188cf65b9ad2db12e427110dffb7a03fb8a47eb0a93ddb85d474",
+          "module_load_options": [
+            "m3_early_tiling=1",
+            "m3_render_batch_size=16",
+            "m3_compute_batch_size=16"
+          ]
+        }
+      },
+      {
+        "path": "results/0ad-vulkan/m3/20260928T092026356276Z-m3-0ad-vulkan-time/benchmark.json",
+        "fps": 58.803642365820366,
+        "seconds": 0.510172479,
+        "correctness": "pass",
+        "temperatures": {
+          "te000m": 50750.0,
+          "te001m": 56250.0,
+          "tp000m": 59250.0,
+          "tp001m": 52250.0,
+          "tp002m": 58000.0
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi1+",
+          "module_sha256": "950a52f4b8a0188cf65b9ad2db12e427110dffb7a03fb8a47eb0a93ddb85d474",
+          "module_load_options": [
+            "m3_early_tiling=1",
+            "m3_render_batch_size=16",
+            "m3_compute_batch_size=16"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "machine": "m4",
+    "session": "roadmap-20260928-timing-counters",
+    "median_fps": 27.20247450827551,
+    "records": [
+      {
+        "path": "results/0ad-vulkan/m4/20260928T091545615173Z-bench-0ad-vulkan-time/benchmark.json",
+        "fps": 27.41506484387507,
+        "seconds": 1.094288858,
+        "correctness": "pass",
+        "temperatures": {
+          "PMP aggregate die hotspot": 102500,
+          "Ta000m": 85500,
+          "Te000m": 80500,
+          "Te001m": 97500,
+          "Tp000m": 97250,
+          "Tp001m": 102500
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi2+",
+          "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+          "module_load_options": [
+            "debug_flags=0",
+            "g16_packet_commands=32"
+          ]
+        }
+      },
+      {
+        "path": "results/0ad-vulkan/m4/20260928T091550554716Z-bench-0ad-vulkan-time/benchmark.json",
+        "fps": 27.20247450827551,
+        "seconds": 1.102840846,
+        "correctness": "pass",
+        "temperatures": {
+          "PMP aggregate die hotspot": 104500,
+          "Ta000m": 88000,
+          "Te000m": 82250,
+          "Te001m": 99750,
+          "Tp000m": 99250,
+          "Tp001m": 104500
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi2+",
+          "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+          "module_load_options": [
+            "debug_flags=0",
+            "g16_packet_commands=32"
+          ]
+        }
+      },
+      {
+        "path": "results/0ad-vulkan/m4/20260928T091555611452Z-bench-0ad-vulkan-time/benchmark.json",
+        "fps": 26.848839479184388,
+        "seconds": 1.117366731,
+        "correctness": "pass",
+        "temperatures": {
+          "PMP aggregate die hotspot": 102250,
+          "Ta000m": 85500,
+          "Te000m": 82750,
+          "Te001m": 97500,
+          "Tp000m": 96750,
+          "Tp001m": 102250
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi2+",
+          "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+          "module_load_options": [
+            "debug_flags=0",
+            "g16_packet_commands=32"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "machine": "m4",
+    "session": "roadmap-20260928-preamble",
+    "median_fps": 38.46838637681642,
+    "records": [
+      {
+        "path": "results/0ad-vulkan/m4/20260928T091907777934Z-bench-0ad-vulkan-time/benchmark.json",
+        "fps": 38.45398565505597,
+        "seconds": 0.780153201,
+        "correctness": "pass",
+        "temperatures": {
+          "PMP aggregate die hotspot": 98500,
+          "Ta000m": 82500,
+          "Te000m": 78500,
+          "Te001m": 93750,
+          "Tp000m": 93250,
+          "Tp001m": 98500
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi2+",
+          "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+          "module_load_options": [
+            "debug_flags=0",
+            "g16_packet_commands=32"
+          ]
+        }
+      },
+      {
+        "path": "results/0ad-vulkan/m4/20260928T091912246983Z-bench-0ad-vulkan-time/benchmark.json",
+        "fps": 38.46838637681642,
+        "seconds": 0.779861149,
+        "correctness": "pass",
+        "temperatures": {
+          "PMP aggregate die hotspot": 101500,
+          "Ta000m": 84750,
+          "Te000m": 79500,
+          "Te001m": 96750,
+          "Tp000m": 96250,
+          "Tp001m": 101500
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi2+",
+          "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+          "module_load_options": [
+            "debug_flags=0",
+            "g16_packet_commands=32"
+          ]
+        }
+      },
+      {
+        "path": "results/0ad-vulkan/m4/20260928T091916833289Z-bench-0ad-vulkan-time/benchmark.json",
+        "fps": 38.479023280384986,
+        "seconds": 0.779645569,
+        "correctness": "pass",
+        "temperatures": {
+          "PMP aggregate die hotspot": 102500,
+          "Ta000m": 86000,
+          "Te000m": 80750,
+          "Te001m": 98000,
+          "Tp000m": 97250,
+          "Tp001m": 102500
+        },
+        "kernel": {
+          "release": "7.1.9-dirtyroom-asahi2+",
+          "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+          "module_load_options": [
+            "debug_flags=0",
+            "g16_packet_commands=32"
+          ]
+        }
+      }
+    ]
+  }
+]
