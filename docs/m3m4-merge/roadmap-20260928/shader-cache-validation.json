@@ -1,0 +1,40 @@
+{
+  "m3": {
+    "healthy": true,
+    "counts": {
+      "Pass": 5503,
+      "NotSupported": 18
+    },
+    "selected": 5521,
+    "completed_batches_end": 5521,
+    "stopped_on_test_failure": false,
+    "install": {
+      "base": "/opt/asahi-m3m4-lazy-link-20260928",
+      "prefix": "/opt/asahi-m3m4-cache-bounds-20260928",
+      "sha256": "24d5215d8886bc11ce37aa53f41b8d5bc0e66a3b1ba09dd55bface7d3fd9c4b8",
+      "boot_id": "3feecf38-384c-4a06-9203-f0b845532ac5",
+      "host": "root@fedora-m3",
+      "local_library": "/home/council/dev/dirtyroom_m4/build/mesa-m3m4-arm64/src/asahi/vulkan/libvulkan_asahi.so"
+    }
+  },
+  "m4": {
+    "healthy": true,
+    "counts": {
+      "Pass": 5503,
+      "NotSupported": 18
+    },
+    "selected": 5521,
+    "completed_batches_end": 5521,
+    "stopped_on_test_failure": false,
+    "install": {
+      "base": "/opt/asahi-m3m4-lazy-link-20260928",
+      "prefix": "/opt/asahi-m3m4-cache-bounds-20260928",
+      "sha256": "24d5215d8886bc11ce37aa53f41b8d5bc0e66a3b1ba09dd55bface7d3fd9c4b8",
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "host": "root@omarchy-m4",
+      "local_library": "/home/council/dev/dirtyroom_m4/build/mesa-m3m4-arm64/src/asahi/vulkan/libvulkan_asahi.so"
+    }
+  },
+  "catalog_sha256": null,
+  "cases_sha256": "9a7ef649fa3014e9ae2f5c7e9f8b8cda2b45df3f9a5dc4e923a7e2e5e338c24d"
+}

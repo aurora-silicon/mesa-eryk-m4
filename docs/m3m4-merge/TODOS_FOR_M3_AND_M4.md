@@ -435,3 +435,14 @@ carry enough retained evidence for another developer to reproduce them.
   transfer before removing target copies. Added trace-staging disk preflight and
   retained a 1-GiB reserve; successful replay cleanup only removes hash-verified
   target capture copies, preserving the complete local capture corpus.
+
+- 2026-09-28: Shader-cache deserialization validates bounded payloads and executable
+  ranges before allocating/uploading. Both GPUs pass all 5,521 frozen cache/binary
+  cases (5,503 Pass, 18 NS each), plus host ASan/UBSan malformed-cache tests.
+  Metadata validation beyond these ranges remains open. M4 DX12 preamble checks
+  pass, but matched ordinary controls retain an unresolved one-pixel difference
+  also reproduced on older Mesa; no tolerance changes or isolated speedup claim.
+- 2026-09-28: Added an opt-in AGX3B constant-rematerialization experiment. All 123
+  retained compiler inputs and 306 host tests pass; default hashes are unchanged.
+  Sixteen shaders use fewer registers with varying instruction cost. Hardware
+  performance and correctness qualification remains in progress.

@@ -1,0 +1,954 @@
+[
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T101443360589Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-preamble-dx12",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": false,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+      },
+      "seconds": 58.998853725,
+      "measured_frames": 1,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 75000,
+        "Ta000m": 69000,
+        "Te000m": 69000,
+        "Te001m": 69000,
+        "Tp000m": 75000,
+        "Tp001m": 71250
+      },
+      "correctness": "pending",
+      "adaptations": [
+        "diagnostic single frame 1; not benchmark qualification",
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T101443360589Z-bench-satisfactory-dx12-gameplay-check/evidence",
+      "measurement_environment": {},
+      "diagnostic_only": true,
+      "image": "results/satisfactory-dx12-gameplay/m4/20260928T101443360589Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_1.png",
+      "images": [
+        "results/satisfactory-dx12-gameplay/m4/20260928T101443360589Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_1.png"
+      ]
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-preamble-dx12",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": true,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+      },
+      "seconds": 21.412465418,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 83750,
+        "Ta000m": 77250,
+        "Te000m": 77500,
+        "Te001m": 77000,
+        "Tp000m": 83750,
+        "Tp001m": 80000
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/evidence",
+      "measurement_environment": {},
+      "image": "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+      "images": [
+        "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png"
+      ],
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png": "3294cae2b93ae65ce71633fa5f16b8aec54e636c694387bf02c1539c78e0c46e",
+          "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png": "732cba16fcfd43f2bc0a1f107dc4c631a7dac9c0e6a999d9fe71369b5a66d5db",
+          "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png": "46834f4c368b3ac8ad6dc48da1774fcb9cee84f72872668eba6aa86630732319"
+        },
+        "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+        "limitation": "Regression against synchronized M4 screenshots, not independent full-scene conformance. Lavapipe independently validates the isolated packed10-to-BGRA conversion only. Full software replay has unsupported captured features; legacy capture validation errors are retained in the diagnostic evidence.",
+        "origin": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+        "reference_sha256": "4850662a8b36a175bb1782668fa3f872954a642605ae00504f87ca02d18d0a91",
+        "comparisons": [
+          {
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "maximum_error": 1,
+            "mean_absolute_error": 8.037551440329219e-08,
+            "changed_pixels_fraction": 2.4112654320987655e-07,
+            "out_of_tolerance_fraction": 2.4112654320987655e-07
+          },
+          {
+            "maximum_error": 1,
+            "mean_absolute_error": 4.0187757201646094e-08,
+            "changed_pixels_fraction": 1.2056327160493827e-07,
+            "out_of_tolerance_fraction": 1.2056327160493827e-07
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 4,
+        "edge_fraction": 3.858024691358025e-06,
+        "tolerance_reason": "Preserve existing DX12 capture budget: at most 32 pixels with error no greater than 4/255 per channel.",
+        "channels": "RGB"
+      }
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T101647519058Z-bench-satisfactory-dx12-gameplay-warmup/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-preamble-dx12",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "warmup",
+      "success": true,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+      },
+      "seconds": 15.624017712,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 86500,
+        "Ta000m": 80250,
+        "Te000m": 80500,
+        "Te001m": 80000,
+        "Tp000m": 86500,
+        "Tp001m": 83000
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T101647519058Z-bench-satisfactory-dx12-gameplay-warmup/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "33b4370e29c483063150259f8f8b1e12d23d3d0f35f6b629714bc046e87453f7"
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T101730955683Z-bench-satisfactory-dx12-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-preamble-dx12",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+      },
+      "seconds": 15.82243748,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 87500,
+        "Ta000m": 81750,
+        "Te000m": 81500,
+        "Te001m": 81250,
+        "Tp000m": 87500,
+        "Tp001m": 84000
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T101730955683Z-bench-satisfactory-dx12-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "33b4370e29c483063150259f8f8b1e12d23d3d0f35f6b629714bc046e87453f7"
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T101814872897Z-bench-satisfactory-dx12-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-preamble-dx12",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+      },
+      "seconds": 15.98722261,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 88500,
+        "Ta000m": 82750,
+        "Te000m": 82250,
+        "Te001m": 82250,
+        "Tp000m": 88500,
+        "Tp001m": 85250
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T101814872897Z-bench-satisfactory-dx12-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "33b4370e29c483063150259f8f8b1e12d23d3d0f35f6b629714bc046e87453f7"
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T101858757950Z-bench-satisfactory-dx12-gameplay-time/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-preamble-dx12",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "time",
+      "success": true,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d",
+        "HK_M4_NATIVE_PREAMBLE": "true",
+        "AGX_NATIVE_MEMORY_PREAMBLE": "true"
+      },
+      "seconds": 15.756841396,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 90750,
+        "Ta000m": 83500,
+        "Te000m": 83500,
+        "Te001m": 83000,
+        "Tp000m": 90750,
+        "Tp001m": 86500
+      },
+      "correctness": "pass",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T101858757950Z-bench-satisfactory-dx12-gameplay-time/evidence",
+      "measurement_environment": {},
+      "correctness_check": "results/satisfactory-dx12-gameplay/m4/20260928T101554427336Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+      "correctness_check_sha256": "33b4370e29c483063150259f8f8b1e12d23d3d0f35f6b629714bc046e87453f7"
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T102124027594Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-dx12-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": false,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d"
+      },
+      "seconds": 58.106739906,
+      "measured_frames": 1,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 78750,
+        "Ta000m": 72000,
+        "Te000m": 71750,
+        "Te001m": 71750,
+        "Tp000m": 78750,
+        "Tp001m": 74750
+      },
+      "correctness": "pending",
+      "adaptations": [
+        "diagnostic single frame 1; not benchmark qualification",
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T102124027594Z-bench-satisfactory-dx12-gameplay-check/evidence",
+      "measurement_environment": {},
+      "diagnostic_only": true,
+      "image": "results/satisfactory-dx12-gameplay/m4/20260928T102124027594Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_1.png",
+      "images": [
+        "results/satisfactory-dx12-gameplay/m4/20260928T102124027594Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_1.png"
+      ]
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T102236165313Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-dx12-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": true,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d"
+      },
+      "seconds": 27.07101828,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 91500,
+        "Ta000m": 83750,
+        "Te000m": 84000,
+        "Te001m": 83000,
+        "Tp000m": 91250,
+        "Tp001m": 87500
+      },
+      "correctness": "fail",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T102236165313Z-bench-satisfactory-dx12-gameplay-check/evidence",
+      "measurement_environment": {},
+      "image": "results/satisfactory-dx12-gameplay/m4/20260928T102236165313Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+      "images": [
+        "results/satisfactory-dx12-gameplay/m4/20260928T102236165313Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T102236165313Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T102236165313Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png"
+      ],
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/satisfactory-dx12-gameplay/m4/20260928T102236165313Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png": "8056a628d5caea5cc394c476365fdfdaf54f4e8dd5f9976a732ff777abf3a05d",
+          "results/satisfactory-dx12-gameplay/m4/20260928T102236165313Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png": "b5f946f040f2728b46ea3cd326893f3490c2132f5be43904982647f4eeb6f6e9",
+          "results/satisfactory-dx12-gameplay/m4/20260928T102236165313Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png": "2dc3dd57c939909e1580b8d6bcac77347bac96e48862a10452b17c4c16ac9e78"
+        },
+        "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+        "limitation": "Regression against synchronized M4 screenshots, not independent full-scene conformance. Lavapipe independently validates the isolated packed10-to-BGRA conversion only. Full software replay has unsupported captured features; legacy capture validation errors are retained in the diagnostic evidence.",
+        "origin": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+        "reference_sha256": "4850662a8b36a175bb1782668fa3f872954a642605ae00504f87ca02d18d0a91",
+        "comparisons": [
+          {
+            "maximum_error": 3,
+            "mean_absolute_error": 9.2431841563786e-07,
+            "changed_pixels_fraction": 1.8084490740740741e-06,
+            "out_of_tolerance_fraction": 1.8084490740740741e-06
+          },
+          {
+            "maximum_error": 5,
+            "mean_absolute_error": 2.0495756172839506e-06,
+            "changed_pixels_fraction": 3.375771604938272e-06,
+            "out_of_tolerance_fraction": 3.375771604938272e-06
+          },
+          {
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 4,
+        "edge_fraction": 3.858024691358025e-06,
+        "tolerance_reason": "Preserve existing DX12 capture budget: at most 32 pixels with error no greater than 4/255 per channel.",
+        "channels": "RGB"
+      }
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-dx12-control-repeat",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": true,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "b970144c62036cd959257bdbd1052db50100ae82866026abbef71ba8f837017e"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-lazy-link-20260928/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-lazy-link-20260928/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-lazy-link-20260928/share/drirc.d"
+      },
+      "seconds": 24.82115145,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 91750,
+        "Ta000m": 84250,
+        "Te000m": 84250,
+        "Te001m": 83750,
+        "Tp000m": 91750,
+        "Tp001m": 88000
+      },
+      "correctness": "fail",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence",
+      "measurement_environment": {},
+      "image": "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+      "images": [
+        "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png"
+      ],
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png": "8056a628d5caea5cc394c476365fdfdaf54f4e8dd5f9976a732ff777abf3a05d",
+          "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png": "b5f946f040f2728b46ea3cd326893f3490c2132f5be43904982647f4eeb6f6e9",
+          "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png": "46834f4c368b3ac8ad6dc48da1774fcb9cee84f72872668eba6aa86630732319"
+        },
+        "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+        "limitation": "Regression against synchronized M4 screenshots, not independent full-scene conformance. Lavapipe independently validates the isolated packed10-to-BGRA conversion only. Full software replay has unsupported captured features; legacy capture validation errors are retained in the diagnostic evidence.",
+        "origin": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+        "reference_sha256": "4850662a8b36a175bb1782668fa3f872954a642605ae00504f87ca02d18d0a91",
+        "comparisons": [
+          {
+            "image": "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+            "reference_image": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+            "maximum_error": 3,
+            "mean_absolute_error": 9.2431841563786e-07,
+            "changed_pixels_fraction": 1.8084490740740741e-06,
+            "out_of_tolerance_fraction": 1.8084490740740741e-06
+          },
+          {
+            "image": "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png",
+            "reference_image": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png",
+            "maximum_error": 5,
+            "mean_absolute_error": 2.0495756172839506e-06,
+            "changed_pixels_fraction": 3.375771604938272e-06,
+            "out_of_tolerance_fraction": 3.375771604938272e-06
+          },
+          {
+            "image": "results/satisfactory-dx12-gameplay/m4/20260928T102453184637Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+            "reference_image": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+            "maximum_error": 1,
+            "mean_absolute_error": 4.0187757201646094e-08,
+            "changed_pixels_fraction": 1.2056327160493827e-07,
+            "out_of_tolerance_fraction": 1.2056327160493827e-07
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 4,
+        "edge_fraction": 3.858024691358025e-06,
+        "tolerance_reason": "Preserve existing DX12 capture budget: at most 32 pixels with error no greater than 4/255 per channel.",
+        "channels": "RGB"
+      }
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-dx12-old-control",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": true,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "9cf709225a36e5512d9822a43f61169bd7e046b9840953f28d9449952c696ad7"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-suite-64fb191636d/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-suite-64fb191636d/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-suite-64fb191636d/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-suite-64fb191636d/share/drirc.d"
+      },
+      "seconds": 27.240604562,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 92500,
+        "Ta000m": 85250,
+        "Te000m": 85250,
+        "Te001m": 85000,
+        "Tp000m": 92500,
+        "Tp001m": 89000
+      },
+      "correctness": "fail",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence",
+      "measurement_environment": {},
+      "image": "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+      "images": [
+        "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png"
+      ],
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png": "8056a628d5caea5cc394c476365fdfdaf54f4e8dd5f9976a732ff777abf3a05d",
+          "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png": "b5f946f040f2728b46ea3cd326893f3490c2132f5be43904982647f4eeb6f6e9",
+          "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png": "46834f4c368b3ac8ad6dc48da1774fcb9cee84f72872668eba6aa86630732319"
+        },
+        "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+        "limitation": "Regression against synchronized M4 screenshots, not independent full-scene conformance. Lavapipe independently validates the isolated packed10-to-BGRA conversion only. Full software replay has unsupported captured features; legacy capture validation errors are retained in the diagnostic evidence.",
+        "origin": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+        "reference_sha256": "4850662a8b36a175bb1782668fa3f872954a642605ae00504f87ca02d18d0a91",
+        "comparisons": [
+          {
+            "image": "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+            "reference_image": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+            "maximum_error": 3,
+            "mean_absolute_error": 9.2431841563786e-07,
+            "changed_pixels_fraction": 1.8084490740740741e-06,
+            "out_of_tolerance_fraction": 1.8084490740740741e-06
+          },
+          {
+            "image": "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png",
+            "reference_image": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png",
+            "maximum_error": 5,
+            "mean_absolute_error": 2.0495756172839506e-06,
+            "changed_pixels_fraction": 3.375771604938272e-06,
+            "out_of_tolerance_fraction": 3.375771604938272e-06
+          },
+          {
+            "image": "results/satisfactory-dx12-gameplay/m4/20260928T102610298074Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+            "reference_image": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+            "maximum_error": 1,
+            "mean_absolute_error": 4.0187757201646094e-08,
+            "changed_pixels_fraction": 1.2056327160493827e-07,
+            "out_of_tolerance_fraction": 1.2056327160493827e-07
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 4,
+        "edge_fraction": 3.858024691358025e-06,
+        "tolerance_reason": "Preserve existing DX12 capture budget: at most 32 pixels with error no greater than 4/255 per channel.",
+        "channels": "RGB"
+      }
+    }
+  },
+  {
+    "path": "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+    "benchmark": {
+      "session": "roadmap-20260928-dx12-half-io-diagnostic",
+      "kernel": {
+        "release": "7.1.9-dirtyroom-asahi2+",
+        "module_sha256": "8b06d1175962a83b8913d0e77aa8198f84dbea3265d4e9e0391b46ee0822399e",
+        "module_load_options": [
+          "debug_flags=0",
+          "g16_packet_commands=8"
+        ]
+      },
+      "boot_id": "bc632840-b6b7-4fc3-ac92-072cfea76439",
+      "case": "satisfactory-dx12-gameplay",
+      "machine": "m4",
+      "phase": "check",
+      "success": true,
+      "capture_sha256": "ac23b909fd7b6a9fef201df4b0345369a8b7940f2fb29b10dddb1717d847e436",
+      "mesa_sha256": {
+        "libvulkan_asahi.so": "9ae82c88334753a26572638ab890c2e54682510f3dfda4e38bc6a40bd1c75ac9"
+      },
+      "driver_config_sha256": {
+        "00-mesa-defaults.conf": "d6683107a6b77425ba3329b9fe8084e2faf7f4457f992c3dc1d410a661b620d4"
+      },
+      "replayer_sha256": "39a7d64e09f3285217a7c9342069656b3eb2c2369ca344832e308b4f6464439e",
+      "protocol": "vulkan-completed-range-v1",
+      "environment": {
+        "LD_LIBRARY_PATH": "/opt/asahi-m3m4-no-float-io-diagnostic/lib",
+        "VK_DRIVER_FILES": "/opt/asahi-m3m4-no-float-io-diagnostic/asahi.json",
+        "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-no-float-io-diagnostic/lib/gbm",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "ASAHI_M3_EXPERIMENTAL": "1",
+        "ASAHI_M4_EXPERIMENTAL": "1",
+        "HK_DEBUG_LOG": "0",
+        "ASAHI_MESA_DEBUG": "nocompress",
+        "AGX_MESA_DEBUG": "",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/satisfactory-dx12-gameplay",
+        "DRIRC_CONFIGDIR": "/opt/asahi-m3m4-no-float-io-diagnostic/share/drirc.d"
+      },
+      "seconds": 27.120351895,
+      "measured_frames": 30,
+      "watchdog_verified": true,
+      "thermal_guard_passed": true,
+      "temperatures": {
+        "PMP aggregate die hotspot": 93750,
+        "Ta000m": 86250,
+        "Te000m": 86500,
+        "Te001m": 86000,
+        "Tp000m": 93750,
+        "Tp001m": 90000
+      },
+      "correctness": "fail",
+      "adaptations": [
+        "offscreen swapchain",
+        "memory translation: none",
+        "omit captured pipeline cache"
+      ],
+      "evidence": "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence",
+      "measurement_environment": {},
+      "image": "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+      "images": [
+        "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+        "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png"
+      ],
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png": "8056a628d5caea5cc394c476365fdfdaf54f4e8dd5f9976a732ff777abf3a05d",
+          "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png": "b5f946f040f2728b46ea3cd326893f3490c2132f5be43904982647f4eeb6f6e9",
+          "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png": "46834f4c368b3ac8ad6dc48da1774fcb9cee84f72872668eba6aa86630732319"
+        },
+        "scope": "Regression against a visually inspected M4 baseline; not independent API conformance",
+        "limitation": "Regression against synchronized M4 screenshots, not independent full-scene conformance. Lavapipe independently validates the isolated packed10-to-BGRA conversion only. Full software replay has unsupported captured features; legacy capture validation errors are retained in the diagnostic evidence.",
+        "origin": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/benchmark.json",
+        "reference_sha256": "4850662a8b36a175bb1782668fa3f872954a642605ae00504f87ca02d18d0a91",
+        "comparisons": [
+          {
+            "image": "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+            "reference_image": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_20.png",
+            "maximum_error": 3,
+            "mean_absolute_error": 9.2431841563786e-07,
+            "changed_pixels_fraction": 1.8084490740740741e-06,
+            "out_of_tolerance_fraction": 1.8084490740740741e-06
+          },
+          {
+            "image": "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png",
+            "reference_image": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_35.png",
+            "maximum_error": 5,
+            "mean_absolute_error": 2.0495756172839506e-06,
+            "changed_pixels_fraction": 3.375771604938272e-06,
+            "out_of_tolerance_fraction": 3.375771604938272e-06
+          },
+          {
+            "image": "results/satisfactory-dx12-gameplay/m4/20260928T102806705793Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+            "reference_image": "results/satisfactory-dx12-gameplay/m4/20260925T153858958240Z-bench-satisfactory-dx12-gameplay-check/evidence/remote/screenshot_frame_6.png",
+            "maximum_error": 1,
+            "mean_absolute_error": 4.0187757201646094e-08,
+            "changed_pixels_fraction": 1.2056327160493827e-07,
+            "out_of_tolerance_fraction": 1.2056327160493827e-07
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 4,
+        "edge_fraction": 3.858024691358025e-06,
+        "tolerance_reason": "Preserve existing DX12 capture budget: at most 32 pixels with error no greater than 4/255 per channel.",
+        "channels": "RGB"
+      }
+    }
+  }
+]
