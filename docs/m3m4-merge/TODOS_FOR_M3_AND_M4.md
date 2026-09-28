@@ -480,3 +480,13 @@ carry enough retained evidence for another developer to reproduce them.
   preamble campaign finishes all 19 selected replay modes with image checks
   and three timings each. M3 remaining games and matched slow-game controls
   continue; experimental compiler options remain off by default.
+
+### 2026-09-28: Frostpunk preamble regression diagnosis
+
+M3 original and cold-cache controls reproduce the memory-preamble image error.
+Source bisection isolates one fragment; corrected source-lifetime, slot-reuse,
+explicit-wait and full-serialization controls do not fix it. An initial stale
+diagnostic object invalidated the earlier apparent wait successes; same-build
+negative control exposed it and the corrected results are retained separately.
+See `roadmap-20260928/frostpunk-preamble-investigation.md`. Preambles stay opt-in;
+no per-shader workaround, tolerance relaxation or default enablement.
