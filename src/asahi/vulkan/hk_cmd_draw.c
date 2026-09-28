@@ -2317,12 +2317,15 @@ hk_flush_shaders(struct hk_cmd_buffer *cmd)
 static struct agx_shader_part *
 hk_get_prolog_epilog_locked(struct hk_device *dev, struct hk_internal_key *key,
                             hk_internal_builder_t builder, bool preprocess_nir,
-                            bool stop, unsigned cf_base)
+                            bool stop, unsigned cf_base, VkResult *result)
 {
+   *result = VK_ERROR_OUT_OF_HOST_MEMORY;
    /* Try to get the cached shader */
    struct hash_entry *ent = _mesa_hash_table_search(dev->prolog_epilog.ht, key);
-   if (ent)
+   if (ent) {
+      *result = VK_SUCCESS;
       return ent->data;
+   }
 
    nir_builder b = nir_builder_init_simple_shader(0, &agx_nir_options, NULL);
    builder(&b, key->key);
@@ -2358,6 +2361,7 @@ hk_get_prolog_epilog_locked(struct hk_device *dev, struct hk_internal_key *key,
       /* A rejected backend instruction leaves an empty part. Caching that
        * as success lets fast-link silently omit required output/blend code. */
       ralloc_free(part);
+      *result = VK_ERROR_FEATURE_NOT_PRESENT;
       return NULL;
    }
 
@@ -2373,14 +2377,20 @@ hk_get_prolog_epilog_locked(struct hk_device *dev, struct hk_internal_key *key,
       return NULL;
    }
 
-   _mesa_hash_table_insert(dev->prolog_epilog.ht, cloned_key, part);
+   if (!_mesa_hash_table_insert(dev->prolog_epilog.ht, cloned_key, part)) {
+      ralloc_free(cloned_key);
+      free(part->binary);
+      ralloc_free(part);
+      return NULL;
+   }
+   *result = VK_SUCCESS;
    return part;
 }
 
 static struct agx_shader_part *
 hk_get_prolog_epilog(struct hk_device *dev, void *data, size_t data_size,
                      hk_internal_builder_t builder, bool preprocess_nir,
-                     bool stop, unsigned cf_base)
+                     bool stop, unsigned cf_base, VkResult *result)
 {
    /* Build the meta shader key */
    size_t total_key_size = sizeof(struct hk_internal_key) + data_size;
@@ -2395,7 +2405,7 @@ hk_get_prolog_epilog(struct hk_device *dev, void *data, size_t data_size,
    simple_mtx_lock(&dev->prolog_epilog.lock);
 
    struct agx_shader_part *part = hk_get_prolog_epilog_locked(
-      dev, key, builder, preprocess_nir, stop, cf_base);
+      dev, key, builder, preprocess_nir, stop, cf_base, result);
 
    simple_mtx_unlock(&dev->prolog_epilog.lock);
    return part;
@@ -2403,23 +2413,25 @@ hk_get_prolog_epilog(struct hk_device *dev, void *data, size_t data_size,
 
 static struct hk_linked_shader *
 hk_get_fast_linked_locked_vs(struct hk_device *dev, struct hk_shader *shader,
-                             struct hk_fast_link_key_vs *key)
+                             struct hk_fast_link_key_vs *key, VkResult *result)
 {
    struct agx_shader_part *prolog =
       hk_get_prolog_epilog(dev, &key->prolog, sizeof(key->prolog),
                            agx_native_graphics(&dev->dev)
                               ? agx_nir_vs_prolog_raw : agx_nir_vs_prolog,
-                           false, false, 0);
+                           false, false, 0, result);
    if (!prolog)
       return NULL;
 
    struct hk_fast_link_key *key_clone =
       ralloc_memdup(shader->linked.ht, key, sizeof(*key));
-   if (!key_clone)
+   if (!key_clone) {
+      *result = VK_ERROR_OUT_OF_HOST_MEMORY;
       return NULL;
+   }
 
    struct hk_linked_shader *linked =
-      hk_fast_link(dev, false, shader, prolog, NULL, 0);
+      hk_fast_link_checked(dev, false, shader, prolog, NULL, 0, result);
    if (!linked) {
       ralloc_free(key_clone);
       return NULL;
@@ -2429,7 +2441,12 @@ hk_get_fast_linked_locked_vs(struct hk_device *dev, struct hk_shader *shader,
    linked->sw_indexing = !key->prolog.hw || key->prolog.adjacency;
    linked->b.uses_base_param |= linked->sw_indexing;
 
-   _mesa_hash_table_insert(shader->linked.ht, key_clone, linked);
+   if (!_mesa_hash_table_insert(shader->linked.ht, key_clone, linked)) {
+      ralloc_free(key_clone);
+      hk_destroy_linked_shader(dev, linked);
+      *result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      return NULL;
+   }
    return linked;
 }
 
@@ -2508,7 +2525,7 @@ build_g17p_fs_epilog(nir_builder *b, const void *key_)
 
 static struct hk_linked_shader *
 hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
-                             struct hk_fast_link_key_fs *key)
+                             struct hk_fast_link_key_fs *key, VkResult *result)
 {
    /* TODO: prolog without fs needs to work too... */
    bool needs_prolog = key->prolog.statistics ||
@@ -2521,7 +2538,7 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
                                     agx_native_graphics(&dev->dev)
                                        ? build_g17p_fs_prolog : build_fs_prolog,
                                     false, false,
-                                    key->prolog.cf_base);
+                                    key->prolog.cf_base, result);
       if (!prolog)
          return NULL;
    }
@@ -2536,17 +2553,20 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
                            agx_native_graphics(&dev->dev)
                               ? build_g17p_fs_epilog
                               : agx_nir_fs_epilog,
-                           true, epilog_stop, 0);
+                           true, epilog_stop, 0, result);
    if (!epilog)
       return NULL;
 
    struct hk_fast_link_key *key_clone =
       ralloc_memdup(shader->linked.ht, key, sizeof(*key));
-   if (!key_clone)
+   if (!key_clone) {
+      *result = VK_ERROR_OUT_OF_HOST_MEMORY;
       return NULL;
+   }
 
    struct hk_linked_shader *linked =
-      hk_fast_link(dev, true, shader, prolog, epilog, key->nr_samples_shaded);
+      hk_fast_link_checked(dev, true, shader, prolog, epilog,
+                           key->nr_samples_shaded, result);
    if (!linked) {
       ralloc_free(key_clone);
       return NULL;
@@ -2558,7 +2578,12 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
    linked->prolog_statistics_uniform = key->prolog.statistics &&
                                        key->prolog.statistics_uniform;
 
-   _mesa_hash_table_insert(shader->linked.ht, key_clone, linked);
+   if (!_mesa_hash_table_insert(shader->linked.ht, key_clone, linked)) {
+      ralloc_free(key_clone);
+      hk_destroy_linked_shader(dev, linked);
+      *result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      return NULL;
+   }
    return linked;
 }
 
@@ -2567,9 +2592,11 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
  * parts and link.
  */
 static struct hk_linked_shader *
-hk_get_fast_linked(struct hk_device *dev, struct hk_shader *shader, void *key)
+hk_get_fast_linked(struct hk_device *dev, struct hk_shader *shader, void *key,
+                   VkResult *result)
 {
    struct hk_linked_shader *linked;
+   *result = VK_SUCCESS;
    simple_mtx_lock(&shader->linked.lock);
 
    struct hash_entry *ent = _mesa_hash_table_search(shader->linked.ht, key);
@@ -2577,9 +2604,9 @@ hk_get_fast_linked(struct hk_device *dev, struct hk_shader *shader, void *key)
    if (ent)
       linked = ent->data;
    else if (shader->info.stage == MESA_SHADER_VERTEX)
-      linked = hk_get_fast_linked_locked_vs(dev, shader, key);
+      linked = hk_get_fast_linked_locked_vs(dev, shader, key, result);
    else if (shader->info.stage == MESA_SHADER_FRAGMENT)
-      linked = hk_get_fast_linked_locked_fs(dev, shader, key);
+      linked = hk_get_fast_linked_locked_fs(dev, shader, key, result);
    else
       UNREACHABLE("invalid stage");
 
@@ -2592,12 +2619,14 @@ hk_update_fast_linked(struct hk_cmd_buffer *cmd, struct hk_shader *shader,
                       void *key)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
-   struct hk_linked_shader *new = hk_get_fast_linked(dev, shader, key);
+   VkResult result;
+   struct hk_linked_shader *new = hk_get_fast_linked(dev, shader, key, &result);
    mesa_shader_stage stage = shader->info.stage;
    if (!new) {
-      mesa_loge("failed to compile or link required %s shader parts",
-                _mesa_shader_stage_to_string(stage));
-      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      if (result == VK_ERROR_FEATURE_NOT_PRESENT)
+         mesa_loge("failed to compile or link required %s shader parts",
+                   _mesa_shader_stage_to_string(stage));
+      vk_command_buffer_set_error(&cmd->vk, result);
       return false;
    }
 

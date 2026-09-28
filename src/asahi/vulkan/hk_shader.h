@@ -366,11 +366,14 @@ struct hk_linked_shader {
    } usc;
 };
 
-struct hk_linked_shader *hk_fast_link(struct hk_device *dev, bool fragment,
+struct hk_linked_shader *hk_fast_link_checked(struct hk_device *dev, bool fragment,
                                       struct hk_shader *main,
                                       struct agx_shader_part *prolog,
                                       struct agx_shader_part *epilog,
-                                      unsigned nr_samples_shaded);
+                                      unsigned nr_samples_shaded, VkResult *result);
+
+void hk_destroy_linked_shader(struct hk_device *dev,
+                              struct hk_linked_shader *linked);
 
 extern const struct vk_device_shader_ops hk_device_shader_ops;
 

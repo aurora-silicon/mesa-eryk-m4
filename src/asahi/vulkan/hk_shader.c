@@ -2293,11 +2293,6 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
             nir_opt_if_optimize_phi_true_false | nir_opt_if_avoid_64bit_phis);
 }
 
-static struct hk_linked_shader *
-hk_fast_link_checked(struct hk_device *dev, bool fragment, struct hk_shader *main,
-                      struct agx_shader_part *prolog, struct agx_shader_part *epilog,
-                      unsigned nr_samples_shaded, VkResult *result);
-
 static VkResult
 hk_upload_shader(struct hk_device *dev, struct hk_shader *shader)
 {
@@ -3255,7 +3250,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 
 static const struct vk_shader_ops hk_shader_ops;
 
-static void
+void
 hk_destroy_linked_shader(struct hk_device *dev, struct hk_linked_shader *linked)
 {
    agx_bo_unreference(&dev->dev, linked->b.bo);
@@ -3986,7 +3981,7 @@ const struct vk_device_shader_ops hk_device_shader_ops = {
    .cmd_bind_shaders = hk_cmd_bind_shaders,
 };
 
-static struct hk_linked_shader *
+struct hk_linked_shader *
 hk_fast_link_checked(struct hk_device *dev, bool fragment, struct hk_shader *main,
                       struct agx_shader_part *prolog, struct agx_shader_part *epilog,
                       unsigned nr_samples_shaded, VkResult *result)
@@ -4069,14 +4064,4 @@ hk_fast_link_checked(struct hk_device *dev, bool fragment, struct hk_shader *mai
 
    s->usc.size = b.head - s->usc.data;
    return s;
-}
-
-struct hk_linked_shader *
-hk_fast_link(struct hk_device *dev, bool fragment, struct hk_shader *main,
-             struct agx_shader_part *prolog, struct agx_shader_part *epilog,
-             unsigned nr_samples_shaded)
-{
-   VkResult result;
-   return hk_fast_link_checked(dev, fragment, main, prolog, epilog,
-                               nr_samples_shaded, &result);
 }
