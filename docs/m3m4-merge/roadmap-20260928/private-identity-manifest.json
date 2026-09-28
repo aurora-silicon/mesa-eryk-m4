@@ -1,0 +1,30 @@
+{
+  "id": "20260927T224626452630Z-roadmap-m4-memory-identity-check",
+  "hypothesis": "Pin explicitly selected private ICD/interposer inputs while rerunning resource allocation failures on final shared memory build",
+  "command": [
+    "env",
+    "VK_DRIVER_FILES=/opt/asahi-m3m4-memory-final-20260928/asahi.json",
+    "LD_LIBRARY_PATH=/opt/asahi-m3m4-memory-final-20260928/lib",
+    "ASAHI_M4_EXPERIMENTAL=1",
+    "/root/vk-memory-failure",
+    "0x8132",
+    "/root/asahi-evidence/20260927T224626452630Z-roadmap-m4-memory-identity-check/allocations.jsonl",
+    "resources"
+  ],
+  "expected_success": "DEVICE_ALLOCATION_FAILURE_PASS",
+  "seconds": 40,
+  "thermal_stop_mc": 120000,
+  "sources": {
+    "mesa": {
+      "head": "98719a739794ab2f5e1de1c7ad1e475719633a22",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "kernel": {
+      "head": "63703468d95d5e8104570429ac2af585ca79da07",
+      "status": "",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "identity_probe_sha256": "ec1c04779b19d845903f213de2e543471765080357d5b6178257a2788532da2e"
+}

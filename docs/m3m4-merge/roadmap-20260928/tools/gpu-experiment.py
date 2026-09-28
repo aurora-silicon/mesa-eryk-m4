@@ -183,25 +183,9 @@ def main():
         (output / (name + ".patch")).write_bytes(patch)
     write_json(output / "manifest.json", metadata)
     # Read-only identity and hashes before arming; no GPU command runs here.
-    script = """import pathlib, hashlib, json, os, sys
-files = ['/opt/asahi-m4-port/lib/libvulkan_asahi.so', '/root/guarded-command.py', '/root/completion_progress.py',
-         '/opt/asahi-m4-port/lib/libgallium-26.1.4.so',
-         '/root/run-m4-gl.py', '/root/firmware-snapshot.py',
-         '/root/g16-fault-dump.py',
-         '/lib/modules/' + os.uname().release + '/kernel/drivers/gpu/drm/asahi/asahi.ko',
-         '/root/g16-submit-test/experiment_watchdog.py',
-         '/root/g16-submit-test/experiment_thermals.py'] + sys.argv[1:]
-hashes = {}
-for name in files:
-    p = pathlib.Path(name)
-    if p.is_absolute() and p.is_file():
-        hashes[name] = hashlib.sha256(p.read_bytes()).hexdigest()
-display_status = {str(p): p.read_text() for p in
-                  {p.resolve() for p in pathlib.Path('/sys/kernel/debug/dri').glob('*/m4_status')}}
-print(json.dumps(dict(boot_id=pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
-    uptime_seconds=float(pathlib.Path('/proc/uptime').read_text().split()[0]),
-    kernel=os.uname().release, files=hashes, display_status=display_status)))
-"""
+    script = (ROOT / "tools/gpu-identity.py").read_text()
+    metadata["identity_probe_sha256"] = hashlib.sha256(script.encode()).hexdigest()
+    write_json(output / "manifest.json", metadata)
     facts = json.loads(subprocess.check_output(
         SSH + [shlex.join(["python3", "-c", script, *argv])], timeout=30))
     write_json(output / "target-before.json", facts)
