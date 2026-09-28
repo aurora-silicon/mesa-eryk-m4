@@ -30,6 +30,7 @@ static _Thread_local FILE *agx_failure_ir;
 #include "util/list.h"
 #include "util/macros.h"
 #include "util/u_debug.h"
+#include "util/u_call_once.h"
 #include "util/u_dynarray.h"
 #include "agx_builder.h"
 #include "agx_compiler.h"
@@ -71,6 +72,12 @@ DEBUG_GET_ONCE_FLAGS_OPTION(agx_compiler_debug, "AGX_MESA_DEBUG",
 
 int agx_compiler_debug = 0;
 
+static void
+agx_init_compiler_debug(void)
+{
+   agx_compiler_debug = debug_get_option_agx_compiler_debug();
+}
+
 /*
  * Pad binary to a given alignment and return aligned offset into the binary.
  */
@@ -89,7 +96,9 @@ agx_pad_binary(struct util_dynarray *dyn, uint32_t align)
 uint64_t
 agx_get_compiler_debug(void)
 {
-   return debug_get_option_agx_compiler_debug();
+   static util_once_flag once = UTIL_ONCE_FLAG_INIT;
+   util_call_once(&once, agx_init_compiler_debug);
+   return agx_compiler_debug;
 }
 
 static agx_index
@@ -6893,7 +6902,9 @@ static bool
 agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)
 {
-   agx_compiler_debug = agx_get_compiler_debug();
+   /* Publish flags once, rather than racing identical global writes from
+    * concurrent pipeline compilation workers. */
+   agx_get_compiler_debug();
    struct agx_shader_info *info = &out->info;
 
    /* Native fragment shaders have no constant program yet. Descriptor and

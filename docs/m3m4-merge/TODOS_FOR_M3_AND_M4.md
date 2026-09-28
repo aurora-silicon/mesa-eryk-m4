@@ -560,3 +560,14 @@ and a safe idle-aware policy remain open. See
   reject the old assignment and retain the five-second pending stall limit.
   The previously interrupted shader-isolation segment now completes in 86.713 s.
   M3 published tools commit: `91e0e40a3a78`. Original interruption retained.
+
+
+- [x] Make the M4 experiment guard recognize boost frequencies when deciding
+  whether a requested CPU ceiling needs an explicit cap; retain all thermal
+  and watchdog checks. Kernel/tools `7e9e787edea6`, 15 host tests and guarded
+  4K GPU-written UBO validation pass. A separate boost-toggle/QoS refresh issue
+  remains unqualified; rejected startup records are retained.
+- [ ] Resolve the ten existing failures in the complete Meson `asahi` host
+  suite (including register-bank SIGSEGV and minmax SIGABRT), with independent
+  encoding expectations. Baseline and parallel-compiler candidate both give
+  110 Pass/10 Fail; see `roadmap-20260928/parallel-compile-host-results.json`.

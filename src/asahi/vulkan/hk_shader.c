@@ -3141,7 +3141,9 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       backend_key.fs.inside_sample_loop = true;
 
    simple_mtx_t *lock = NULL;
-   if (agx_get_compiler_debug())
+   /* Keep multi-line dumps together. Code-generation switches such as
+    * nopromote do not print shaders and must not serialize pipeline workers. */
+   if (agx_get_compiler_debug() & (AGX_DBG_SHADERS | AGX_DBG_SHADERDB))
       lock = &hk_device_physical(dev)->debug_compile_lock;
 
    /* Native constant programs have no scratch allocation. Keep an untouched

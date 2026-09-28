@@ -781,6 +781,20 @@ if with_tests
   )
 
   test(
+    'agx_parallel_compile',
+    executable(
+      'agx_parallel_compile_test',
+      files('test/test-parallel-compile.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    env : ['AGX_MESA_DEBUG=nopromote', 'AGX_NATIVE_MEMORY_PREAMBLE=true'],
+    suite : ['asahi'],
+  )
+
+  test(
     'agx_register_bank',
     executable(
       'agx_register_bank_test',

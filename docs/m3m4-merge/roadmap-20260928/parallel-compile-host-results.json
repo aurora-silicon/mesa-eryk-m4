@@ -1,0 +1,116 @@
+[
+  {
+    "variant": "baseline",
+    "total": 120,
+    "passed": 110,
+    "failures": [
+      {
+        "name": "asahi - mesa:asahi-agx3-packing",
+        "result": "FAIL",
+        "output": "AGX3 live indexed VDM mismatch\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_opcode_mapping",
+        "result": "FAIL",
+        "output": "Traceback (most recent call last):\n  File \"/home/council/dev/dirtyroom_m4/build/mesa-m3m4-host/../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-opcodes.py\", line 21, in <module>\n    assert sum(op.agx3_mnemonic is not None for op in opcodes.values()) == 8\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_compile_fail_closed",
+        "result": "FAIL",
+        "output": "AGX3 preflight: unlowered runtime printf buffer address\nAGX3 accepted a generated preamble; uniform_store is now grounded, so hk_shader.c may stop forcing no_preamble on G17P -- update both together\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_multi_store",
+        "result": "FAIL",
+        "output": "22 checks, 3 failures\nFAIL ../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-multi-store.c:418: len == sizeof(expected) && memcmp(out, expected, len) == 0\nFAIL ../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-multi-store.c:450: add_found\nFAIL ../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-multi-store.c:457: add_found && memcmp(add, want_add, sizeof(want_add)) == 0\n1 global store(s): ok\n2 global store(s): ok\n3 global store(s): ok\n4 global store(s): ok\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_event_wait",
+        "result": "FAIL",
+        "output": "AGX3b event-wait poll was not encoded safely\n1b0401082b0601080a0523030200050000000f0554010f05541a1b040108670054040000000011000040020006042a0523030600070000008f0454260f0054deffffffffff000f06040200000f06040100000e000000\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_funop_core",
+        "result": "FAIL",
+        "output": "register out of range: accepted, expected refusal\nagx3_funop_core: 1/59 checks failed\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_rt_core",
+        "result": "FAIL",
+        "output": "AGX3b intersect_ray: got , expected 5f10540000412640c7504c00\nAGX3c intersect_ray: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000020\nAGX3b intersect_ray: got 5f10540400412640c7504c000000, expected 5f10540400412640c7504c00\nAGX3c intersect_ray: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000022\nAGX3b intersect_ray site: got 5f10540000412640c7504c000000, expected 5f10540000412640c7504c00\nAGX3c intersect_ray site: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000020\nAGX3b continue_ray: got 5f11540000000000000000000000, expected 5f1154000000\nAGX3c continue_ray: got 2704090022c0, expected 2704090022c0af02\nAGX3b update barrier: got 0704540809000000, expected 070454080900\nAGX3b update_node: got df0554000000, expected df055400\nAGX3c update_node: got 27000100, expected 270001002200ad02\nAGX3b update_node expansion: got 070454080900df05, expected 070454080900df055400\nAGX3c update_node expansion: got 17090006000027000100, expected 170900060000270001002200ad02\nintersect_ray b reg 2: refusal left length 14\nagx3_rt_core: 14/53 checks failed\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_graphics_compile",
+        "result": "FAIL",
+        "output": "agx3_pack_binary.c:7830: no grounded AGX3 encoding for block_image_store\n   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d\nagx3_pack_binary.c:7830: no grounded AGX3 encoding for block_image_store\n   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d\nAGX3b vs-g17p-half2-varying: G17P binary/resource metadata mismatch\nactual main (162 bytes, staging 12 halfs): 0cdd1006671054020100200049010040440029023c8100c229811c05800039023c81080219811c07800067004408000020005700004040000b0821441b0b27004200000400002b0d27004200000800003b0f27004200000c00004b0527004200001000005b032700420000140000571654000040480057265402204049005746540440404a005786540660404b005706550880404c005706560aa0404d000e000000\nAGX3b vs-g17p-half2-varying: accepted but binary is malformed\nAGX3b fs-flat-colour: G17P binary/resource metadata mismatch\nactual main (94 bytes, staging 0 halfs): 048f0200000000008702540006008702540c080004c2140613001f0008200000000004ff02000200000003021f00040000000000970454030250c05004c8970454020220805004c8e70654020000014e080000080702540c02000e000000\nAGX3b fs-flat-colour: accepted but binary is malformed\nAGX3b fs-discard: unexpectedly accepted\nagx3_pack_binary.c:7830: no grounded AGX3 encoding for imad\n   $r2 = imad $r0, #31, #0, shift=0\nAGX3c vs-register-multiply-minus-byte: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-flat-colour: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-interpolated-varying: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for ld_tile\n   r0l...r0h = ld_tile #255, _, xyzw, #0x0\nAGX3c fs-tilebuffer-load: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-textured-triangle: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-vkcube-combined-sampler: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-descriptor-resource: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:7830: no grounded AGX3 encoding for imad\n   r0 = imad ^r1l.abs, ^r2, ^r0l.abs, shift=0\nAGX3c fs-meta-rgba-upload: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r1l...r1h, #255, _, xyzw, #0x0\nAGX3c fs-transcendentals: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:7830: no grounded AGX3 encoding for sample_mask\n   sample_mask #255, #0\n"
+      },
+      {
+        "name": "asahi - mesa:agx_register_bank",
+        "result": "FAIL",
+        "output": ""
+      },
+      {
+        "name": "asahi - mesa:hk_minmax_control_flow",
+        "result": "FAIL",
+        "output": "FAIL line 51: top_level == (op == nir_texop_tex)\n"
+      }
+    ]
+  },
+  {
+    "variant": "new",
+    "total": 120,
+    "passed": 110,
+    "failures": [
+      {
+        "name": "asahi - mesa:asahi-agx3-packing",
+        "result": "FAIL",
+        "output": "AGX3 live indexed VDM mismatch\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_opcode_mapping",
+        "result": "FAIL",
+        "output": "Traceback (most recent call last):\n  File \"/home/council/dev/dirtyroom_m4/build/mesa-m3m4-host/../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-opcodes.py\", line 21, in <module>\n    assert sum(op.agx3_mnemonic is not None for op in opcodes.values()) == 8\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_compile_fail_closed",
+        "result": "FAIL",
+        "output": "AGX3 preflight: unlowered runtime printf buffer address\nAGX3 accepted a generated preamble; uniform_store is now grounded, so hk_shader.c may stop forcing no_preamble on G17P -- update both together\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_multi_store",
+        "result": "FAIL",
+        "output": "22 checks, 3 failures\nFAIL ../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-multi-store.c:418: len == sizeof(expected) && memcmp(out, expected, len) == 0\nFAIL ../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-multi-store.c:450: add_found\nFAIL ../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-multi-store.c:457: add_found && memcmp(add, want_add, sizeof(want_add)) == 0\n1 global store(s): ok\n2 global store(s): ok\n3 global store(s): ok\n4 global store(s): ok\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_event_wait",
+        "result": "FAIL",
+        "output": "AGX3b event-wait poll was not encoded safely\n1b0401082b0601080a0523030200050000000f0554010f05541a1b040108670054040000000011000040020006042a0523030600070000008f0454260f0054deffffffffff000f06040200000f06040100000e000000\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_funop_core",
+        "result": "FAIL",
+        "output": "register out of range: accepted, expected refusal\nagx3_funop_core: 1/59 checks failed\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_rt_core",
+        "result": "FAIL",
+        "output": "AGX3b intersect_ray: got , expected 5f10540000412640c7504c00\nAGX3c intersect_ray: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000020\nAGX3b intersect_ray: got 5f10540400412640c7504c000000, expected 5f10540400412640c7504c00\nAGX3c intersect_ray: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000022\nAGX3b intersect_ray site: got 5f10540000412640c7504c000000, expected 5f10540000412640c7504c00\nAGX3c intersect_ray site: got 27042901a2c1ae0201982700, expected 27042901a2c1ae02019827000020\nAGX3b continue_ray: got 5f11540000000000000000000000, expected 5f1154000000\nAGX3c continue_ray: got 2704090022c0, expected 2704090022c0af02\nAGX3b update barrier: got 0704540809000000, expected 070454080900\nAGX3b update_node: got df0554000000, expected df055400\nAGX3c update_node: got 27000100, expected 270001002200ad02\nAGX3b update_node expansion: got 070454080900df05, expected 070454080900df055400\nAGX3c update_node expansion: got 17090006000027000100, expected 170900060000270001002200ad02\nintersect_ray b reg 2: refusal left length 14\nagx3_rt_core: 14/53 checks failed\n"
+      },
+      {
+        "name": "asahi - mesa:agx3_graphics_compile",
+        "result": "FAIL",
+        "output": "agx3_pack_binary.c:7830: no grounded AGX3 encoding for block_image_store\n   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d\nagx3_pack_binary.c:7830: no grounded AGX3 encoding for block_image_store\n   block_image_store #0, #0, ^r2, ^r0...r1, #0x0, 2d\nAGX3b vs-g17p-half2-varying: G17P binary/resource metadata mismatch\nactual main (162 bytes, staging 12 halfs): 0cdd1006671054020100200049010040440029023c8100c229811c05800039023c81080219811c07800067004408000020005700004040000b0821441b0b27004200000400002b0d27004200000800003b0f27004200000c00004b0527004200001000005b032700420000140000571654000040480057265402204049005746540440404a005786540660404b005706550880404c005706560aa0404d000e000000\nAGX3b vs-g17p-half2-varying: accepted but binary is malformed\nAGX3b fs-flat-colour: G17P binary/resource metadata mismatch\nactual main (94 bytes, staging 0 halfs): 048f0200000000008702540006008702540c080004c2140613001f0008200000000004ff02000200000003021f00040000000000970454030250c05004c8970454020220805004c8e70654020000014e080000080702540c02000e000000\nAGX3b fs-flat-colour: accepted but binary is malformed\nAGX3b fs-discard: unexpectedly accepted\nagx3_pack_binary.c:7830: no grounded AGX3 encoding for imad\n   $r2 = imad $r0, #31, #0, shift=0\nAGX3c vs-register-multiply-minus-byte: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-flat-colour: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-interpolated-varying: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for ld_tile\n   r0l...r0h = ld_tile #255, _, xyzw, #0x0\nAGX3c fs-tilebuffer-load: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-textured-triangle: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-vkcube-combined-sampler: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r0l...r0h, #255, _, xyzw, #0x0\nAGX3c fs-descriptor-resource: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:7830: no grounded AGX3 encoding for imad\n   r0 = imad ^r1l.abs, ^r2, ^r0l.abs, shift=0\nAGX3c fs-meta-rgba-upload: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile\n   st_tile ^r1l...r1h, #255, _, xyzw, #0x0\nAGX3c fs-transcendentals: REJECTED by agx3_pack_binary\nagx3_pack_binary.c:7830: no grounded AGX3 encoding for sample_mask\n   sample_mask #255, #0\n"
+      },
+      {
+        "name": "asahi - mesa:agx_register_bank",
+        "result": "FAIL",
+        "output": ""
+      },
+      {
+        "name": "asahi - mesa:hk_minmax_control_flow",
+        "result": "FAIL",
+        "output": "FAIL line 51: top_level == (op == nir_texop_tex)\n"
+      }
+    ]
+  }
+]

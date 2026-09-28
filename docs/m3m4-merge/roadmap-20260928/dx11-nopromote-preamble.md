@@ -131,8 +131,10 @@ fix and neither remains in source. Boolean-producing preamble operations are
 the next isolation target; the memory-only flag also makes their input loads
 eligible, so its failure does not yet identify a memory-instruction defect.
 
-M4's low CPU ceiling was traced to boost being disabled, not a thermal stop.
-Temporarily enabling it exposed a guard bug: the ordinary OPP list excludes
+M4's initial low CPU ceilings were observed with boost disabled. That alone
+does not establish why they were low: ordinary OPPs reach 4.104 GHz without
+boost, and QoS sysfs updates are asynchronous. An independent, temporary boost
+test exposed a guard bug: the ordinary OPP list excludes
 boost frequencies. The guard skipped applying the requested 4.104 GHz cap,
 then rejected the effective 4.464 GHz ceiling before the workload started.
 That guard failure triggered watchdog recovery. Kernel/tools commit
@@ -140,3 +142,11 @@ That guard failure triggered watchdog recovery. Kernel/tools commit
 and a guarded 4K GPU-written UBO run pass. The actual requested ceiling is now
 applied without relaxing any thermal/watchdog/progress checks. Boost is restored
 after the experiment. The original incomplete record is retained.
+
+A later boost-toggle repeat is correctly rejected at guard startup because
+the requested cap never becomes effective. Local cpufreq code provides a
+possible explanation: the software boost callback rewrites policy min/max,
+while an unchanged aggregate QoS request need not schedule a refresh. This is
+an open kernel-policy issue, not a GPU failure or proof of that hypothesis.
+No workload starts on the rejected run, and no cap check is bypassed. Further
+GPU runs leave boost disabled and record the effective clock ceilings.
