@@ -166,3 +166,33 @@ U32 values exactly. This qualifies the exercised program/footprint transitions,
 not all game shaders. Native memory preambles remain opt-in. M3 evidence:
 `m3-four-program-uniforms-20260928`; M4:
 `20260928T180752639155Z-wide-four-programs-4k`.
+
+The partial-coverage variant (`--partial-coverage`) renders viewports from
+1 to 127 pixels wide/high at 4K, checking both the written pixels and cleared
+background. llvmpipe, M3 and M4 again match all 265,420,800 values. This covers
+partial pixel quads and tiles with changing uniform footprints.
+
+Further negative control: restricting native preamble motion to top-level NIR
+blocks still fails the full M4 check (frame maxima 1/65/62). It is not a fix.
+Conversely, allowing only `load_global_constant`/`load_constant_agx` memory
+operations matches all three frames in two M4 runs and one M3 run; ordinary
+bounded UBO loads are excluded by this diagnostic. This narrows the relevant
+transformation class but does not resolve or qualify full memory preambles.
+
+## Physical lifetime hints for uniform writes
+
+The native uniform COPY used the SSA `kill` bit. Normal register allocation
+replaces SSA indices and clears that bit; the subsequent physical-register
+analysis writes `discard`. Route the latter to the COPY encoder, preserving
+the existing rule that only the final component may discard. This restores
+last-use hints; it does not establish an image-corruption root cause.
+
+A two-export regression keeps the source alive across the first export and
+marks it dead after the second. It covers one through four components and
+both compact/extended uniform destinations. The old encoder misses the
+physical discard; all 219 AGX3PackBinary tests pass with the correction. ARM64
+Vulkan builds. On M3 and M4 the four-program, 4K, GPU-written-UBO oracle matches
+all 265,420,800 values. The complete M4 game check still fails (maxima 79/48/108)
+and is retained as a failure, with no timing approval. Preambles stay opt-in
+and desktop packages are unchanged. Candidate library SHA256:
+152a2b5f00c922bf6ed29a1fd46721e84ff3706096ad4410a1dd52f97d4a80b0.

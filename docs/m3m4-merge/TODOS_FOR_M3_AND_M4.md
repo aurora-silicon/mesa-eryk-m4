@@ -584,3 +584,8 @@ and a safe idle-aware policy remain open. See
   on M3 and 133.989 to 75.632 s on M4. These are compilation/startup gains,
   not FPS claims; see `roadmap-20260928/parallel-compilation.md`. Source
   `d81a22084f4`; desktop Mesa stays unchanged.
+
+- [x] Route native uniform exports through post-allocation discard hints.
+  Two-export lifetime regression and all 219 backend packing tests pass;
+  four-program 4K GPU-written uniform checks match 265,420,800 values per GPU.
+  The separate memory-preamble game image discrepancy remains unresolved.

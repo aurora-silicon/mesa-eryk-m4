@@ -24,11 +24,12 @@ static GLuint shader(GLenum type,const char *text) {
    CHECK(ok);return s;
 }
 int main(int argc, char **argv) {
-   int record_only=0,gpu_updates=0;
+   int record_only=0,gpu_updates=0,partial_coverage=0;
    unsigned width=64,height=4,rounds=32,program_count=1;
    for(int i=1;i<argc;++i) {
       if(!strcmp(argv[i],"--record-only")) record_only=1;
       else if(!strcmp(argv[i],"--gpu-updates")) gpu_updates=1;
+      else if(!strcmp(argv[i],"--partial-coverage")) partial_coverage=1;
       else if(!strcmp(argv[i],"--size") && i+2<argc) {
          char *end;
          unsigned long w=strtoul(argv[++i],&end,10); CHECK(*end==0 && w>=1 && w<=4096);
@@ -42,7 +43,7 @@ int main(int argc, char **argv) {
          char *end;
          unsigned long n=strtoul(argv[++i],&end,10); CHECK(*end==0 && n>=1 && n<=4);
          program_count=n;
-      } else {fprintf(stderr,"Usage: %s [--record-only] [--gpu-updates] [--size WIDTH HEIGHT] [--rounds 1..32] [--programs 1..4]\n",argv[0]);return 1;}
+      } else {fprintf(stderr,"Usage: %s [--record-only] [--gpu-updates] [--partial-coverage] [--size WIDTH HEIGHT] [--rounds 1..32] [--programs 1..4]\n",argv[0]);return 1;}
    }
    EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
    CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
@@ -103,6 +104,16 @@ int main(int argc, char **argv) {
          glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
       } else glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(v),v);
       glUseProgram(programs[program]);
+      unsigned vx=0,vy=0,vw=width,vh=height;
+      if(partial_coverage) {
+         const unsigned sizes[]={1,2,3,5,31,32,33,127};
+         vw=sizes[round%8]<width?sizes[round%8]:width;
+         vh=sizes[(round+3)%8]<height?sizes[(round+3)%8]:height;
+         vx=(width-vw)/2;vy=(height-vh)/2;
+         const GLuint zero[4]={0,0,0,0};
+         glClearBufferuiv(GL_COLOR,0,zero);
+      }
+      glViewport(vx,vy,vw,vh);
       glDrawArrays(GL_TRIANGLES,0,3);
       glReadPixels(0,0,width,height,GL_RGBA_INTEGER,GL_UNSIGNED_INT,pixels);CHECK(glGetError()==GL_NO_ERROR);
       for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
@@ -110,13 +121,13 @@ int main(int argc, char **argv) {
          for(unsigned i=0;i<64-16*program;++i)expected[x*4+k]+=(v[i][k]^(x*(i*37u+1u)));
       }
       for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
-         uint32_t expect=expected[x*4+k];
+         uint32_t expect=(x>=vx && x<vx+vw && y>=vy && y<vy+vh)?expected[x*4+k]:0;
          uint32_t actual=pixels[(y*width+x)*4+k];
          if(actual!=expect){if(bad<8)printf("round=%u x=%u y=%u c=%u actual=%08x expected=%08x\n",round,x,y,k,actual,expect);bad++;}
       }
       printf("round=%u program=%u bad=%"PRIu64"\n",round,program,bad);fflush(stdout);
    }
-   printf("%s: U32 wide-uniform export oracle; updates=%s programs=%u size=%ux%u rounds=%u values=%"PRIu64" mismatches=%"PRIu64"\n",bad?"FAIL":"PASS",gpu_updates?"gpu":"cpu",program_count,width,height,rounds,(uint64_t)width*height*4*rounds,bad);
+   printf("%s: U32 wide-uniform export oracle; updates=%s programs=%u partial=%d size=%ux%u rounds=%u values=%"PRIu64" mismatches=%"PRIu64"\n",bad?"FAIL":"PASS",gpu_updates?"gpu":"cpu",program_count,partial_coverage,width,height,rounds,(uint64_t)width*height*4*rounds,bad);
    free(expected);free(pixels);
    if(!record_only)CHECK(!bad);
    return 0;

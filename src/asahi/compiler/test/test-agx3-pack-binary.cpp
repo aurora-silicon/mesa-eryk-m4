@@ -154,6 +154,41 @@ class AGX3PackBinary : public testing::Test {
    }
 };
 
+TEST_F(AGX3PackBinary, UniformWritesUsePhysicalRegisterLifetime)
+{
+   /* Allocation clears SSA kill. The physical lifetime must keep a source
+    * alive across the first export, then discard it only at the final use. */
+   for (unsigned count = 1; count <= 4; ++count) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_COMPUTE;
+      b->shader->is_preamble = true;
+      agx_index source = agx_register(16, AGX_SIZE_32);
+      source.channels_m1 = count - 1;
+      agx_instr *first = agx_uniform_store(b, source, agx_immediate(24),
+                                          BITFIELD_MASK(count));
+      agx_instr *last = agx_uniform_store(b, source, agx_immediate(150),
+                                         BITFIELD_MASK(count));
+      agx_stop(b);
+      agx_opt_register_cache(b->shader);
+      ASSERT_FALSE(first->src[0].discard);
+      ASSERT_TRUE(last->src[0].discard);
+
+      std::vector<uint8_t> expected;
+      for (unsigned write = 0; write < 2; ++write) {
+         for (unsigned component = 0; component < count; ++component) {
+            uint8_t bytes[AGX3_COPY_MAX_LENGTH], length;
+            ASSERT_TRUE(agx3_copy_encode_reg_to_uniform(
+               AGX_ISA_ENCODING_AGX3B, (write ? 150 : 24) + 2 * component,
+               16 + 2 * component, write && component + 1 == count,
+               bytes, &length));
+            append(expected, bytes, length);
+         }
+      }
+      expected.insert(expected.end(), {0x0e, 0, 0, 0});
+      EXPECT_EQ(pack(b), expected) << "components=" << count;
+   }
+}
+
 TEST_F(AGX3PackBinary, NativeLayeredColorEOTMatchesJ713Capture)
 {
    /* Working 25G83 capture055829, resource1+0x2700, RGBA32Float. */

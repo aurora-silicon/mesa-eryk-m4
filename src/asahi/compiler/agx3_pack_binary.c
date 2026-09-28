@@ -5555,13 +5555,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 */
                bool ok = wait == 0 || agx3_retire_slots_noop(emission, enc, wait);
 
+               /* SSA kill is cleared when allocation replaces SSA operands.
+                * Use the physical last-use analysis so uniform exports can
+                * discard dead registers without evicting live sources. */
                for (unsigned i = 0; ok && i < components; ++i) {
                   uint8_t bytes[AGX3_COPY_MAX_LENGTH];
                   uint8_t len = 0;
                   const bool last = i + 1 == components;
                   ok = agx3_copy_encode_reg_to_uniform(
                           enc, index.value + 2 * i, value.value + 2 * i,
-                          last && value.kill, bytes, &len) &&
+                          last && value.discard, bytes, &len) &&
                        agx3_append(emission, bytes, len);
                }
 

@@ -1,0 +1,706 @@
+Running main() from ../../mesa/m3m4-merged/src/gtest/src/gtest_main.cc
+Note: Google Test filter = AGX3PackBinary.*
+[==========] Running 219 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 219 tests from AGX3PackBinary
+[ RUN      ] AGX3PackBinary.UniformWritesUsePhysicalRegisterLifetime
+[       OK ] AGX3PackBinary.UniformWritesUsePhysicalRegisterLifetime (0 ms)
+[ RUN      ] AGX3PackBinary.NativeLayeredColorEOTMatchesJ713Capture
+[       OK ] AGX3PackBinary.NativeLayeredColorEOTMatchesJ713Capture (0 ms)
+[ RUN      ] AGX3PackBinary.MixedFiveTargetEOTUsesIndependentTypedStores
+[       OK ] AGX3PackBinary.MixedFiveTargetEOTUsesIndependentTypedStores (0 ms)
+[ RUN      ] AGX3PackBinary.MultisampleMRTUsesNativePackedOffsetSlot
+[       OK ] AGX3PackBinary.MultisampleMRTUsesNativePackedOffsetSlot (0 ms)
+[ RUN      ] AGX3PackBinary.TileStoreMovesFixedHighEpilogInputToLowRegisters
+[       OK ] AGX3PackBinary.TileStoreMovesFixedHighEpilogInputToLowRegisters (0 ms)
+[ RUN      ] AGX3PackBinary.NativeStencilAndDepthExportsKeepEightByteStaging
+[       OK ] AGX3PackBinary.NativeStencilAndDepthExportsKeepEightByteStaging (0 ms)
+[ RUN      ] AGX3PackBinary.StraightLineALU
+[       OK ] AGX3PackBinary.StraightLineALU (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG16IntegerEOTUsesExactNativeI16Program
+[       OK ] AGX3PackBinary.G17PRG16IntegerEOTUsesExactNativeI16Program (0 ms)
+[ RUN      ] AGX3PackBinary.G17PI8EOTUsesExactOneWordNativeProgram
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+[       OK ] AGX3PackBinary.G17PI8EOTUsesExactOneWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rg16f
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rg16f (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rgba32f
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rgba32f (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rgba8i
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rgba8i (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rg16snorm
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rg16snorm (0 ms)
+[ RUN      ] AGX3PackBinary.G16MultisampleEOT_rgba16i
+[       OK ] AGX3PackBinary.G16MultisampleEOT_rgba16i (0 ms)
+[ RUN      ] AGX3PackBinary.G17PS8NormEOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G17PS8NormEOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG16EOTUsesExactOneWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRG16EOTUsesExactOneWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PScalarI32EOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G17PScalarI32EOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G16GFloat32EOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G16GFloat32EOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG32UintEOTUsesExactTwoWordNativeProgram
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+[       OK ] AGX3PackBinary.G17PRG32UintEOTUsesExactTwoWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PI32EOTRefusesConflictingSelectorOverrides
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+[       OK ] AGX3PackBinary.G17PI32EOTRefusesConflictingSelectorOverrides (0 ms)
+[ RUN      ] AGX3PackBinary.G17PI32EOTRefusesAmbiguousWordCount
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+[       OK ] AGX3PackBinary.G17PI32EOTRefusesAmbiguousWordCount (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRGBA16UNORMEOTUsesNativeTwoWordProgram
+[       OK ] AGX3PackBinary.G17PRGBA16UNORMEOTUsesNativeTwoWordProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRG16SNORMEOTUsesExactOneWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRG16SNORMEOTUsesExactOneWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PRGBA16SNORMEOTUsesExactTwoWordNativeProgram
+[       OK ] AGX3PackBinary.G17PRGBA16SNORMEOTUsesExactTwoWordNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PScalarNorm16EOTUsesExactNativeProgram
+[       OK ] AGX3PackBinary.G17PScalarNorm16EOTUsesExactNativeProgram (0 ms)
+[ RUN      ] AGX3PackBinary.G17PU16NormEOTRefusesAmbiguousWordCount
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for block_image_store
+   block_image_store #0, #0, r2, r0...r1, #0x0, 2d
+[       OK ] AGX3PackBinary.G17PU16NormEOTRefusesAmbiguousWordCount (0 ms)
+[ RUN      ] AGX3PackBinary.HalfUVPreservesSharedHalfAndOperandOrder
+[       OK ] AGX3PackBinary.HalfUVPreservesSharedHalfAndOperandOrder (0 ms)
+[ RUN      ] AGX3PackBinary.HalfUVSaturatesAndRejectsInvalidOperands
+agx3_pack_binary.c:7326: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l
+agx3_pack_binary.c:7326: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l.neg
+agx3_pack_binary.c:7326: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l.abs
+agx3_pack_binary.c:7326: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, $^r5l
+agx3_pack_binary.c:7326: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r5l
+agx3_pack_binary.c:7326: no grounded AGX3 encoding for fmul
+   r1 = fmul r0h:32, r5l
+agx3_pack_binary.c:7326: no grounded AGX3 encoding for fmul
+   r1 = fmul r0, r128l
+agx3_pack_binary.c:7326: no grounded AGX3 encoding for fmul
+   r1 = fmul r0l, r5l
+[       OK ] AGX3PackBinary.HalfUVSaturatesAndRejectsInvalidOperands (0 ms)
+[ RUN      ] AGX3PackBinary.U16ToF32PreservesHalfLivenessAndLoadWait
+[       OK ] AGX3PackBinary.U16ToF32PreservesHalfLivenessAndLoadWait (0 ms)
+[ RUN      ] AGX3PackBinary.HalfIntegerToF32AcceptsSignedAndRejectsInvalidDomains
+agx3_pack_binary.c:7375: no grounded AGX3 encoding for convert
+   r2 = convert #6, r0l, #0x1
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for convert
+   r2l = convert #6, r0l, #0x1
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for convert
+   r2 = convert #6, u0l, #0x1
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for convert
+   r2 = convert #6, r0l.neg, #0x1
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for convert
+   r2 = convert #6, r0l, #0x0
+[       OK ] AGX3PackBinary.HalfIntegerToF32AcceptsSignedAndRejectsInvalidDomains (0 ms)
+[ RUN      ] AGX3PackBinary.FaddMinifloatPreservesWaitLivenessAndCommutativity
+[       OK ] AGX3PackBinary.FaddMinifloatPreservesWaitLivenessAndCommutativity (0 ms)
+[ RUN      ] AGX3PackBinary.MinifloatRetiresSourceAndDestinationSlots
+[       OK ] AGX3PackBinary.MinifloatRetiresSourceAndDestinationSlots (0 ms)
+[ RUN      ] AGX3PackBinary.FaddMinifloatModifiersAndInvalidDomains
+agx3_pack_binary.c:7474: no grounded AGX3 encoding for fadd
+   r2 = fadd r0, #0.500000
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for fadd
+   r2l = fadd r0, #0.500000
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fadd
+   r2 = fadd u0, #0.500000
+agx3_pack_binary.c:7474: no grounded AGX3 encoding for fadd
+   r2 = fadd r0, #256
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fadd
+   r2 = fadd r0.abs, #0.500000
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fadd
+   r2 = fadd r0, #0.500000.neg
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fadd
+   r2 = fadd #0.500000, #0.500000
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fadd
+   r2 = fadd r0l, #0.500000
+[       OK ] AGX3PackBinary.FaddMinifloatModifiersAndInvalidDomains (0 ms)
+[ RUN      ] AGX3PackBinary.FaddOneMinusAbsMatchesNativeLiveForm
+[       OK ] AGX3PackBinary.FaddOneMinusAbsMatchesNativeLiveForm (0 ms)
+[ RUN      ] AGX3PackBinary.SignedMulHighDiv3MatchesNativeVertexWitness
+[       OK ] AGX3PackBinary.SignedMulHighDiv3MatchesNativeVertexWitness (0 ms)
+[ RUN      ] AGX3PackBinary.FabsMaterializationKeepsNegativeZeroAndWait
+[       OK ] AGX3PackBinary.FabsMaterializationKeepsNegativeZeroAndWait (0 ms)
+[ RUN      ] AGX3PackBinary.WboitInfinityRepairUsesMixedWidthFsel
+[       OK ] AGX3PackBinary.WboitInfinityRepairUsesMixedWidthFsel (0 ms)
+[ RUN      ] AGX3PackBinary.TiedF32MinMaxUsesNativeFselCondition
+[       OK ] AGX3PackBinary.TiedF32MinMaxUsesNativeFselCondition (0 ms)
+[ RUN      ] AGX3PackBinary.UntiedLtnFselIsRefused
+agx3_pack_binary.c:6582: no grounded AGX3 encoding for fcmpsel
+   r1 = fcmpsel r1, r2, r1, r3, #0x0
+[       OK ] AGX3PackBinary.UntiedLtnFselIsRefused (0 ms)
+[ RUN      ] AGX3PackBinary.UpdateLightmapMixedWidthLtFsel
+[       OK ] AGX3PackBinary.UpdateLightmapMixedWidthLtFsel (0 ms)
+[ RUN      ] AGX3PackBinary.AbsoluteCompareFselUsesNativeLongForm
+[       OK ] AGX3PackBinary.AbsoluteCompareFselUsesNativeLongForm (0 ms)
+[ RUN      ] AGX3PackBinary.UpdateLightmapNativeIntegerAndMaskForms
+[       OK ] AGX3PackBinary.UpdateLightmapNativeIntegerAndMaskForms (0 ms)
+[ RUN      ] AGX3PackBinary.FmulMinifloatPreservesWaitLivenessAndCommutativity
+[       OK ] AGX3PackBinary.FmulMinifloatPreservesWaitLivenessAndCommutativity (0 ms)
+[ RUN      ] AGX3PackBinary.FmulMinifloatRefusesUngroundedModes
+agx3_pack_binary.c:7474: no grounded AGX3 encoding for fmul
+   r2 = fmul r0, #0.031250
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for fmul
+   r2l = fmul r0, #0.031250
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fmul
+   r2 = fmul u0, #0.031250
+agx3_pack_binary.c:7474: no grounded AGX3 encoding for fmul
+   r2 = fmul r0, #256
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fmul
+   r2 = fmul r0.neg, #0.031250
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fmul
+   r2 = fmul r0.abs, #0.031250
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fmul
+   r2 = fmul r0, #0.031250.neg
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fmul
+   r2 = fmul #0.031250, #0.031250
+agx3_pack_binary.c:7450: no grounded AGX3 encoding for fmul
+   r2 = fmul r0l, #0.031250
+agx3_pack_binary.c:7819: no grounded AGX3 encoding for fmul
+   r2 = fmul.sat r0, #0.031250
+[       OK ] AGX3PackBinary.FmulMinifloatRefusesUngroundedModes (0 ms)
+[ RUN      ] AGX3PackBinary.DeviceAtomicsUseGenerationSpecificReturnRegisters
+[       OK ] AGX3PackBinary.DeviceAtomicsUseGenerationSpecificReturnRegisters (0 ms)
+[ RUN      ] AGX3PackBinary.DeviceAtomicUsesNativeMaskedExecutionMode
+[       OK ] AGX3PackBinary.DeviceAtomicUsesNativeMaskedExecutionMode (0 ms)
+[ RUN      ] AGX3PackBinary.DeviceAtomicInPlaceReturnDiscardsConsumedValue
+[       OK ] AGX3PackBinary.DeviceAtomicInPlaceReturnDiscardsConsumedValue (0 ms)
+[ RUN      ] AGX3PackBinary.RegisterSubtractDestinationDoesNotAliasInputs
+[       OK ] AGX3PackBinary.RegisterSubtractDestinationDoesNotAliasInputs (0 ms)
+[ RUN      ] AGX3PackBinary.RegisterAndDestinationDoesNotAliasInputs
+[       OK ] AGX3PackBinary.RegisterAndDestinationDoesNotAliasInputs (0 ms)
+[ RUN      ] AGX3PackBinary.DeviceAtomicFoldsElementOffsetToBytes
+[       OK ] AGX3PackBinary.DeviceAtomicFoldsElementOffsetToBytes (0 ms)
+[ RUN      ] AGX3PackBinary.DeviceAtomicMapsPostRaDiscardHints
+[       OK ] AGX3PackBinary.DeviceAtomicMapsPostRaDiscardHints (0 ms)
+[ RUN      ] AGX3PackBinary.DeviceAtomicReturnPreservesLiveIndex
+[       OK ] AGX3PackBinary.DeviceAtomicReturnPreservesLiveIndex (0 ms)
+[ RUN      ] AGX3PackBinary.LocalAtomicScalarZeroAddress
+[       OK ] AGX3PackBinary.LocalAtomicScalarZeroAddress (0 ms)
+[ RUN      ] AGX3PackBinary.NarrowingMoveUsesLowHalfCopy
+[       OK ] AGX3PackBinary.NarrowingMoveUsesLowHalfCopy (0 ms)
+[ RUN      ] AGX3PackBinary.AtomicReturnAllowsIndependentDestinationAndRejectsInvalidLocalAddress
+agx3_pack_binary.c:5877: no grounded AGX3 encoding for local_atomic
+   r3 = local_atomic r2, r4l, #0, #0x0
+[       OK ] AGX3PackBinary.AtomicReturnAllowsIndependentDestinationAndRejectsInvalidLocalAddress (0 ms)
+[ RUN      ] AGX3PackBinary.LocalAtomicVoidAddressedG17P
+[       OK ] AGX3PackBinary.LocalAtomicVoidAddressedG17P (0 ms)
+[ RUN      ] AGX3PackBinary.SimdBroadcastImmediateWitnesses
+[       OK ] AGX3PackBinary.SimdBroadcastImmediateWitnesses (0 ms)
+[ RUN      ] AGX3PackBinary.SimdBroadcastAllImmediateLanes
+[       OK ] AGX3PackBinary.SimdBroadcastAllImmediateLanes (0 ms)
+[ RUN      ] AGX3PackBinary.SimdBroadcastWaitsForDeviceLoad
+[       OK ] AGX3PackBinary.SimdBroadcastWaitsForDeviceLoad (0 ms)
+[ RUN      ] AGX3PackBinary.QuadImmediateNativeWitnesses
+[       OK ] AGX3PackBinary.QuadImmediateNativeWitnesses (0 ms)
+[ RUN      ] AGX3PackBinary.QuadImmediateXorRetiresDeviceLoad
+[       OK ] AGX3PackBinary.QuadImmediateXorRetiresDeviceLoad (0 ms)
+[ RUN      ] AGX3PackBinary.SignedReduceWaitsForDeviceLoad
+[       OK ] AGX3PackBinary.SignedReduceWaitsForDeviceLoad (0 ms)
+[ RUN      ] AGX3PackBinary.SignedAddPrefixWaitsForDeviceLoad
+[       OK ] AGX3PackBinary.SignedAddPrefixWaitsForDeviceLoad (0 ms)
+[ RUN      ] AGX3PackBinary.RegisterAndUniformSubgroupShuffles
+[       OK ] AGX3PackBinary.RegisterAndUniformSubgroupShuffles (0 ms)
+[ RUN      ] AGX3PackBinary.RegisterSubgroupShufflesWaitForDeviceLoad
+[       OK ] AGX3PackBinary.RegisterSubgroupShufflesWaitForDeviceLoad (0 ms)
+[ RUN      ] AGX3PackBinary.BallotCompareZero
+[       OK ] AGX3PackBinary.BallotCompareZero (0 ms)
+[ RUN      ] AGX3PackBinary.BallotWaitsForDeviceLoad
+[       OK ] AGX3PackBinary.BallotWaitsForDeviceLoad (0 ms)
+[ RUN      ] AGX3PackBinary.SimdReductionsAndExactPrefixes
+[       OK ] AGX3PackBinary.SimdReductionsAndExactPrefixes (0 ms)
+[ RUN      ] AGX3PackBinary.G17PClusteredIntegerReductions
+[       OK ] AGX3PackBinary.G17PClusteredIntegerReductions (0 ms)
+[ RUN      ] AGX3PackBinary.G17PClusteredFloatReductions
+[       OK ] AGX3PackBinary.G17PClusteredFloatReductions (0 ms)
+[ RUN      ] AGX3PackBinary.SubgroupUnknownAxesFailClosed
+agx3_pack_binary.c:5983: no grounded AGX3 encoding for icmp_ballot
+   r2 = icmp_ballot r1, #1, #0x0
+agx3_pack_binary.c:5974: no grounded AGX3 encoding for simd_reduce
+   r2l = simd_reduce r1l, #0x10
+agx3_pack_binary.c:5974: no grounded AGX3 encoding for simd_reduce
+   r2 = simd_reduce r1, #0x10
+[       OK ] AGX3PackBinary.SubgroupUnknownAxesFailClosed (0 ms)
+[ RUN      ] AGX3PackBinary.YieldWaitsForSourceAndOutstandingLoads
+[       OK ] AGX3PackBinary.YieldWaitsForSourceAndOutstandingLoads (0 ms)
+[ RUN      ] AGX3PackBinary.ScopedMemoryBarriers
+[       OK ] AGX3PackBinary.ScopedMemoryBarriers (0 ms)
+[ RUN      ] AGX3PackBinary.ScopedMemoryBarrierRefusesUnknownScope
+agx3_pack_binary.c:6005: no grounded AGX3 encoding for scoped_barrier_agx3
+   scoped_barrier_agx3 #0x4
+[       OK ] AGX3PackBinary.ScopedMemoryBarrierRefusesUnknownScope (0 ms)
+[ RUN      ] AGX3PackBinary.DirectScsLoadStoreCarriesWait
+[       OK ] AGX3PackBinary.DirectScsLoadStoreCarriesWait (0 ms)
+[ RUN      ] AGX3PackBinary.DirectScsScalarWidthsAndSignedOffsets
+[       OK ] AGX3PackBinary.DirectScsScalarWidthsAndSignedOffsets (0 ms)
+[ RUN      ] AGX3PackBinary.DirectScsRefusesVectorAccess
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_load_agx3
+   r1...r2 = scs_load_agx3 #0x0
+[       OK ] AGX3PackBinary.DirectScsRefusesVectorAccess (0 ms)
+[ RUN      ] AGX3PackBinary.UniformIndexedScsScalarWidthsAndSignedOffsets
+[       OK ] AGX3PackBinary.UniformIndexedScsScalarWidthsAndSignedOffsets (0 ms)
+[ RUN      ] AGX3PackBinary.UniformIndexedScsCarriesHighestSlotWait
+[       OK ] AGX3PackBinary.UniformIndexedScsCarriesHighestSlotWait (0 ms)
+[ RUN      ] AGX3PackBinary.UniformIndexedScsSelectorBoundaries
+[       OK ] AGX3PackBinary.UniformIndexedScsSelectorBoundaries (0 ms)
+[ RUN      ] AGX3PackBinary.UniformIndexedScsRefusesUnprovenAxes
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 r2:r3, r3, #0x0
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u2, r3, #0x0
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u2:u3, r3, #0x0
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u2:u3, r3...r4, #0x0
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u2:u3, r3l, #0x0
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u256:u257, r3, #0x0
+agx3_pack_binary.c:5900: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u2:u3, r96, #0x0
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u2:u3, r128, #0x0
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u2:u3, r3, #0x8000
+agx3_pack_binary.c:5900: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u2:u3, r3, #0x0
+agx3_pack_binary.c:5900: no grounded AGX3 encoding for scs_load_uniform_indexed_agx3
+   r1 = scs_load_uniform_indexed_agx3 u2:u3, r3, #0x0
+agx3_pack_binary.c:5895: no grounded AGX3 encoding for scs_store_uniform_indexed_agx3
+   scs_store_uniform_indexed_agx3 r1, u2:u3, r3, #0x0
+[       OK ] AGX3PackBinary.UniformIndexedScsRefusesUnprovenAxes (0 ms)
+[ RUN      ] AGX3PackBinary.StaticSpillCopyReloadDependency
+[       OK ] AGX3PackBinary.StaticSpillCopyReloadDependency (0 ms)
+[ RUN      ] AGX3PackBinary.StaticHalfSpillReload
+[       OK ] AGX3PackBinary.StaticHalfSpillReload (0 ms)
+[ RUN      ] AGX3PackBinary.StaticSpillRefusesNonScalarOrUnalignedShapes
+agx3_pack_binary.c:4848: no grounded AGX3 encoding for stack_store
+   stack_store r0l, #1, x, #0x0, slot 0
+agx3_pack_binary.c:4848: no grounded AGX3 encoding for stack_store
+   stack_store r0...r1, #0, xy, #0x0, slot 0
+agx3_pack_binary.c:4848: no grounded AGX3 encoding for stack_load
+   r1 = stack_load #2, x, #0x0, slot 0
+[       OK ] AGX3PackBinary.StaticSpillRefusesNonScalarOrUnalignedShapes (0 ms)
+[ RUN      ] AGX3PackBinary.FloatModifierRouting
+[       OK ] AGX3PackBinary.FloatModifierRouting (0 ms)
+[ RUN      ] AGX3PackBinary.RefusesUnmappedOp
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for sin_pt_1
+   r0 = sin_pt_1 r0
+[       OK ] AGX3PackBinary.RefusesUnmappedOp (0 ms)
+[ RUN      ] AGX3PackBinary.TextureFetch2DLod0Immediate
+[       OK ] AGX3PackBinary.TextureFetch2DLod0Immediate (0 ms)
+[ RUN      ] AGX3PackBinary.TextureFetchRefusesUngroundedAxes
+AGX3 texel fetch: stage=0 slot=1 wait=0 staged=1
+agx3_pack_binary.c:5270: no grounded AGX3 encoding for texture_load
+   r0...r3 = texture_load r6...r7, #0, #0, #16, #0, _, xyzw, #0x0, 2d, slot 0
+[       OK ] AGX3PackBinary.TextureFetchRefusesUngroundedAxes (0 ms)
+[ RUN      ] AGX3PackBinary.TextureExportRetiresAtPartBoundary
+[       OK ] AGX3PackBinary.TextureExportRetiresAtPartBoundary (0 ms)
+[ RUN      ] AGX3PackBinary.ExportDoesNotConsumeRealReadWait
+[       OK ] AGX3PackBinary.ExportDoesNotConsumeRealReadWait (0 ms)
+[ RUN      ] AGX3PackBinary.DeviceLoadExportsRetireEveryOutstandingSlot
+[       OK ] AGX3PackBinary.DeviceLoadExportsRetireEveryOutstandingSlot (0 ms)
+[ RUN      ] AGX3PackBinary.SynchronousExportPartHasNoTailDrain
+[       OK ] AGX3PackBinary.SynchronousExportPartHasNoTailDrain (0 ms)
+[ RUN      ] AGX3PackBinary.TextureFetchWaitSurvivesFallthroughBlock
+[       OK ] AGX3PackBinary.TextureFetchWaitSurvivesFallthroughBlock (0 ms)
+[ RUN      ] AGX3PackBinary.NativeInputCoverageRead
+[       OK ] AGX3PackBinary.NativeInputCoverageRead (0 ms)
+[ RUN      ] AGX3PackBinary.NativeRegisterSampleMask
+[       OK ] AGX3PackBinary.NativeRegisterSampleMask (0 ms)
+[ RUN      ] AGX3PackBinary.TileStoreSingleSampleFormats
+[       OK ] AGX3PackBinary.TileStoreSingleSampleFormats (0 ms)
+[ RUN      ] AGX3PackBinary.TileLoadStoreWaitSurvivesFallthroughBlock
+[       OK ] AGX3PackBinary.TileLoadStoreWaitSurvivesFallthroughBlock (0 ms)
+[ RUN      ] AGX3PackBinary.TileLoadSequenceBoundaryMarkers
+[       OK ] AGX3PackBinary.TileLoadSequenceBoundaryMarkers (0 ms)
+[ RUN      ] AGX3PackBinary.TileRefusesUngroundedAxes
+agx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile
+   st_tile r0...r3, r4l, _, xyzw, #0x0
+agx3_pack_binary.c:5508: no grounded AGX3 encoding for ld_tile
+   r0 = ld_tile #255, _, x, #0x0
+agx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile
+   st_tile r8...r11, #255, _, xyzw, #0x0
+agx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile
+   st_tile r0...r3, #3, _, xyzw, #0x0
+[       OK ] AGX3PackBinary.TileRefusesUngroundedAxes (0 ms)
+[ RUN      ] AGX3PackBinary.GetSrIndexedLoadAddStoreCarriesWait
+[       OK ] AGX3PackBinary.GetSrIndexedLoadAddStoreCarriesWait (0 ms)
+[ RUN      ] AGX3PackBinary.RefusesUnwitnessedSr
+agx3_pack_binary.c:5745: no grounded AGX3 encoding for get_sr
+   r0l = get_sr #0xe
+[       OK ] AGX3PackBinary.RefusesUnwitnessedSr (0 ms)
+[ RUN      ] AGX3PackBinary.LoadAddStoreCarriesWait
+[       OK ] AGX3PackBinary.LoadAddStoreCarriesWait (0 ms)
+[ RUN      ] AGX3PackBinary.LocalLoadAddStoreCarriesWait
+[       OK ] AGX3PackBinary.LocalLoadAddStoreCarriesWait (0 ms)
+[ RUN      ] AGX3PackBinary.VaryingInterpolationCoefficientAndUvs
+[       OK ] AGX3PackBinary.VaryingInterpolationCoefficientAndUvs (0 ms)
+[ RUN      ] AGX3PackBinary.RefusesExplicitSampleInterpolation
+agx3_pack_binary.c:5075: no grounded AGX3 encoding for interp_agx3
+   r0 = interp_agx3 #3, r1l, #0x0
+[       OK ] AGX3PackBinary.RefusesExplicitSampleInterpolation (0 ms)
+[ RUN      ] AGX3PackBinary.VertexStagingProducerMatchesAppleAndPreservesLiveness
+[       OK ] AGX3PackBinary.VertexStagingProducerMatchesAppleAndPreservesLiveness (0 ms)
+[ RUN      ] AGX3PackBinary.VertexStagingBankAndScoreboardRoundTrip
+[       OK ] AGX3PackBinary.VertexStagingBankAndScoreboardRoundTrip (0 ms)
+[ RUN      ] AGX3PackBinary.VertexStagingAllocationDoesNotUseGprHighWater
+[       OK ] AGX3PackBinary.VertexStagingAllocationDoesNotUseGprHighWater (0 ms)
+[ RUN      ] AGX3PackBinary.AllGroundedComparisonRelations
+[       OK ] AGX3PackBinary.AllGroundedComparisonRelations (0 ms)
+[ RUN      ] AGX3PackBinary.ImmediateLeftIntegerComparisonsCanonicalize
+[       OK ] AGX3PackBinary.ImmediateLeftIntegerComparisonsCanonicalize (0 ms)
+[ RUN      ] AGX3PackBinary.StructuredIfAndForwardBranch
+[       OK ] AGX3PackBinary.StructuredIfAndForwardBranch (0 ms)
+[ RUN      ] AGX3PackBinary.NestedLoopEntryBackedgeAndPop
+[       OK ] AGX3PackBinary.NestedLoopEntryBackedgeAndPop (0 ms)
+[ RUN      ] AGX3PackBinary.FloatRelationAndCanonicalElse
+[       OK ] AGX3PackBinary.FloatRelationAndCanonicalElse (0 ms)
+[ RUN      ] AGX3PackBinary.MemoryBeforeControlFlowRetiresOutstandingLoad
+[       OK ] AGX3PackBinary.MemoryBeforeControlFlowRetiresOutstandingLoad (0 ms)
+[ RUN      ] AGX3PackBinary.RefusesUngroundedUnconditionalBreak
+agx3_pack_binary.c:5013: no grounded AGX3 encoding for break
+   break #0x0, n=1
+[       OK ] AGX3PackBinary.RefusesUngroundedUnconditionalBreak (0 ms)
+[ RUN      ] AGX3PackBinary.FloatRegisterLivenessNativeWitnesses
+[       OK ] AGX3PackBinary.FloatRegisterLivenessNativeWitnesses (0 ms)
+[ RUN      ] AGX3PackBinary.FloatRegisterLivenessPreservedThroughBackend
+[       OK ] AGX3PackBinary.FloatRegisterLivenessPreservedThroughBackend (0 ms)
+[ RUN      ] AGX3PackBinary.FloatRegisterLivenessRetiresUnsupportedCompactWaits
+[       OK ] AGX3PackBinary.FloatRegisterLivenessRetiresUnsupportedCompactWaits (0 ms)
+[ RUN      ] AGX3PackBinary.FloatRegisterLivenessRefusesContradictoryHints
+agx3_pack_binary.c:7673: no grounded AGX3 encoding for fmul
+   r0 = fmul $^r1, r2
+[       OK ] AGX3PackBinary.FloatRegisterLivenessRefusesContradictoryHints (0 ms)
+[ RUN      ] AGX3PackBinary.G17PAlphaProtocolAcquiresBeforeLoadReleasesAfterStore
+[       OK ] AGX3PackBinary.G17PAlphaProtocolAcquiresBeforeLoadReleasesAfterStore (0 ms)
+[ RUN      ] AGX3PackBinary.AlphaProtocolSupportsSnormButKeepsOffsetAndControlFlowBoundaries
+[       OK ] AGX3PackBinary.AlphaProtocolSupportsSnormButKeepsOffsetAndControlFlowBoundaries (0 ms)
+[ RUN      ] AGX3PackBinary.G17PAlphaProtocolPreservesConstantColourBracket
+[       OK ] AGX3PackBinary.G17PAlphaProtocolPreservesConstantColourBracket (0 ms)
+[ RUN      ] AGX3PackBinary.FragmentInterpolationStartsOnce
+[       OK ] AGX3PackBinary.FragmentInterpolationStartsOnce (0 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveMultiplyPreservesCoefficientAndHints
+[       OK ] AGX3PackBinary.ProjectiveMultiplyPreservesCoefficientAndHints (0 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveMultiplyRefusesUnsupportedForms
+agx3_pack_binary.c:5131: no grounded AGX3 encoding for persp_mul_agx3
+   r2 = persp_mul_agx3 r0, r1, #0x1
+agx3_pack_binary.c:5115: no grounded AGX3 encoding for persp_mul_agx3
+   r2 = persp_mul_agx3 r0.neg, r1, #0x1
+agx3_pack_binary.c:5115: no grounded AGX3 encoding for persp_mul_agx3
+   r2 = persp_mul_agx3 u0, r1, #0x1
+agx3_pack_binary.c:5115: no grounded AGX3 encoding for persp_mul_agx3
+   r2 = persp_mul_agx3 r0, r1l, #0x1
+agx3_pack_binary.c:5115: no grounded AGX3 encoding for persp_mul_agx3
+   r2 = persp_mul_agx3 $^r0, r1, #0x1
+agx3_pack_binary.c:5115: no grounded AGX3 encoding for persp_mul_agx3
+   r2 = persp_mul_agx3 r0, r1, #0x1
+agx3_pack_binary.c:5115: no grounded AGX3 encoding for persp_mul_agx3
+   r2 = persp_mul_agx3 r0, r1, #0x80
+agx3_pack_binary.c:5115: no grounded AGX3 encoding for persp_mul_agx3
+   r2 = persp_mul_agx3.sat r0, r1, #0x1
+[       OK ] AGX3PackBinary.ProjectiveMultiplyRefusesUnsupportedForms (0 ms)
+[ RUN      ] AGX3PackBinary.FourPositionProtocolRemainsByteExact
+[       OK ] AGX3PackBinary.FourPositionProtocolRemainsByteExact (0 ms)
+[ RUN      ] AGX3PackBinary.StreamedVertexOutputsDrainUnrelatedSlotsBeforeCopy
+[       OK ] AGX3PackBinary.StreamedVertexOutputsDrainUnrelatedSlotsBeforeCopy (0 ms)
+[ RUN      ] AGX3PackBinary.VertexExportsAcceptGeneralGraphsButRejectInvalidOperands
+agx3_pack_binary.c:5171: no grounded AGX3 encoding for st_vary
+   st_vary #0, r0l
+agx3_pack_binary.c:5171: no grounded AGX3 encoding for st_vary
+   st_vary #256, r0
+[       OK ] AGX3PackBinary.VertexExportsAcceptGeneralGraphsButRejectInvalidOperands (0 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveReciprocalMatchesNativeOperandForm
+[       OK ] AGX3PackBinary.ProjectiveReciprocalMatchesNativeOperandForm (0 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveReciprocalCoefficientAndWaitBits
+[       OK ] AGX3PackBinary.ProjectiveReciprocalCoefficientAndWaitBits (4 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveReciprocalRefusesUnsupportedForms
+agx3_pack_binary.c:5100: no grounded AGX3 encoding for persp_rcp_agx3
+   r0 = persp_rcp_agx3 r0, #0x0
+agx3_pack_binary.c:5100: no grounded AGX3 encoding for persp_rcp_agx3
+   r0 = persp_rcp_agx3 r96, #0x0
+agx3_pack_binary.c:5087: no grounded AGX3 encoding for persp_rcp_agx3
+   r0 = persp_rcp_agx3 r0.abs, #0x0
+agx3_pack_binary.c:5087: no grounded AGX3 encoding for persp_rcp_agx3
+   r0 = persp_rcp_agx3 r0.neg, #0x0
+agx3_pack_binary.c:5087: no grounded AGX3 encoding for persp_rcp_agx3
+   r0 = persp_rcp_agx3 r0...r1, #0x0
+agx3_pack_binary.c:5087: no grounded AGX3 encoding for persp_rcp_agx3
+   r0 = persp_rcp_agx3 $^r0, #0x0
+agx3_pack_binary.c:5087: no grounded AGX3 encoding for persp_rcp_agx3
+   r0 = persp_rcp_agx3 r0, #0x80
+agx3_pack_binary.c:5087: no grounded AGX3 encoding for persp_rcp_agx3
+   r0 = persp_rcp_agx3.sat r0, #0x0
+[       OK ] AGX3PackBinary.ProjectiveReciprocalRefusesUnsupportedForms (0 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveRhwMatchesNativeAndKeepsUserInterp
+[       OK ] AGX3PackBinary.ProjectiveRhwMatchesNativeAndKeepsUserInterp (0 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveRhwModeIndependentOfFirstAndRcpDestination
+[       OK ] AGX3PackBinary.ProjectiveRhwModeIndependentOfFirstAndRcpDestination (0 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveRhwRefusesUnprovenDomainsAndSharedValues
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #128, #0, #0x0
+agx3_pack_binary.c:5075: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #1, #0x0
+agx3_pack_binary.c:5075: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+agx3_pack_binary.c:5075: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3.sat #0, #0, #0x0
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+[       OK ] AGX3PackBinary.ProjectiveRhwRefusesUnprovenDomainsAndSharedValues (0 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveRhwCseCannotMergeOrdinaryPositionW
+[       OK ] AGX3PackBinary.ProjectiveRhwCseCannotMergeOrdinaryPositionW (0 ms)
+[ RUN      ] AGX3PackBinary.G17PWriteWaitFollowsPackingAndPreservesScoreboard
+[       OK ] AGX3PackBinary.G17PWriteWaitFollowsPackingAndPreservesScoreboard (0 ms)
+[ RUN      ] AGX3PackBinary.G17PWriteWaitDoesNotCrossUnprovenOperations
+[       OK ] AGX3PackBinary.G17PWriteWaitDoesNotCrossUnprovenOperations (0 ms)
+[ RUN      ] AGX3PackBinary.OperandlessPixelWaitDoesNotRetireAsyncRegisters
+[       OK ] AGX3PackBinary.OperandlessPixelWaitDoesNotRetireAsyncRegisters (0 ms)
+[ RUN      ] AGX3PackBinary.G17PColourPackingKeepsNativeUniformSources
+[       OK ] AGX3PackBinary.G17PColourPackingKeepsNativeUniformSources (0 ms)
+[ RUN      ] AGX3PackBinary.DiscardOnlyUpdatesDoNotReleasePixelOrdering
+[       OK ] AGX3PackBinary.DiscardOnlyUpdatesDoNotReleasePixelOrdering (0 ms)
+[ RUN      ] AGX3PackBinary.G17PFltnormStartMatchesNativeF32Uniforms
+[       OK ] AGX3PackBinary.G17PFltnormStartMatchesNativeF32Uniforms (0 ms)
+[ RUN      ] AGX3PackBinary.G17PFltnormStartIsPositionNotFirstUniformRead
+[       OK ] AGX3PackBinary.G17PFltnormStartIsPositionNotFirstUniformRead (0 ms)
+[ RUN      ] AGX3PackBinary.G17PFltnormStartRelocatesAcrossLinkedParts
+[       OK ] AGX3PackBinary.G17PFltnormStartRelocatesAcrossLinkedParts (0 ms)
+[ RUN      ] AGX3PackBinary.G17PColourFusionUsesCompilerProvenanceAndNativeUniforms
+[       OK ] AGX3PackBinary.G17PColourFusionUsesCompilerProvenanceAndNativeUniforms (0 ms)
+[ RUN      ] AGX3PackBinary.G17PColourFusionRejectsIncompleteMainProof
+[       OK ] AGX3PackBinary.G17PColourFusionRejectsIncompleteMainProof (0 ms)
+[ RUN      ] AGX3PackBinary.G17PColourFusionAcceptsS8NormAndRejectsOtherChanges
+[       OK ] AGX3PackBinary.G17PColourFusionAcceptsS8NormAndRejectsOtherChanges (0 ms)
+[ RUN      ] AGX3PackBinary.G17PLinearCenterInterpolationMatchesNative
+[       OK ] AGX3PackBinary.G17PLinearCenterInterpolationMatchesNative (0 ms)
+[ RUN      ] AGX3PackBinary.SixOutputTailSinkingPreservesValuesThroughRA
+[       OK ] AGX3PackBinary.SixOutputTailSinkingPreservesValuesThroughRA (0 ms)
+[ RUN      ] AGX3PackBinary.SixTerminalOutputsDrainOriginalProducersOnce
+[       OK ] AGX3PackBinary.SixTerminalOutputsDrainOriginalProducersOnce (0 ms)
+[ RUN      ] AGX3PackBinary.InstanceIdDoesNotPreventTerminalVertexOutputs
+[       OK ] AGX3PackBinary.InstanceIdDoesNotPreventTerminalVertexOutputs (0 ms)
+[ RUN      ] AGX3PackBinary.SixOutputTailSinkingRefusesWithoutMutation
+[       OK ] AGX3PackBinary.SixOutputTailSinkingRefusesWithoutMutation (0 ms)
+[ RUN      ] AGX3PackBinary.SixOutputVertexAddressArithmeticSurvivesRA
+[       OK ] AGX3PackBinary.SixOutputVertexAddressArithmeticSurvivesRA (0 ms)
+[ RUN      ] AGX3PackBinary.NativeHighVertexOutputIndices
+[       OK ] AGX3PackBinary.NativeHighVertexOutputIndices (0 ms)
+[ RUN      ] AGX3PackBinary.SparseVertexOutputsPreserveUndefinedHoles
+[       OK ] AGX3PackBinary.SparseVertexOutputsPreserveUndefinedHoles (0 ms)
+[ RUN      ] AGX3PackBinary.TerminalVertexOutputsUseStagingFileCapacity
+[       OK ] AGX3PackBinary.TerminalVertexOutputsUseStagingFileCapacity (1 ms)
+[ RUN      ] AGX3PackBinary.WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites
+[       OK ] AGX3PackBinary.WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites (0 ms)
+[ RUN      ] AGX3PackBinary.WideVertexOutputsAcceptRematerializedConstants
+[       OK ] AGX3PackBinary.WideVertexOutputsAcceptRematerializedConstants (0 ms)
+[ RUN      ] AGX3PackBinary.VertexDestinationsBeyondStagingCapacity
+[       OK ] AGX3PackBinary.VertexDestinationsBeyondStagingCapacity (2 ms)
+[ RUN      ] AGX3PackBinary.ImmediateIaddPreservesLiveSource
+[       OK ] AGX3PackBinary.ImmediateIaddPreservesLiveSource (0 ms)
+[ RUN      ] AGX3PackBinary.LocalIndexZeroExtendUsesCopyAndClear
+[       OK ] AGX3PackBinary.LocalIndexZeroExtendUsesCopyAndClear (0 ms)
+[ RUN      ] AGX3PackBinary.ByteAddressLoweringKeepsFullU32Offset
+[       OK ] AGX3PackBinary.ByteAddressLoweringKeepsFullU32Offset (0 ms)
+[ RUN      ] AGX3PackBinary.PackedVertexMemoryNativeBytes
+[       OK ] AGX3PackBinary.PackedVertexMemoryNativeBytes (0 ms)
+[ RUN      ] AGX3PackBinary.VertexTerminalOutputBlockPreservesEarlierControlFlow
+[       OK ] AGX3PackBinary.VertexTerminalOutputBlockPreservesEarlierControlFlow (0 ms)
+[ RUN      ] AGX3PackBinary.VertexOutputCannotMoveAcrossControlFlow
+[       OK ] AGX3PackBinary.VertexOutputCannotMoveAcrossControlFlow (0 ms)
+[ RUN      ] AGX3PackBinary.VertexCFGTerminalOutputBytesMatchSingleBlock
+[       OK ] AGX3PackBinary.VertexCFGTerminalOutputBytesMatchSingleBlock (0 ms)
+[ RUN      ] AGX3PackBinary.Rgb10TileRejectsRawFloatChannels
+agx3_pack_binary.c:5508: no grounded AGX3 encoding for st_tile
+   st_tile r0, #255, _, xyzw, #0x0
+[       OK ] AGX3PackBinary.Rgb10TileRejectsRawFloatChannels (0 ms)
+[ RUN      ] AGX3PackBinary.NativeBfeilExtractPreservesSourceLifetime
+[       OK ] AGX3PackBinary.NativeBfeilExtractPreservesSourceLifetime (0 ms)
+[ RUN      ] AGX3PackBinary.BfeilKeepsNonzeroMergeBaseClosed
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for bfeil
+   r0 = bfeil r2, r0, #14, #0xe
+[       OK ] AGX3PackBinary.BfeilKeepsNonzeroMergeBaseClosed (0 ms)
+[ RUN      ] AGX3PackBinary.NativeIselImmediateAndNarrowComparands
+[       OK ] AGX3PackBinary.NativeIselImmediateAndNarrowComparands (0 ms)
+[ RUN      ] AGX3PackBinary.NativeIselRetainsLiveRegisterComparands
+[       OK ] AGX3PackBinary.NativeIselRetainsLiveRegisterComparands (0 ms)
+[ RUN      ] AGX3PackBinary.NativeIselImageCopyBooleanHalfRegisters
+[       OK ] AGX3PackBinary.NativeIselImageCopyBooleanHalfRegisters (0 ms)
+[ RUN      ] AGX3PackBinary.ProjectiveRhwTracksBranchesAndPartialRegisterLifetimes
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+agx3_pack_binary.c:5069: no grounded AGX3 encoding for rhw_interp_agx3
+   r0 = rhw_interp_agx3 #0, #0, #0x0
+[       OK ] AGX3PackBinary.ProjectiveRhwTracksBranchesAndPartialRegisterLifetimes (0 ms)
+[ RUN      ] AGX3PackBinary.ModifiedFaddWaitAndLifetimeStayFused
+[       OK ] AGX3PackBinary.ModifiedFaddWaitAndLifetimeStayFused (0 ms)
+[ RUN      ] AGX3PackBinary.NarrowFaddKeepsOddHalfAndLiveInput
+[       OK ] AGX3PackBinary.NarrowFaddKeepsOddHalfAndLiveInput (0 ms)
+[ RUN      ] AGX3PackBinary.HalfMaximumRoutesLifetimesWithoutPhantomWait
+[       OK ] AGX3PackBinary.HalfMaximumRoutesLifetimesWithoutPhantomWait (0 ms)
+[ RUN      ] AGX3PackBinary.HalfCompareSelectMatchesNativeAndRefusesModifier
+agx3_pack_binary.c:6338: no grounded AGX3 encoding for fcmpsel
+   r0l = fcmpsel r0l.abs, r0h, r1l, r1h, #0x0
+[       OK ] AGX3PackBinary.HalfCompareSelectMatchesNativeAndRefusesModifier (0 ms)
+[ RUN      ] AGX3PackBinary.HalfClampDoesNotCarryLoadWaitIntoSecondSelect
+[       OK ] AGX3PackBinary.HalfClampDoesNotCarryLoadWaitIntoSecondSelect (0 ms)
+[ RUN      ] AGX3PackBinary.HalfReciprocalRoutesNoWaitAndRefusesModifier
+agx3_pack_binary.c:6051: no grounded AGX3 encoding for rcp
+   $r0l = rcp $r1h.neg
+[       OK ] AGX3PackBinary.HalfReciprocalRoutesNoWaitAndRefusesModifier (0 ms)
+[ RUN      ] AGX3PackBinary.HalfMaximumRefusesUngroundedShapes
+agx3_pack_binary.c:6346: no grounded AGX3 encoding for fcmpsel
+   r0l = fcmpsel r1l, r1h, r2l, r1h, #0x0
+agx3_pack_binary.c:6245: no grounded AGX3 encoding for fcmpsel
+   r0l = fcmpsel r1l.abs, r1h, r1l, r1h, #0x0
+agx3_pack_binary.c:7833: no grounded AGX3 encoding for fcmpsel
+   r0l = fcmpsel.sat r1l, r1h, r1l, r1h, #0x0
+[       OK ] AGX3PackBinary.HalfMaximumRefusesUngroundedShapes (0 ms)
+[ RUN      ] AGX3PackBinary.FselZeroMixedGnomeRegisterShape
+[       OK ] AGX3PackBinary.FselZeroMixedGnomeRegisterShape (0 ms)
+[ RUN      ] AGX3PackBinary.FselFloatComparisonWithHalfResult
+[       OK ] AGX3PackBinary.FselFloatComparisonWithHalfResult (0 ms)
+[ RUN      ] AGX3PackBinary.FselZeroNativeLifetimeAndCompareOrder
+[       OK ] AGX3PackBinary.FselZeroNativeLifetimeAndCompareOrder (0 ms)
+[ RUN      ] AGX3PackBinary.HalfCompareGnomeLoopBreakAndBothBranchFixups
+[       OK ] AGX3PackBinary.HalfCompareGnomeLoopBreakAndBothBranchFixups (0 ms)
+[ RUN      ] AGX3PackBinary.CachedHalfIdentityUnconditionalLoopBreak
+[       OK ] AGX3PackBinary.CachedHalfIdentityUnconditionalLoopBreak (0 ms)
+[ RUN      ] AGX3PackBinary.FloatToHalfIntegerUsesIntegerNarrowing
+[       OK ] AGX3PackBinary.FloatToHalfIntegerUsesIntegerNarrowing (0 ms)
+[ RUN      ] AGX3PackBinary.WideningZeroAddPreservesSignedness
+[       OK ] AGX3PackBinary.WideningZeroAddPreservesSignedness (0 ms)
+[ RUN      ] AGX3PackBinary.MixedWidthAddKeepsOperandOrderAndShift
+[       OK ] AGX3PackBinary.MixedWidthAddKeepsOperandOrderAndShift (0 ms)
+[ RUN      ] AGX3PackBinary.HalfAddConstantsPreserveModuloArithmetic
+[       OK ] AGX3PackBinary.HalfAddConstantsPreserveModuloArithmetic (0 ms)
+[ RUN      ] AGX3PackBinary.HalfBranchConstantsMaterializedBeforeRegisterAllocation
+[       OK ] AGX3PackBinary.HalfBranchConstantsMaterializedBeforeRegisterAllocation (0 ms)
+[ RUN      ] AGX3PackBinary.ZeroLeftHalfComparisonsPreserveRelationAndHints
+[       OK ] AGX3PackBinary.ZeroLeftHalfComparisonsPreserveRelationAndHints (0 ms)
+[ RUN      ] AGX3PackBinary.HalfZeroGnomeSamplerIndexSurvivesBranch
+[       OK ] AGX3PackBinary.HalfZeroGnomeSamplerIndexSurvivesBranch (0 ms)
+[ RUN      ] AGX3PackBinary.BlurSignedHalfConversionAndCounterStayNative
+[       OK ] AGX3PackBinary.BlurSignedHalfConversionAndCounterStayNative (0 ms)
+[ RUN      ] AGX3PackBinary.NarrowBitwiseUsesWiderSourcesLowHalves
+[       OK ] AGX3PackBinary.NarrowBitwiseUsesWiderSourcesLowHalves (0 ms)
+[ RUN      ] AGX3PackBinary.ScalarByteStoreReadsOddNativeHalf
+[       OK ] AGX3PackBinary.ScalarByteStoreReadsOddNativeHalf (0 ms)
+[ RUN      ] AGX3PackBinary.ScalarByteLoadWritesOddNativeHalf
+[       OK ] AGX3PackBinary.ScalarByteLoadWritesOddNativeHalf (0 ms)
+[ RUN      ] AGX3PackBinary.ExplicitLodStagingAndLifetime
+[       OK ] AGX3PackBinary.ExplicitLodStagingAndLifetime (0 ms)
+[ RUN      ] AGX3PackBinary.ComputeImmediateLodSample
+[       OK ] AGX3PackBinary.ComputeImmediateLodSample (0 ms)
+[ RUN      ] AGX3PackBinary.GatherDoesNotRequireFragmentDerivatives
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, _, xyzw, #0x0, 2d_array, slot 0
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, r12, xyzw, #0x0, 2d_array, slot 0
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, _, xyzw, #0x0, 2d_array, slot 0
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, r12, xyzw, #0x0, 2d_array, slot 0
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, _, xyzw, #0x0, 2d_array, slot 0
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, r12, xyzw, #0x0, 2d_array, slot 0
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, _, xyzw, #0x0, 2d_array, slot 0
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, r12, xyzw, #0x0, 2d_array, slot 0
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, _, xyzw, #0x0, 2d_array, slot 0
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r8...r10, #0, #0, #0, #0, r12, xyzw, #0x0, 2d_array, slot 0
+[       OK ] AGX3PackBinary.GatherDoesNotRequireFragmentDerivatives (0 ms)
+[ RUN      ] AGX3PackBinary.ComputeSampleAcceptsRegisterLodAndRejectsInvalidModes
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r2...r3, #0, #0, #0, #0, _, xyzw, #0x0, 2d, slot 0
+AGX3 sample shape: lod=6 valid_lod=0 bias=0 imm=1 offset=0 literal=0 dynamic=0 compare=1 bindless_zero=1
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r2...r3, #176, #0, #0, #0, _, xyzw, #0x6, 2d, slot 0
+[       OK ] AGX3PackBinary.ComputeSampleAcceptsRegisterLodAndRejectsInvalidModes (0 ms)
+[ RUN      ] AGX3PackBinary.SampleStagingWaitsOnlyForOverlappingBanks
+[       OK ] AGX3PackBinary.SampleStagingWaitsOnlyForOverlappingBanks (0 ms)
+[ RUN      ] AGX3PackBinary.ShadowCoordinatesUseFullCopySourceBank
+AGX3 sample shape: lod=0 valid_lod=1 bias=0 imm=0 offset=0 literal=0 dynamic=0 compare=1 bindless_zero=1
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r36...r39 = texture_sample r127...r128, #0, #0, r34:r35, r30:r31, r14, x, #0x0, 2d, slot 0
+[       OK ] AGX3PackBinary.ShadowCoordinatesUseFullCopySourceBank (0 ms)
+[ RUN      ] AGX3PackBinary.ArraySampleStagingAndLifetime
+[       OK ] AGX3PackBinary.ArraySampleStagingAndLifetime (0 ms)
+[ RUN      ] AGX3PackBinary.ArrayRegisterDescriptorsUseNativeStaging
+[       OK ] AGX3PackBinary.ArrayRegisterDescriptorsUseNativeStaging (0 ms)
+[ RUN      ] AGX3PackBinary.ArraySampleAcceptsHighCoordinateRegistersWithoutWrap
+AGX3 sample shape: lod=0 valid_lod=1 bias=0 imm=0 offset=0 literal=0 dynamic=0 compare=1 bindless_zero=1
+agx3_pack_binary.c:5320: no grounded AGX3 encoding for texture_sample
+   r4...r7 = texture_sample r126...r128, #0, #0, r6:r7, r8:r9, _, xyzw, #0x0, 2d_array, slot 0
+[       OK ] AGX3PackBinary.ArraySampleAcceptsHighCoordinateRegistersWithoutWrap (0 ms)
+[ RUN      ] AGX3PackBinary.StorageImageWriteMatchesNativeWithReadyOrSlot1Data
+[       OK ] AGX3PackBinary.StorageImageWriteMatchesNativeWithReadyOrSlot1Data (0 ms)
+[ RUN      ] AGX3PackBinary.StorageImageRoundtripDerivesLoadDependencyAndRejectsShapes
+agx3_pack_binary.c:5284: no grounded AGX3 encoding for image_write
+   image_write r2...r5, ^r0...r1, #0, #0, #0, #0x0, 2d_array
+agx3_pack_binary.c:5284: no grounded AGX3 encoding for image_write
+   image_write r2...r5, ^r0...r1, #0, #0, #0, #0x0, 2d_ms
+[       OK ] AGX3PackBinary.StorageImageRoundtripDerivesLoadDependencyAndRejectsShapes (0 ms)
+[ RUN      ] AGX3PackBinary.SampledRgba8WriteUsesNativeStateOneProtocol
+[       OK ] AGX3PackBinary.SampledRgba8WriteUsesNativeStateOneProtocol (0 ms)
+[ RUN      ] AGX3PackBinary.ComputedRgb10WriteUsesNativeStateOneProtocol
+[       OK ] AGX3PackBinary.ComputedRgb10WriteUsesNativeStateOneProtocol (0 ms)
+[ RUN      ] AGX3PackBinary.M4IntegerMipFetchStagesUniformAndRegister
+[       OK ] AGX3PackBinary.M4IntegerMipFetchStagesUniformAndRegister (0 ms)
+[ RUN      ] AGX3PackBinary.FloatBranchConstantsUseAllocatedRegisters
+[       OK ] AGX3PackBinary.FloatBranchConstantsUseAllocatedRegisters (0 ms)
+[ RUN      ] AGX3PackBinary.FloatBranchWidensHalfOperands
+[       OK ] AGX3PackBinary.FloatBranchWidensHalfOperands (0 ms)
+[ RUN      ] AGX3PackBinary.FloatBranchAbsoluteModifiersUseAllocatedRegisters
+[       OK ] AGX3PackBinary.FloatBranchAbsoluteModifiersUseAllocatedRegisters (0 ms)
+[ RUN      ] AGX3PackBinary.DeviceAtomicPositiveImmediateIgnoresExtensionMode
+[       OK ] AGX3PackBinary.DeviceAtomicPositiveImmediateIgnoresExtensionMode (0 ms)
+[ RUN      ] AGX3PackBinary.NativeEmptyVertexNeedsOnlyEnd
+[       OK ] AGX3PackBinary.NativeEmptyVertexNeedsOnlyEnd (0 ms)
+[ RUN      ] AGX3PackBinary.SparseVertexExportPreservesMemorySideEffects
+[       OK ] AGX3PackBinary.SparseVertexExportPreservesMemorySideEffects (0 ms)
+[ RUN      ] AGX3PackBinary.SparseLayerExportsSinkBeforeRegisterAllocation
+[       OK ] AGX3PackBinary.SparseLayerExportsSinkBeforeRegisterAllocation (0 ms)
+[ RUN      ] AGX3PackBinary.StreamedVertexExportsRetireBeforeRegisterReuse
+[       OK ] AGX3PackBinary.StreamedVertexExportsRetireBeforeRegisterReuse (0 ms)
+[ RUN      ] AGX3PackBinary.NativePreambleExportsBooleanAsWord
+[       OK ] AGX3PackBinary.NativePreambleExportsBooleanAsWord (0 ms)
+[ RUN      ] AGX3PackBinary.NativePreambleExportsFloatComparisonAsWord
+[       OK ] AGX3PackBinary.NativePreambleExportsFloatComparisonAsWord (0 ms)
+[----------] 219 tests from AGX3PackBinary (18 ms total)
+
+[----------] Global test environment tear-down
+[==========] 219 tests from 1 test suite ran. (18 ms total)
+[  PASSED  ] 219 tests.

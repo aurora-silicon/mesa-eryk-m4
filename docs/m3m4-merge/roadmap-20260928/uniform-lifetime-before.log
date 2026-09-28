@@ -1,0 +1,44 @@
+Running main() from ../../mesa/m3m4-merged/src/gtest/src/gtest_main.cc
+Note: Google Test filter = AGX3PackBinary.UniformWritesUsePhysicalRegisterLifetime
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from AGX3PackBinary
+[ RUN      ] AGX3PackBinary.UniformWritesUsePhysicalRegisterLifetime
+../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-pack-binary.cpp:190: Failure
+Expected equality of these values:
+  pack(b)
+    Which is: { '\xCB' (203), '\x10' (16), '\t' (9), '\x4' (4), '\xBB' (187), '\x11' (17), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xE' (14), '\0', '\0', '\0' }
+  expected
+    Which is: { '\xCB' (203), '\x10' (16), '\x1' (1), '\x4' (4), '\xBB' (187), '\x11' (17), '\xF' (15), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xE' (14), '\0', '\0', '\0' }
+components=1
+../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-pack-binary.cpp:190: Failure
+Expected equality of these values:
+  pack(b)
+    Which is: { '\xCB' (203), '\x10' (16), '\x1' (1), '\x4' (4), '\xDB' (219), '\x12' (18), '\t' (9), '\x4' (4), '\xBB' (187), '\x11' (17), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xCB' (203), '\x13' (19), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xE' (14), '\0', '\0', '\0' }
+  expected
+    Which is: { '\xCB' (203), '\x10' (16), '\x1' (1), '\x4' (4), '\xDB' (219), '\x12' (18), '\x1' (1), '\x4' (4), '\xBB' (187), '\x11' (17), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xCB' (203), '\x13' (19), '\xF' (15), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xE' (14), '\0', '\0', '\0' }
+components=2
+../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-pack-binary.cpp:190: Failure
+Expected equality of these values:
+  pack(b)
+    Which is: { '\xCB' (203), '\x10' (16), '\x1' (1), '\x4' (4), '\xDB' (219), '\x12' (18), '\x1' (1), '\x4' (4), '\xEB' (235), '\x14' (20), '\t' (9), '\x4' (4), '\xBB' (187), '\x11' (17), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xCB' (203), '\x13' (19), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', ... }
+  expected
+    Which is: { '\xCB' (203), '\x10' (16), '\x1' (1), '\x4' (4), '\xDB' (219), '\x12' (18), '\x1' (1), '\x4' (4), '\xEB' (235), '\x14' (20), '\x1' (1), '\x4' (4), '\xBB' (187), '\x11' (17), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xCB' (203), '\x13' (19), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', ... }
+components=3
+../../mesa/m3m4-merged/src/asahi/compiler/test/test-agx3-pack-binary.cpp:190: Failure
+Expected equality of these values:
+  pack(b)
+    Which is: { '\xCB' (203), '\x10' (16), '\x1' (1), '\x4' (4), '\xDB' (219), '\x12' (18), '\x1' (1), '\x4' (4), '\xEB' (235), '\x14' (20), '\x1' (1), '\x4' (4), '\xFB' (251), '\x16' (22), '\t' (9), '\x4' (4), '\xBB' (187), '\x11' (17), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xCB' (203), '\x13' (19), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), ... }
+  expected
+    Which is: { '\xCB' (203), '\x10' (16), '\x1' (1), '\x4' (4), '\xDB' (219), '\x12' (18), '\x1' (1), '\x4' (4), '\xEB' (235), '\x14' (20), '\x1' (1), '\x4' (4), '\xFB' (251), '\x16' (22), '\x1' (1), '\x4' (4), '\xBB' (187), '\x11' (17), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), '\0', '\0', '\0', '\0', '\xCB' (203), '\x13' (19), '\a' (7), '\0', 'B' (66, 0x42), '\x10' (16), ... }
+components=4
+[  FAILED  ] AGX3PackBinary.UniformWritesUsePhysicalRegisterLifetime (0 ms)
+[----------] 1 test from AGX3PackBinary (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] AGX3PackBinary.UniformWritesUsePhysicalRegisterLifetime
+
+ 1 FAILED TEST
