@@ -354,3 +354,27 @@ investigation toward the appended program's input path; it does not establish
 a synchronization contract or justify embedding application-specific addresses
 or shader signatures in production code. The exact patches and binary hashes
 are retained locally, alongside all negative results.
+
+### Entry-delay hypothesis (not a production synchronization contract)
+
+The direct-address M4 variant first matches twice, then produces exactly the
+same two-pixel baseline image described above. Ten additional repetitions
+include nine exact images and one identical baseline image; no larger material
+difference appears. Every difference remains recorded. These runs are
+unscored and do not relax the benchmark's exact image policy.
+
+Eight plain NOPs before the selected compiled preamble give six exact M3
+repetitions, followed by that same baseline image. This differs from the earlier
+negative three-NOP experiment, which delayed uniform exports after the memory
+load rather than delaying the first read of loader-written uniforms. Immediately
+returning to the original candidate reproduces 640 changed pixels (maximum 43),
+so the original fault has not simply stopped occurring during the session.
+
+With the entry delay and the full memory-preamble optimization enabled, three
+M3 final-frame diagnostics and then ten complete replays match exactly. Each
+complete replay checks frames 1, 16 and 31. M4 qualification and a same-binary
+NOP-count experiment remain in progress. The latter reserves an unchanged
+amount of program space even at zero NOPs to separate instruction delay from
+allocation-layout effects. A delay experiment alone does not establish the
+hardware's required synchronization or justify a universal timing workaround.
+The default desktop preamble policy is still unchanged.
