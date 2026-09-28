@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT
- * Lazy graphics CPU-map failure followed by same-device checked rendering.
+ * Lazy graphics or descriptor-pool CPU-map failure, then checked rendering.
+ * ASAHI_TEST_DESCRIPTOR_POOL=1 selects the pool-construction failure.
  * Compile beside generated vertex.h/fragment.h. Hardware requires gpu-experiment.
  */
 #include <vulkan/vulkan.h>
@@ -28,6 +29,10 @@ int main(void) {
  VkPhysicalDeviceFeatures feat={.fragmentStoresAndAtomics=VK_TRUE};
  VkDeviceCreateInfo di={.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,.pNext=&dr,.pEnabledFeatures=&feat,.queueCreateInfoCount=1,.pQueueCreateInfos=&qi};
  VkDevice dev; CHECK(vkCreateDevice(phy,&di,0,&dev)); VkQueue queue; vkGetDeviceQueue(dev,q,0,&queue);
+ void (*arm)(void)=dlsym(RTLD_DEFAULT,"asahi_test_arm_map_failure");
+ int (*injected)(void)=dlsym(RTLD_DEFAULT,"asahi_test_map_failure_injected");
+ if(!arm || !injected) return 2;
+ const int pool_test=getenv("ASAHI_TEST_DESCRIPTOR_POOL")!=NULL;
  VkBufferCreateInfo bi={.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,.size=64*64*4,.usage=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT};
  VkBuffer buffer; CHECK(vkCreateBuffer(dev,&bi,0,&buffer));
  VkMemoryRequirements req; vkGetBufferMemoryRequirements(dev,buffer,&req);
@@ -42,7 +47,14 @@ int main(void) {
  VkDescriptorSetLayout sl; CHECK(vkCreateDescriptorSetLayout(dev,&sli,0,&sl));
  VkDescriptorPoolSize ps={VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1};
  VkDescriptorPoolCreateInfo dpi={.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,.maxSets=1,.poolSizeCount=1,.pPoolSizes=&ps};
- VkDescriptorPool dp; CHECK(vkCreateDescriptorPool(dev,&dpi,0,&dp));
+ VkDescriptorPool dp;
+ if(pool_test) {
+  arm();
+  VkResult result=vkCreateDescriptorPool(dev,&dpi,0,&dp);
+  printf("DESCRIPTOR_MAP_RESULT injected=%d result=%d\n",injected(),result);fflush(stdout);
+  if(!injected() || result!=VK_ERROR_OUT_OF_HOST_MEMORY) return 1;
+ }
+ CHECK(vkCreateDescriptorPool(dev,&dpi,0,&dp));
  VkDescriptorSetAllocateInfo dai={.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,.descriptorPool=dp,.descriptorSetCount=1,.pSetLayouts=&sl};
  VkDescriptorSet ds; CHECK(vkAllocateDescriptorSets(dev,&dai,&ds));
  VkDescriptorBufferInfo db={buffer,0,64*64*4};
@@ -67,11 +79,8 @@ int main(void) {
  VkCommandPool cp; CHECK(vkCreateCommandPool(dev,&cpi,0,&cp));
  VkCommandBufferAllocateInfo cai={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,.commandPool=cp,.commandBufferCount=1,.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY};
  VkCommandBuffer cmd; CHECK(vkAllocateCommandBuffers(dev,&cai,&cmd));
- void (*arm)(void)=dlsym(RTLD_DEFAULT,"asahi_test_arm_map_failure");
- int (*injected)(void)=dlsym(RTLD_DEFAULT,"asahi_test_map_failure_injected");
- if(!arm || !injected) return 2;
  VkResult expected=getenv("ASAHI_TEST_EXPECTED_RESULT")?atoi(getenv("ASAHI_TEST_EXPECTED_RESULT")):VK_ERROR_OUT_OF_HOST_MEMORY;
- for(unsigned attempt=0;attempt<2;attempt++) {
+ for(unsigned attempt=pool_test?1:0;attempt<2;attempt++) {
  if(attempt) CHECK(vkResetCommandPool(dev,cp,0));
  VkCommandBufferBeginInfo begin={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO}; CHECK(vkBeginCommandBuffer(cmd,&begin));
  VkRenderingInfo ri={.sType=VK_STRUCTURE_TYPE_RENDERING_INFO,.renderArea={{0,0},{64,64}},.layerCount=1};
@@ -89,7 +98,7 @@ int main(void) {
  VkSubmitInfo submit={.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO,.commandBufferCount=1,.pCommandBuffers=&cmd}; CHECK(vkQueueSubmit(queue,1,&submit,fence));
  CHECK(vkWaitForFences(dev,1,&fence,VK_TRUE,20000000000ull));
  unsigned bad=0; for(unsigned i=0;i<4096;i++) if(data[i]!=i+1)bad++;
- printf("%s: lazy map failure then 64x64 fragment writes bad=%u/4096\n",bad?"FAIL":"PASS",bad);
+ printf("%s: %s map failure then 64x64 fragment writes bad=%u/4096\n",bad?"FAIL":"PASS",pool_test?"descriptor":"lazy",bad);
  CHECK(vkDeviceWaitIdle(dev));
  vkDestroyFence(dev,fence,0); vkDestroyCommandPool(dev,cp,0); vkDestroyPipeline(dev,pipeline,0);
  for(unsigned i=0;i<2;i++)vkDestroyShaderModule(dev,modules[i],0);

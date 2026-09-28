@@ -1,0 +1,12 @@
+/tmp/descriptor-pool-unwind-0vhoc5o2/test.c:21:13: warning: ‘util_vma_heap_free’ defined but not used [-Wunused-function]
+   21 | static void util_vma_heap_free(struct heap*h,uint64_t addr,uint64_t size){assert(h->initialized && addr && size);}
+      |             ^~~~~~~~~~~~~~~~~~
+test: /tmp/descriptor-pool-unwind-0vhoc5o2/test.c:22: util_vma_heap_finish: Assertion `h->initialized' failed.
+Traceback (most recent call last):
+  File "/home/council/dev/dirtyroom_m4/tools/test-descriptor-pool-unwind.py", line 60, in <module>
+    subprocess.run([str(p/'test')],check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/tmp/descriptor-pool-unwind-0vhoc5o2/test']' died with <Signals.SIGABRT: 6>.

@@ -661,6 +661,8 @@ hk_CreateDescriptorPool(VkDevice _device,
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    list_inithead(&pool->sets);
+   /* Every failure below must be safe to destroy, before a BO exists. */
+   util_vma_heap_init(&pool->heap, 0, 0);
 
    const VkMutableDescriptorTypeCreateInfoEXT *mutable_info =
       vk_find_struct_const(pCreateInfo->pNext,
@@ -694,8 +696,13 @@ hk_CreateDescriptorPool(VkDevice _device,
        * Reserve padding for the largest alignment present in the pool so
        * arbitrary binding order cannot exhaust a valid allocation.
        */
-      bo_size += align64(stride, MAX2(max_align, 1)) *
-                 pCreateInfo->pPoolSizes[i].descriptorCount;
+      const uint64_t size = align64(stride, MAX2(max_align, 1)) *
+                            pCreateInfo->pPoolSizes[i].descriptorCount;
+      if (size > UINT64_MAX - bo_size) {
+         hk_destroy_descriptor_pool(dev, pAllocator, pool);
+         return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      }
+      bo_size += size;
    }
 
    /* Individual descriptor sets are aligned to the min UBO alignment to
@@ -706,7 +713,12 @@ hk_CreateDescriptorPool(VkDevice _device,
     * conservative here.)  Allocate enough extra space that we can chop it
     * into maxSets pieces and align each one of them to 32B.
     */
-   bo_size += HK_MIN_UBO_ALIGNMENT * pCreateInfo->maxSets;
+   const uint64_t padding = (uint64_t)HK_MIN_UBO_ALIGNMENT * pCreateInfo->maxSets;
+   if (padding > UINT64_MAX - bo_size) {
+      hk_destroy_descriptor_pool(dev, pAllocator, pool);
+      return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   }
+   bo_size += padding;
 
    if (bo_size) {
       pool->bo = agx_bo_create(&dev->dev, bo_size, 0, 0, "Descriptor pool");
@@ -716,14 +728,16 @@ hk_CreateDescriptorPool(VkDevice _device,
       }
 
       pool->mapped_ptr = agx_bo_map(pool->bo);
+      if (!pool->mapped_ptr) {
+         hk_destroy_descriptor_pool(dev, pAllocator, pool);
+         return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
 
       /* The BO may be larger thanks to GPU page alignment.  We may as well
        * make that extra space available to the client.
        */
       assert(pool->bo->size >= bo_size);
-      util_vma_heap_init(&pool->heap, pool->bo->va->addr, pool->bo->size);
-   } else {
-      util_vma_heap_init(&pool->heap, 0, 0);
+      util_vma_heap_free(&pool->heap, pool->bo->va->addr, pool->bo->size);
    }
 
    *pDescriptorPool = hk_descriptor_pool_to_handle(pool);

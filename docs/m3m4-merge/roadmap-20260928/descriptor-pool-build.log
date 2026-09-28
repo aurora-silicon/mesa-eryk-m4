@@ -1,0 +1,25 @@
+ninja: Entering directory `build/mesa-m3m4-arm64'
+[1/24] Generating src/git_sha1.h with a custom command
+[2/24] Compiling C object src/mesa/libmesa.a.p/main_context.c.o
+[3/24] Compiling C object src/gallium/frontends/dri/libdri.a.p/drisw.c.o
+[4/24] Compiling C object src/gallium/frontends/dri/libdri.a.p/dri2.c.o
+[5/24] Compiling C object src/gallium/frontends/dri/libdri.a.p/kopper.c.o
+[6/24] Linking static target src/gallium/frontends/dri/libdri.a
+[7/24] Compiling C object src/loader/libloader.a.p/loader.c.o
+[8/24] Linking static target src/loader/libloader.a
+[9/24] Linking target src/gbm/libgbm.so.1.0.0
+[10/24] Compiling C object src/mesa/libmesa.a.p/main_version.c.o
+[11/24] Generating symbol file src/gbm/libgbm.so.1.0.0.p/libgbm.so.1.0.0.symbols
+[12/24] Linking static target src/mesa/libmesa.a
+[13/24] Linking target src/gallium/targets/dril/libdril_dri.so
+[14/24] Compiling C object src/asahi/lib/libasahi_lib.a.p/agx_device.c.o
+[15/24] Linking static target src/asahi/lib/libasahi_lib.a
+[16/24] Linking target src/gallium/targets/dri/libgallium-26.1.4.so
+[17/24] Generating symbol file src/gallium/targets/dri/libgallium-26.1.4.so.p/libgallium-26.1.4.so.symbols
+[18/24] Compiling C object src/asahi/vulkan/libhk.a.p/hk_descriptor_set.c.o
+[19/24] Linking target src/gbm/backends/dri/dri_gbm.so
+[20/24] Linking target src/glx/libGLX_mesa.so.0.0.0
+[21/24] Linking target src/egl/libEGL_mesa.so.0.0.0
+[22/24] Compiling C object src/asahi/vulkan/libhk.a.p/hk_physical_device.c.o
+[23/24] Linking static target src/asahi/vulkan/libhk.a
+[24/24] Linking target src/asahi/vulkan/libvulkan_asahi.so
