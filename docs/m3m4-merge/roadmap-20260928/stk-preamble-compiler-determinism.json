@@ -1,0 +1,162 @@
+[
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/04c047293eff0b49ce399b0f5d445aa00fa4fcdf20dc3381a4e37d82cf5e0a7c/input.bin",
+    "sha256": "076430e2f8e9fbc77714f666aefd3ecc433a6923481288f4c600bdad3a17acdf",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/0adf3cf7db1f3e92ab30fefa1eff15a73f492ecdc3e5bd1bac4d9079a8a3568e/input.bin",
+    "sha256": "274231ccea48b515e316f1406cb14c0dc311e1b58a0909ab8d81d8e110778cd2",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/1dbb6537fb14b3d6772267c7242996af8df41870ffb3b3c88309b8c81184cd2c/input.bin",
+    "sha256": "2972c95b19f3f35ac532a600d88996c5f9a0682ee3ecb41856a340090e873c8e",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/23c7a595f9e49e033a3ea80a8c2bd9e29456c05591c1e2eaccb48ccc5e314ce7/input.bin",
+    "sha256": "962c156336e53e2d3342c7d1ef6d1bbebf2b49a802eb8efee07ec09a605e1d0e",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/254ea0868c9a8cd7137955d652a4de2b5acfdf1684a109de13524f20f5626a70/input.bin",
+    "sha256": "701257f5bd155b8abf799e839bffeac624eaf10e3e2a1529cdd72b2479f44550",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/32ff2d31d5c155a32ae11dca9baddf2d68fa791e7cef01fbbdc44c19387a58be/input.bin",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/3f5f1d0471cf7de7eb77d52253400e1542e211856a043bdc22b1010692e0f58d/input.bin",
+    "sha256": "e9e1ebea4704d98a9d63a7e6652a68f5d0a1599b2731e65d0f489ef71ff633ce",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/464db31325130745eb7d72b773915db149a42d5a520e80983bf9b2299ee55c98/input.bin",
+    "sha256": "dd064dc5e5cd4e52e6120c20859e8f92308fa0c66539d8aa1f7aabd3573d0e02",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/48df74ae9f792aa8bacff8e5475d7a4fa6bcacb15eb04ee7cd896b2124c57d6f/input.bin",
+    "sha256": "5c0e56187b460589866a4a422a6a2120e32392a8f25a4615aee73efb9e364419",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/55d0b231b939e53d617e693af0557ad597d4d53cbf535ee5b85e134bb2d4c8ae/input.bin",
+    "sha256": "b7a83b47a707aee88ce8a22df79fe1d4c73943e970e76d920db489b69d665241",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/567816da07fdae05c4702ad34bd1e4078c66e7d426e94111485b25dc9508fefc/input.bin",
+    "sha256": "17d94c7139a5f9e249d3c67b5d342eff55566e59292dec88cc01fae986169909",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/637b185992954f35850e462affdc0ec6734b0c9592319d6ab7402e2ee1726965/input.bin",
+    "sha256": "4320e3c520feca02df840880d4a8c1c2be0dbf8d319d8137c23b8983248aac4c",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/655dda8bbe95767730c1f61b0931b43f5571367eee935d2f3733559b868b5d4b/input.bin",
+    "sha256": "193d69bdc590ad41d74d2f389db3f6173cc8547106ef709dea10aad0de9d1dbc",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/6dfea6e89b0c74326d7451840698d01ee945ae911a3b3efaf008e9d0f15b67da/input.bin",
+    "sha256": "01b4f6bd5d6a06a7b74a8565ceb4f845afe0ae96a0ac05cf5e86066bf7b538ec",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/6e9a8941a6d4f4558bc8d04fdcceca3849a5b532630975bbfe3dda58279345c4/input.bin",
+    "sha256": "9a774ac6c40e689bb156bca60efd4b53b6b22ce0476d7a83039756db242b874d",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/6ff4901395c138980e897fd5659bc9bee7a96c2813b7ae5f407893ca39fc00d2/input.bin",
+    "sha256": "9f5b5d73d619451d2038af54121ee3e08ed276f709d84ba511ad4182dcf129a8",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/79dbc4bd53a3a655f9ccc8cb58387ed797944f3397795b8169cd7529ec758b14/input.bin",
+    "sha256": "6bd9a1f96b98c912ef0f9a5562d0865030115e2f7c760c4b56916f061bb1126f",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/7b48eebe96d3126a3ce87bb5bcdcb0d8281afd79b7c145f54f91ea4fd5a487f3/input.bin",
+    "sha256": "89042c41599c7d7c9f9cca0968bfab89c96ec3f9fac089dc31ec129b699fd0e6",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/82e735576bfd3a69756f50946fbf984c56f420152eb3079f12178710855540e9/input.bin",
+    "sha256": "ca6ec551cb91b75ceacf7fd53b4ecc3439d2c282b754af4c967c58e4bc215b7e",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/88090bf40723d86455ed1d84be6abb6da70b88e9924b752a4d52f3f5cc91aa10/input.bin",
+    "sha256": "d57f10528ad5a2bab1f05f6bb32af8617adb13d996751a0e27c93c497b55d14f",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/a88eabcff8ddc38e97686fe4cf84b45a38a011a67c0d4e3c1fa520172668ef78/input.bin",
+    "sha256": "4f3f844c52ce56402f779eb955bb151a087f97a28f074b0576fffa7424e5318f",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/b0c9808f104fda8368abe2fb04ca3b182d8c768f4bbb55fff6e7febd301947af/input.bin",
+    "sha256": "b933865d95a5a3f199556a61afd738c306382f82c0efe6e1cef6ad24f08c3e45",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/b1b8985911217169e70020dacf8678149f472c816d7ded65833a86c36e86bf5b/input.bin",
+    "sha256": "2afc6cf65903b972ed8768147d06c6930dbd0b41a4fa1e8b4aaec026d8f4e7c5",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/b6efbd793e8a80aa8b1075d52331eb43a5f29550a383a59eb8b6a3940d6d9532/input.bin",
+    "sha256": "7e4516a510c883b329fc86238626e18b910b6a3fdd699da3969ab7db7afdc905",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/c13c5e5733f95c1d7eb5a5855fa1e1b698f3db8a1a8a236f5e9960e13055583b/input.bin",
+    "sha256": "35c843c6ceb2f083a351419752ff5f087fd3cfee0d482f15174b16e46f35e1be",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/c9694441a95b350eb04f514ed04484d9bae3d8f48305f066e8f8e238f008443d/input.bin",
+    "sha256": "328c6d426125ffcdb920da743979836092ea475c3538cdcd326f61bd8f80e880",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/d2c7432210ae6152bcf7678e6e56442640748833eb3a20670ab332de51c30825/input.bin",
+    "sha256": "2cabcd248169a95f5b1b02936c3d30ac392f82541fa2458b69c46bb81b9e7fab",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/d3a00c786781369d6eea462be93cf432d3da4ae3caeaed7ef942bbcdaf86a690/input.bin",
+    "sha256": "eb4aa33c94f03e29c6ba2b8763a941f4c53f008f4b83dfe8dd2af24db59317b4",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/d50622b4c7d947e91d2591ad56fe7b5118870981f80efcfc53cafa5390fcf2a4/input.bin",
+    "sha256": "fa931d2101f4730c724b2bdffe2f6b080efe99962ba747bd8202d3388e963351",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/d7ab034a285fba6af5d273502ff3d3d3f33f4c6aedf6014960a7cc907a6085f2/input.bin",
+    "sha256": "44936151f0b8a83de4c382eaf505c10dfc1557efa1017ecb6d8aa579228455b2",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/dcc16224e1f3f491a5fe48a46dec718e414ac62b4e52569334994e018715de9b/input.bin",
+    "sha256": "9ddc6155de0b82dd14083ee09c08d81086ba4265df35ab76a6da39cc8a798e8c",
+    "repeats": 10
+  },
+  {
+    "input": "build/driver-roadmap-20260928/stk-preamble-capture/e3ed8a28eabd180352e8181419fd4ab6bd0c464d3bc5f640f651e33446ac16e8/input.bin",
+    "sha256": "2e627a632b36de590d466ca969e29c002c4c75d3dddb88aefbd6c7f24d464959",
+    "repeats": 10
+  }
+]

@@ -467,3 +467,10 @@ carry enough retained evidence for another developer to reproduce them.
   the initial wrong-device test setup failure separately. A complete shared
   Vulkan/Zink/EGL package passes 178 render/memory cases on each GPU with
   read-only preambles enabled (six NS each); broader game replays are running.
+
+- 2026-09-28: Descriptor pools now initialize rollback state before allocation,
+  reject size overflow and unwind CPU-map failure. Host failure tests and M3
+  injected error/retry with 4096 fragment outputs pass, then 178 CTS cases (six
+  NS). Broader preamble replays found one intermittent M3 SuperTuxKart mismatch;
+  controls, preceding-workload replay and ten alternating cold-cache checks pass
+  without reproducing it. Preserve the original failure and keep options opt-in.

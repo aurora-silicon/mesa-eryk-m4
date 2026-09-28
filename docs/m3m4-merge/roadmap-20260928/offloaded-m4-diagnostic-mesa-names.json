@@ -1,0 +1,23 @@
+[
+  "asahi-m3m4-coalesce-bounded-scan",
+  "asahi-m3m4-coalesce-masked",
+  "asahi-m3m4-native-preamble512",
+  "asahi-m3m4-native-preamble64",
+  "asahi-m3m4-native-preamble64-fallback",
+  "asahi-m3m4-preamble-all512",
+  "asahi-m3m4-preamble-blockalign",
+  "asahi-m3m4-preamble-bool",
+  "asahi-m3m4-preamble-bool-nomul",
+  "asahi-m3m4-preamble-compute-gcm",
+  "asahi-m3m4-preamble-compute-narrow",
+  "asahi-m3m4-preamble-convert",
+  "asahi-m3m4-preamble-exact-dot",
+  "asahi-m3m4-preamble-floatcmp",
+  "asahi-m3m4-regression-fragment-alias-branch",
+  "asahi-m3m4-regression-fragment-tag-branch",
+  "asahi-m3m4-regression-frost-bisect",
+  "asahi-m3m4-regression-full-alias",
+  "asahi-m3m4-regression-no-mixed-fma",
+  "asahi-m3m4-regression-ubo-alias",
+  "asahi-m3m4-regression-vertex-address"
+]

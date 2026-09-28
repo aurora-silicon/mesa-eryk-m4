@@ -1,0 +1,62 @@
+[
+  {
+    "session": "roadmap-20260928-stk-cold-00-off",
+    "mode": "off",
+    "path": "results/supertuxkart-zink/m3/20260928T113956497468Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  },
+  {
+    "session": "roadmap-20260928-stk-cold-01-on",
+    "mode": "on",
+    "path": "results/supertuxkart-zink/m3/20260928T114022277964Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  },
+  {
+    "session": "roadmap-20260928-stk-cold-02-off",
+    "mode": "off",
+    "path": "results/supertuxkart-zink/m3/20260928T114038900699Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  },
+  {
+    "session": "roadmap-20260928-stk-cold-03-on",
+    "mode": "on",
+    "path": "results/supertuxkart-zink/m3/20260928T114104338074Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  },
+  {
+    "session": "roadmap-20260928-stk-cold-04-off",
+    "mode": "off",
+    "path": "results/supertuxkart-zink/m3/20260928T114120593538Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  },
+  {
+    "session": "roadmap-20260928-stk-cold-05-on",
+    "mode": "on",
+    "path": "results/supertuxkart-zink/m3/20260928T114145819567Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  },
+  {
+    "session": "roadmap-20260928-stk-cold-06-off",
+    "mode": "off",
+    "path": "results/supertuxkart-zink/m3/20260928T114201524369Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  },
+  {
+    "session": "roadmap-20260928-stk-cold-07-on",
+    "mode": "on",
+    "path": "results/supertuxkart-zink/m3/20260928T114226579633Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  },
+  {
+    "session": "roadmap-20260928-stk-cold-08-off",
+    "mode": "off",
+    "path": "results/supertuxkart-zink/m3/20260928T114243361395Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  },
+  {
+    "session": "roadmap-20260928-stk-cold-09-on",
+    "mode": "on",
+    "path": "results/supertuxkart-zink/m3/20260928T114311783321Z-m3-supertuxkart-zink-check/benchmark.json",
+    "approved": true
+  }
+]
