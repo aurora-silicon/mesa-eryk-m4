@@ -542,3 +542,15 @@ images. This adapted replay is not benchmark qualification. Two cold M3 controls
 expose a retirement-only guard limitation during CPU pipeline work; qualification
 and a safe idle-aware policy remain open. See
 `roadmap-20260928/compression-capture-aliases.md`. No defaults changed.
+
+### Idle/progress qualification follow-up
+
+- [x] Add a separate shared host activity endpoint without changing completion
+  ABI v1. Validate pending/idle transitions and eight exact mixed-facing probes
+  on each GPU.
+- [x] Fix the M3 guard's overwritten total deadline and qualify bounded CPU
+  compilation against fresh, healthy GPU-idle evidence on both machines.
+  Cold uncached Satisfactory DX11 checks complete with exact ordinary images;
+  CPU activity while GPU work is pending cannot renew the watchdog. Preserve
+  the failed process-group-only diagnostic. Details in
+  `roadmap-20260928/idle-progress-validation.md`.
