@@ -525,3 +525,11 @@ no per-shader workaround, tolerance relaxation or default enablement.
   from old references, so corrected M4 reference checks are in progress.
   Preambles remain opt-in; intermittent M4 failure causes and the roadmap
   acceptance criteria are still open.
+
+- Matched helper-corrected Satisfactory DX11 gameplay medians improve
+  2.036 to 3.486 FPS on M3 (+71.25%) and 1.322 to 2.061 on M4 (+55.92%).
+  Each timed configuration has an exact image check; three samples follow a
+  warmup. Retained timing counters point to fragment/compute savings, with
+  little tiling change. Six complete M3 and three M4 optimized checks are
+  exact, but the original localized M3 mismatch remains unresolved. The
+  diagnostic shader bisection did not reproduce it. Preambles stay opt-in.

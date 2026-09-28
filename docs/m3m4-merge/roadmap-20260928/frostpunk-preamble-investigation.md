@@ -268,3 +268,38 @@ ordinary M4 and ordinary M3 are byte-exact in all three saved images, but
 M3 preambles change 70 pixels at frame 16 and 54 at frame 31, by at most 2/255.
 Gameplay's existing policy is exact, so this remains a failed qualification;
 no gameplay timing approval or tolerance change is made.
+
+### Exact repeats and paired DX11 gameplay timing
+
+The first M3 gameplay mismatch remains a failure of the exact image policy.
+Its changed pixels are confined to distant foliage at the right edge:
+frame 16 x=3800..3830/y=1086..1096, frame 31 x=3794..3828/y=1088..1097.
+A diagnostic full-selection shader bisection fails to reproduce it, so no
+responsible shader or cause has been established. Six subsequent complete M3
+checks (disk cache disabled, two existing-cache and three fresh-cache runs)
+are byte-exact against the corrected ordinary M4 reference. Three complete
+M4 preamble checks are also exact. These repeats do not erase the failure.
+
+Matched complete-package dd452c4dd66 timings, one warmup and three 30-frame
+samples per mode, now have their own approved exact image checks:
+
+| GPU | Ordinary samples (FPS) | Preamble samples (FPS) | Median gain |
+| --- | --- | --- | --- |
+| M3 | 2.040564, 2.035784, 2.033322 | 3.493227, 3.486255, 3.482781 | 71.25% |
+| M4 | 1.318000, 1.323185, 1.321849 | 1.856014, 2.156914, 2.061079 | 55.92% |
+
+M4 power policy varies clocks, especially in the optimized samples. These
+are guarded trace results with identical graphics settings, not fixed-clock
+comparisons. Default preamble flags and desktop packages are unchanged.
+
+`native-timing-delta.py BEFORE_JSON AFTER_JSON` reads saved replay timing
+snapshots. It rejects changed devices, generations or schemas, unhealthy
+snapshots, reversed observation time and counter resets. All twelve timing
+intervals pass; reversing a retained pair is rejected. The interval includes
+initialization and other GPU clients. Active spans overlap; neither summing
+engine spans nor dividing them by wall time measures GPU utilization.
+M3 fragment spans fall from about 8.45 to 4.15 seconds, compute GPU spans from
+6.73 to 4.33 seconds; tiling stays near 0.53 seconds. M4 fragment spans fall
+from about 13.24 to 6.83–7.88 seconds and compute from 9.10 to 6.34–7.35,
+with tiling near 0.52 seconds. These support shader execution as the next
+optimization target without claiming exact per-frame stage timings.
