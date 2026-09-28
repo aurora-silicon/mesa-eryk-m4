@@ -24,10 +24,11 @@ static GLuint shader(GLenum type,const char *text) {
    CHECK(ok);return s;
 }
 int main(int argc, char **argv) {
-   int record_only=0;
+   int record_only=0,gpu_updates=0;
    unsigned width=64,height=4,rounds=32;
    for(int i=1;i<argc;++i) {
       if(!strcmp(argv[i],"--record-only")) record_only=1;
+      else if(!strcmp(argv[i],"--gpu-updates")) gpu_updates=1;
       else if(!strcmp(argv[i],"--size") && i+2<argc) {
          char *end;
          unsigned long w=strtoul(argv[++i],&end,10); CHECK(*end==0 && w>=1 && w<=4096);
@@ -37,11 +38,11 @@ int main(int argc, char **argv) {
          char *end;
          unsigned long n=strtoul(argv[++i],&end,10); CHECK(*end==0 && n>=1 && n<=32);
          rounds=n;
-      } else {fprintf(stderr,"Usage: %s [--record-only] [--size WIDTH HEIGHT] [--rounds 1..32]\n",argv[0]);return 1;}
+      } else {fprintf(stderr,"Usage: %s [--record-only] [--gpu-updates] [--size WIDTH HEIGHT] [--rounds 1..32]\n",argv[0]);return 1;}
    }
    EGLDisplay d=eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,NULL,NULL);
    CHECK(eglInitialize(d,NULL,NULL)&&eglBindAPI(EGL_OPENGL_API));
-   EGLint attr[]={EGL_CONTEXT_MAJOR_VERSION,3,EGL_CONTEXT_MINOR_VERSION,3,
+   EGLint attr[]={EGL_CONTEXT_MAJOR_VERSION,gpu_updates?4:3,EGL_CONTEXT_MINOR_VERSION,3,
       EGL_CONTEXT_OPENGL_PROFILE_MASK,EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,EGL_NONE};
    EGLContext c=eglCreateContext(d,EGL_NO_CONFIG_KHR,EGL_NO_CONTEXT,attr);
    CHECK(c!=EGL_NO_CONTEXT&&eglMakeCurrent(d,EGL_NO_SURFACE,EGL_NO_SURFACE,c));
@@ -58,6 +59,17 @@ int main(int argc, char **argv) {
    glAttachShader(p,shader(GL_FRAGMENT_SHADER,fragment));
    glLinkProgram(p);GLint ok;glGetProgramiv(p,GL_LINK_STATUS,&ok);CHECK(ok);
    glUseProgram(p);glUniformBlockBinding(p,glGetUniformBlockIndex(p,"Values"),0);
+   GLuint update=0;
+   GLint round_location=-1;
+   if(gpu_updates) {
+      update=glCreateProgram();
+      glAttachShader(update,shader(GL_COMPUTE_SHADER,
+         "#version 430 core\nlayout(local_size_x=64) in;layout(std430,binding=0) buffer Values {uvec4 v[64];};uniform uint round_index;\n"
+         "const uint seeds[8]=uint[8](0u,1u,0x7fffffffu,0x80000000u,0xffffffffu,0x7fc00000u,0x00010001u,0xdeadbeefu);\n"
+         "void main(){uint j=gl_LocalInvocationID.x;for(uint k=0u;k<4u;++k)v[j][k]=seeds[(round_index+j+k)%8u]^(round_index*0x9e3779b9u+j*0x10001u+k);}"));
+      glLinkProgram(update);glGetProgramiv(update,GL_LINK_STATUS,&ok);CHECK(ok);
+      round_location=glGetUniformLocation(update,"round_index");CHECK(round_location>=0);
+   }
    GLuint buffer;glGenBuffers(1,&buffer);glBindBuffer(GL_UNIFORM_BUFFER,buffer);
    glBufferData(GL_UNIFORM_BUFFER,1024,NULL,GL_DYNAMIC_DRAW);glBindBufferBase(GL_UNIFORM_BUFFER,0,buffer);
    GLuint vao,tex,fb;glGenVertexArrays(1,&vao);glBindVertexArray(vao);
@@ -76,7 +88,12 @@ int main(int argc, char **argv) {
       uint32_t v[64][4];
       for(unsigned j=0;j<64;++j)for(unsigned k=0;k<4;++k)
          v[j][k]=seeds[(round+j+k)%8]^(round*0x9e3779b9u+j*0x10001u+k);
-      glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(v),v);glDrawArrays(GL_TRIANGLES,0,3);
+      if(gpu_updates) {
+         glUseProgram(update);glUniform1ui(round_location,round);
+         glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,buffer);glDispatchCompute(1,1,1);
+         glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);glUseProgram(p);
+      } else glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(v),v);
+      glDrawArrays(GL_TRIANGLES,0,3);
       glReadPixels(0,0,width,height,GL_RGBA_INTEGER,GL_UNSIGNED_INT,pixels);CHECK(glGetError()==GL_NO_ERROR);
       for(unsigned x=0;x<width;++x)for(unsigned k=0;k<4;++k){
          expected[x*4+k]=0;
@@ -89,7 +106,7 @@ int main(int argc, char **argv) {
       }
       printf("round=%u bad=%"PRIu64"\n",round,bad);fflush(stdout);
    }
-   printf("%s: U32 wide-uniform export oracle; size=%ux%u rounds=%u values=%"PRIu64" mismatches=%"PRIu64"\n",bad?"FAIL":"PASS",width,height,rounds,(uint64_t)width*height*4*rounds,bad);
+   printf("%s: U32 wide-uniform export oracle; updates=%s size=%ux%u rounds=%u values=%"PRIu64" mismatches=%"PRIu64"\n",bad?"FAIL":"PASS",gpu_updates?"gpu":"cpu",width,height,rounds,(uint64_t)width*height*4*rounds,bad);
    free(expected);free(pixels);
    if(!record_only)CHECK(!bad);
    return 0;

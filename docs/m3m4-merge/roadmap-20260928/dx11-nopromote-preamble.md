@@ -116,3 +116,27 @@ does not qualify conditional, derivative, or game shaders.
 Evidence: M3 `/root/m3-wide-uniform-4k-20260928`, M4 experiment
 `dx11-wide-uniform-4k-oracle`; both retain watchdog and all-channel thermal logs.
 The fixture source is `src/asahi/compiler/test/probes/gl-uniform-wide-probe.c`.
+
+
+The `--gpu-updates` fixture mode replaces CPU buffer uploads with a compute
+shader writing the UBO through an SSBO alias, followed by
+`GL_UNIFORM_BARRIER_BIT`. The CPU oracle remains independent. M3, M4 and
+llvmpipe each pass four 4K updates (132,710,400 values), testing compute-to-
+constant-program visibility as well as CPU-to-constant-program visibility.
+
+Two further full-scene M3 controls still fail: serializing native instructions
+throughout fragment shaders gives maximum errors 100/66/46; forcing retention
+of quad helpers for every fragment shader gives 2/29/123. Neither change is a
+fix and neither remains in source. Boolean-producing preamble operations are
+the next isolation target; the memory-only flag also makes their input loads
+eligible, so its failure does not yet identify a memory-instruction defect.
+
+M4's low CPU ceiling was traced to boost being disabled, not a thermal stop.
+Temporarily enabling it exposed a guard bug: the ordinary OPP list excludes
+boost frequencies. The guard skipped applying the requested 4.104 GHz cap,
+then rejected the effective 4.464 GHz ceiling before the workload started.
+That guard failure triggered watchdog recovery. Kernel/tools commit
+7e9e787edea6 consults the hardware maximum before skipping a cap; 15 host tests
+and a guarded 4K GPU-written UBO run pass. The actual requested ceiling is now
+applied without relaxing any thermal/watchdog/progress checks. Boost is restored
+after the experiment. The original incomplete record is retained.
