@@ -233,7 +233,8 @@ compile_index_derived_store(enum agx_isa_encoding encoding,
    if (ok && out_add != NULL) {
       const uint8_t *bin = part.binary;
       for (unsigned i = 0; i + 10 <= part.info.binary_size; ++i) {
-         if (bin[i] != 0x9f || bin[i + 2] != 0x56)
+         if (bin[i] != 0x9f || (bin[i + 1] & 0x0f) != 0x01 ||
+             (bin[i + 2] & ~0x02) != 0x54)
             continue;
          memcpy(out_add, bin + i, 10);
          *out_add_found = true;
@@ -409,6 +410,8 @@ check_imad_bytes(void)
                                       0xfc, 0x23, 0x50, 0x2b, 0x22, 0x00};
    const struct agx3_imad_desc d = {
       .dest = 0, .src_a = 0, .multiplier = 255, .src_c = 4,
+      /* Both inputs are dead in the retained Apple witness. */
+      .src_a_kill = true, .src_c_kill = true,
       .wait_mask = 1u << 5,
    };
    uint8_t out[AGX3_IADD_MAX_LENGTH];
@@ -439,11 +442,15 @@ main(void)
          0x00, 0x11, 0x00, 0x00, 0x90, 0x11, 0x00};
       uint8_t add[10];
       bool add_found = false;
-      /* The `K + gid` add, byte-identical to the build the compute probes
-       * are known to pass on. f42 (slot-B last use) must stay 0 here: the
-       * addend is still live. */
-      static const uint8_t want_add[10] = {0x9f, 0x01, 0x56, 0x02, 0x02,
-                                           0x00, 0x08, 0xa8, 0x13, 0x05};
+      /* K + gid uses slot A = gid (r0, still live for the store index)
+       * and slot B = K (r1, dead after the add). Hence f27 stays clear and
+       * f42 is set. Both producers are synchronous ALU, so no scoreboard
+       * wait is needed (the old fixture unnecessarily pinned slot 6).
+       * These are the operand/lifetime fields from agx3_iadd_core.h, not
+       * permission to discard gid or to omit a memory producer dependency.
+       */
+      static const uint8_t want_add[10] = {0x9f, 0x01, 0x54, 0x02, 0x02,
+                                           0x00, 0x08, 0xa8, 0x15, 0x05};
       CHECK(compile_index_derived_store(AGX_ISA_ENCODING_AGX3B, store, &found,
                                         add, &add_found));
       CHECK(found);

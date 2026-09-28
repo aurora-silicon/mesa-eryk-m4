@@ -620,3 +620,10 @@ and a safe idle-aware policy remain open. See
   passes and retains unlowered printf/ray-query rejection. The full fixture
   still fails on an AGX3C local-ID encoding; it remains an open host-suite failure,
   not a skip or a hardware-support claim.
+
+- [x] Refresh the multi-store fixture with the retained Apple IMAD witness's
+  explicit last-use inputs. Pin K+gid's operand lifetimes (keep gid, discard K)
+  and absence of a wait on its synchronous ALU producers; retain the exact
+  scaled store bytes. All 22 fixture checks and 181 integer-add core checks
+  pass. The remaining full host-suite failures are compile-fail-closed AGX3C,
+  event-wait, ray tracing and graphics-compile.
