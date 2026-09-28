@@ -1,0 +1,46 @@
+[
+  {
+    "machine": "m3",
+    "variant": "branchless",
+    "healthy": true,
+    "counts": {
+      "Pass": 204
+    },
+    "selected": 204,
+    "completed_batches_end": 204,
+    "stopped_on_test_failure": false
+  },
+  {
+    "machine": "m3",
+    "variant": "direct",
+    "healthy": true,
+    "counts": {
+      "Pass": 204
+    },
+    "selected": 204,
+    "completed_batches_end": 204,
+    "stopped_on_test_failure": false
+  },
+  {
+    "machine": "m4",
+    "variant": "branchless",
+    "healthy": true,
+    "counts": {
+      "Pass": 204
+    },
+    "selected": 204,
+    "completed_batches_end": 204,
+    "stopped_on_test_failure": false
+  },
+  {
+    "machine": "m4",
+    "variant": "direct",
+    "healthy": true,
+    "counts": {
+      "Pass": 204
+    },
+    "selected": 204,
+    "completed_batches_end": 204,
+    "stopped_on_test_failure": false
+  }
+]

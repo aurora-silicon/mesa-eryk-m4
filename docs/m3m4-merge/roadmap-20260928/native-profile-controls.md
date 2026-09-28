@@ -60,3 +60,21 @@ alias lookup. Frostpunk qualification of the latter control is ongoing.
 M4 normal boot is verified restored: boot775cfd3f, packet32, same kernel module,
 active display manager and healthy idle native activity. Both smaller-packet
 DX12 controls completed without a reboot or GPU fault during replay.
+
+## Final bounded qualification checkpoint
+
+The full 204-case frozen fragment `robustness.buffer_access` subgroup passes
+on both M3 and M4 with each control: branchless alias lookup and the original
+direct-buffer option, with memory preambles enabled. No cases were filtered by
+outcome; global catalog indices and the catalog SHA256 are retained. The actual
+host sparse-lowering test also passes for the branchless variant and after
+restoring normal source: 52 coalesced boundaries, 810 bounds-oracle cases, six
+352-case sparse byte/vector/atomic groups, and the other retained rejection,
+carry and immutable-window checks. These successes do not waive image failures.
+
+M3 Frostpunk branchless-only passes its unchanged reviewed policy: 8/21/13
+pixels differ, maximum1/2/1. M4 native Satisfactory reproduces M3's 2/12/5-pixel
+max1 difference exactly. Desktop Mesa and driver defaults remain unchanged.
+The user requested wrapping up these harder optimization experiments at this
+checkpoint; broader roadmap work is still open. No stress workload is left on
+either machine, and M4's normal packet32 boot/display manager were restored.

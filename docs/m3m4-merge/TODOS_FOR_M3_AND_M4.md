@@ -655,3 +655,10 @@ and a safe idle-aware policy remain open. See
   and healthy. Split descriptor/alias controls isolate the larger native-image
   difference to direct descriptors; the branchless-only control has max1 at
   2/12/5 pixels and retains its exact-policy failure pending qualification.
+
+- 2026-09-29 checkpoint: each GPU passes all 204 fragment buffer robustness
+  cases with branchless aliases and with direct buffers (816 passes total).
+  Host sparse-lowering controls pass; image-policy differences remain recorded.
+  User requested wrapping up the harder optimization experiments. No desktop
+  defaults changed; matched replay gains are documented in
+  `roadmap-20260928/session-rendering-summary.md`. Overall roadmap stays open.
