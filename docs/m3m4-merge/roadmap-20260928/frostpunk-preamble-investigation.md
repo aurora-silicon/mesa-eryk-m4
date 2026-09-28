@@ -164,3 +164,30 @@ publishing new performance results.
 
 Corrected shared Vulkan library SHA256:
 `4a89e7e00dc85c7579b64d6f06fbc932c22da069e5ad26490530931da745fac2`.
+
+### Broader qualification after the helper correction
+
+Both GPUs complete the same frozen 2,058-case selection of front-facing,
+derivative, helper-invocation, demote and memory regressions: 1,898 Pass and
+160 NotSupported each, no failures. Global catalog indices are preserved.
+The original Frostpunk frame agrees across both GPUs and both preamble modes
+within 4–15 one-level RGB differences.
+
+Full 31-frame replay without preambles completes on both GPUs. M3 with
+preambles also completes; all three saved frames agree with corrected M4
+ordinary output within the unchanged sparse policy (maximum 2/255, at most
+24 pixels). The corrected ordinary M4 output is a new, explicitly reviewed
+regression reference, supported by the independent failing/passing derivative
+probe and software normal readback; old references remain retained.
+
+M4's first full preamble attempt does not complete: watchdog recovery changes
+the boot ID from 44bef51d-c664-4021-86ff-478397d751ad to
+ d1735369-3bd2-4186-ae7a-ce2b0d1c8250. Telemetry continues to 83.75 C with no
+explicit firmware fault in the retained stream. Host progress, replay telemetry
+and the live kernel stream stop before thermal telemetry; the cause is not yet
+identified. A fresh-boot repeat with read-only process-stack collection completes,
+but its final saved image differs in 95 pixels (44 above 2/255, maximum 19),
+localized to x=2081..2090/y=990..1005. The first two images match. This run fails
+the unchanged image policy and receives no timing approval. Keep the reset and
+localized mismatch open; neither invalidates the independently reproduced
+front-facing fix, and neither is grounds for enabling preambles by default.

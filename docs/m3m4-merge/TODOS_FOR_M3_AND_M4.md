@@ -508,3 +508,9 @@ no per-shader workaround, tolerance relaxation or default enablement.
   all 306 host compiler tests pass. Frostpunk normalization now agrees between
   ordinary and preamble compilation. Full replay/reference qualification is
   still in progress; the roadmap and preamble default remain incomplete.
+
+- Helper correction qualification: both GPUs finish 2,058 targeted CTS cases
+  (1,898 Pass,160 NS); M3 full Frostpunk replay matches with/without preambles.
+  M4 full preamble replay exposes one unresolved watchdog recovery and, on a
+  completed repeat, a localized final-frame mismatch. Preserve both incidents
+  and keep preambles opt-in while diagnosing them; no tolerance relaxation.
