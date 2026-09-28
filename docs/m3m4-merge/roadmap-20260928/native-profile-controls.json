@@ -1,0 +1,72 @@
+[
+  {
+    "profile": "prefetch",
+    "options": [
+      "HK_M4_PREFETCH_DESCRIPTORS=true",
+      "HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH=true"
+    ],
+    "run": "20260928T221903033087Z-m3-satisfactory-vulkan-gameplay-check",
+    "correctness": "pass",
+    "check_fps_unscored": 3.110835947532531,
+    "comparisons": [
+      {
+        "maximum_error": 0,
+        "changed_pixels": 0
+      },
+      {
+        "maximum_error": 0,
+        "changed_pixels": 0
+      },
+      {
+        "maximum_error": 0,
+        "changed_pixels": 0
+      }
+    ]
+  },
+  {
+    "profile": "direct",
+    "options": [
+      "HK_DIAGNOSTIC_DIRECT_BUFFERS=true"
+    ],
+    "run": "20260928T221933083568Z-m3-satisfactory-vulkan-gameplay-check",
+    "correctness": "fail",
+    "check_fps_unscored": 4.64224918500623,
+    "comparisons": [
+      {
+        "maximum_error": 3,
+        "changed_pixels": 346
+      },
+      {
+        "maximum_error": 3,
+        "changed_pixels": 377
+      },
+      {
+        "maximum_error": 2,
+        "changed_pixels": 435
+      }
+    ]
+  },
+  {
+    "profile": "branch",
+    "options": [
+      "HK_NATIVE_BRANCH_SCALED=true"
+    ],
+    "run": "20260928T221957373075Z-m3-satisfactory-vulkan-gameplay-check",
+    "correctness": "pass",
+    "check_fps_unscored": 3.1110929333407786,
+    "comparisons": [
+      {
+        "maximum_error": 0,
+        "changed_pixels": 0
+      },
+      {
+        "maximum_error": 0,
+        "changed_pixels": 0
+      },
+      {
+        "maximum_error": 0,
+        "changed_pixels": 0
+      }
+    ]
+  }
+]

@@ -641,3 +641,10 @@ and a safe idle-aware policy remain open. See
   graphics fixtures remain open). A pinned 26-case basic-event selection on M3
   gives 13 Pass / 13 NotSupported under the usual guard. M4 validation follows
   its running replay benchmark; no runtime code was changed by these fixtures.
+
+- 2026-09-29: Isolated the slower native replay profile: direct-buffer shortcuts
+  restore most speed but reproduce 346/377/435 changed pixels (max3/3/2).
+  Prefetch and scaled branching each pass that capture separately; all remain
+  scoped controls until broader qualification. M4 DX12 packet32 hits the memory
+  guard even without its desktop; recovery is healthy, packet8 control pending.
+  See `roadmap-20260928/native-profile-controls.md`.
