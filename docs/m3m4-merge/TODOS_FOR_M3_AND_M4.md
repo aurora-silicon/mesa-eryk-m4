@@ -400,3 +400,9 @@ carry enough retained evidence for another developer to reproduce them.
   cached shader deserialization legitimately recovers by fresh compilation;
   retained the original too-strict probe failure and corrected only that warm
   cache expectation. Full M3 catalog resumed from 3,139,686 immutable outcomes.
+
+- 2026-09-28: M3 encountered six XCB swapchain failures caused by the headless
+  compositor's mixed EGL/GBM/Gallium paths disabling DRI3. Fixed the launcher,
+  added DRI3/Present preflight and compositor-stack hashes; all six pass. Main
+  catalog paused at 3,139,946 while separately auditing all 3,997 earlier XCB/Xlib
+  outcomes, including misleading presentation-related NotSupported records.
