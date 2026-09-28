@@ -22,3 +22,25 @@ Both failures retain guards, logs and memory telemetry; neither is a GPU fault
 or a successful replay. The desktop is restored and the activity ABI is healthy.
 The prior successful DX12 run used packet8, so comparison requires retaining
 that difference rather than blaming the compiler or relaxing the memory guard.
+
+## Matched Lethal Company follow-up
+
+On the current M3 compiler, enabling scaled-format branching changes 259 pixels
+in each checkpoint by at most one RGB level versus the matched preamble control.
+Both current outputs differ substantially from the old reference. Reversing only
+the BACKFACING helper correction reproduces every old reference RGB value at
+all three frames. Thus the large reference shift is separate from the small
+branch-control difference. The prior exact-only regression remains retained;
+no global branch default or reference tolerance was changed.
+
+## Completed M4 memory control
+
+The same M4 compiler and DX12 capture complete with packet8 and the private
+software headless compositor, with and without memory preambles. All three RGB
+images are bit-exact between both variants and the current M3 output. The M4
+checks retain their diagnostic-only classification; they do not qualify a new
+performance score. The watchdog, thermal checks and 1 GiB memory floor are
+unchanged. Packet32 boot files and the exact original initramfs were restored;
+normal-boot verification follows the planned restart. No compiler source was
+changed to make the memory control pass. Dynamic memory-pressure handling and
+bounded per-packet allocation remain open driver work.

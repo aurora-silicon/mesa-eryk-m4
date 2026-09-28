@@ -1,0 +1,17 @@
+[
+  {
+    "frame": "screenshot_frame_1.png",
+    "maximum": 1,
+    "changed_pixels": 259
+  },
+  {
+    "frame": "screenshot_frame_16.png",
+    "maximum": 1,
+    "changed_pixels": 259
+  },
+  {
+    "frame": "screenshot_frame_31.png",
+    "maximum": 1,
+    "changed_pixels": 259
+  }
+]

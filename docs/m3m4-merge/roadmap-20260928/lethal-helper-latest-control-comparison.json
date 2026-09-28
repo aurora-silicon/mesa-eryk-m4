@@ -1,0 +1,21 @@
+{
+  "first": "results/lethal-company-dx11-gameplay/m4/20260923T234051406030Z-bench-lethal-company-dx11-gameplay-check/benchmark.json",
+  "second": "/home/council/dev/gpu-replay-bench/results/lethal-company-dx11-gameplay/m3/20260928T222554108725Z-m3-lethal-company-dx11-gameplay-check/benchmark.json",
+  "comparisons": [
+    {
+      "frame": "screenshot_frame_1.png",
+      "maximum": 0,
+      "changed_pixels": 0
+    },
+    {
+      "frame": "screenshot_frame_16.png",
+      "maximum": 0,
+      "changed_pixels": 0
+    },
+    {
+      "frame": "screenshot_frame_31.png",
+      "maximum": 0,
+      "changed_pixels": 0
+    }
+  ]
+}

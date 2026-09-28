@@ -1,0 +1,21 @@
+{
+  "first": "results/satisfactory-dx12-gameplay/m3/20260928T220129331556Z-m3-satisfactory-dx12-gameplay-check/benchmark.json",
+  "second": "results/satisfactory-dx12-gameplay/m4/20260928T222513908675Z-bench-satisfactory-dx12-packet8-memory-check/benchmark.json",
+  "comparisons": [
+    {
+      "frame": "screenshot_frame_6.png",
+      "maximum": 0,
+      "changed_pixels": 0
+    },
+    {
+      "frame": "screenshot_frame_20.png",
+      "maximum": 0,
+      "changed_pixels": 0
+    },
+    {
+      "frame": "screenshot_frame_35.png",
+      "maximum": 0,
+      "changed_pixels": 0
+    }
+  ]
+}
