@@ -22,7 +22,7 @@ static unsigned failures;
 static unsigned checks;
 
 static void
-expect(const char *what, bool ok, const uint8_t *bytes, uint8_t len,
+expect_result(const char *what, bool ok, const uint8_t *bytes, uint8_t len,
        const char *expected_hex)
 {
    char got[2 * AGX3_RT_CORE_MAX_LENGTH + 1] = {0};
@@ -45,7 +45,7 @@ expect(const char *what, bool ok, const uint8_t *bytes, uint8_t len,
 }
 
 static void
-expect_refused(const char *what, bool ok, const uint8_t *bytes, uint8_t len)
+expect_refused_result(const char *what, bool ok, const uint8_t *bytes, uint8_t len)
 {
    checks++;
    if (ok) {
@@ -66,6 +66,22 @@ expect_refused(const char *what, bool ok, const uint8_t *bytes, uint8_t len)
       failures++;
    }
 }
+
+/* C does not sequence function arguments. Read the output length only after
+ * the encoder writes it; otherwise a call can compare the previous encoding's
+ * length (or the uninitialized first length) against an unrelated witness.
+ */
+#define expect(what, encode, bytes, length, hex)                                \
+   do {                                                                        \
+      const bool encoded_ = (encode);                                          \
+      expect_result((what), encoded_, (bytes), (length), (hex));                 \
+   } while (0)
+
+#define expect_refused(what, encode, bytes, length)                             \
+   do {                                                                        \
+      const bool encoded_ = (encode);                                          \
+      expect_refused_result((what), encoded_, (bytes), (length));               \
+   } while (0)
 
 int
 main(void)

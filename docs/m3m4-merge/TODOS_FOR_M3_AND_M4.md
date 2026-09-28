@@ -627,3 +627,9 @@ and a safe idle-aware policy remain open. See
   scaled store bytes. All 22 fixture checks and 181 integer-add core checks
   pass. The remaining full host-suite failures are compile-fail-closed AGX3C,
   event-wait, ray tracing and graphics-compile.
+
+- [x] Sequence ray-tracing test encoder calls before reading their output length.
+  C argument evaluation order previously used the old (initially uninitialized)
+  length, producing false failures. All 53 checks now pass without changing any
+  Apple instruction witnesses. This fixes the fixture, not GPU ray-tracing
+  behavior; three of the original ten host-suite failures remain.
