@@ -473,3 +473,12 @@ Native Vulkan Satisfactory's reference change is isolated and reviewed in
 2.3094 -> 3.2728 FPS (+41.71%). M4's matched measurement is still running.
 These measurements use normal constant promotion and the same b656c92 binary;
 they do not replace earlier runs made with other compiler configurations.
+
+M4 native Vulkan Satisfactory also passes exact pre/post checks: median
+1.2622 -> 2.0363 FPS (+61.33%). These absolute speeds are below the earlier
+September 26 profile. Comparing the retained capture/replayer/configuration
+hashes finds them unchanged; kernel and Mesa revisions differ. A guarded old-
+Mesa control on the current M3 kernel is investigating that difference. Do not
+claim that the paired preamble gain preserves the earlier best performance.
+Both GPUs finish the 26 basic-event CTS cases: 13 Pass / 13 NotSupported
+(exclusive compute queues), with unchanged guards and original indices.

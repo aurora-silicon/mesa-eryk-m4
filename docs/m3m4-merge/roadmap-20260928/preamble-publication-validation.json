@@ -369,5 +369,58 @@
     },
     "improvement_percent": 41.71381448597966,
     "qualification": "Exact pre/post image checks, unchanged capture and guards; no clock normalization"
+  },
+  "m4_satisfactory_native_vulkan_timing": {
+    "baseline": {
+      "fps": [
+        1.26216767158602,
+        1.2389215589801308,
+        1.2905465730150527
+      ],
+      "median_fps": 1.26216767158602,
+      "seconds": [
+        23.768632865,
+        24.214608086,
+        23.245964638
+      ]
+    },
+    "preamble": {
+      "fps": [
+        1.9886752631979443,
+        2.044903567659727,
+        2.0362691061468126
+      ],
+      "median_fps": 2.0362691061468126,
+      "seconds": [
+        15.085419201,
+        14.670618446,
+        14.732826771
+      ]
+    },
+    "improvement_percent": 61.33110932781767,
+    "qualification": "Exact pre/post image checks, unchanged capture and guards; no clock normalization"
+  },
+  "event_regression": {
+    "m3": {
+      "healthy": true,
+      "counts": {
+        "Pass": 13,
+        "NotSupported": 13
+      },
+      "selected": 26,
+      "completed_batches_end": 26,
+      "stopped_on_test_failure": false
+    },
+    "m4": {
+      "healthy": true,
+      "counts": {
+        "Pass": 13,
+        "NotSupported": 13
+      },
+      "selected": 26,
+      "completed_batches_end": 26,
+      "stopped_on_test_failure": false
+    },
+    "unsupported_reason": "Exclusive compute queue not supported; all catalog cases retained"
   }
 }
