@@ -289,3 +289,43 @@ The raw comparison helper now reports before-draw byte differences explicitly
 and rejects asymmetric or truncated before-draw snapshots. Three offline tests
 cover those cases. All game readbacks remain private in the local benchmark
 repository; no assets or raw game attachments are published with Mesa.
+
+### Follow-up controls: ordering and descriptor witness
+
+The single-command/synchronous/early-tiling-disabled candidate also matches all
+20 first-frame M4 repetitions, but full 31-frame replays still fail: M4's first
+run differs in 1,604 pixels (maximum 54); M3 matches once, then differs in 696
+(maximum 45). Thus the first-frame results do not establish an ordering fix.
+Clearing only the preamble uniform-copy source-discard hints also fails on M4
+(156 pixels, maximum 8). This changes two instruction bytes and leaves the main
+shader byte-identical. Advertising the maximum preamble GPR allocation without
+changing shader instructions fails too (579 pixels, maximum 17). In particular,
+zero and eight GPR halves both round to the minimum group in the baseline state
+encoder; the maximum-allocation experiment is not proof of an allocation bug.
+
+An instrumented shader reloads the descriptor in the main program and compares
+all four words with the preamble uniforms. It exports 2.0 to an otherwise zero
+emissive alpha channel on disagreement. Twenty repeated readback runs report no
+markers; twenty additional runs comparing all five attachments also match.
+Instrumentation changes the main shader and can mask the original issue. These
+negative runs do not prove that the unmodified shader always receives correct
+descriptors. A strengthened positive control flips one bit of the fresh read
+before the actual comparison (rather than forcing its result): 2,877 pixels
+contain the expected marker. Final rendering ignores this alpha channel and
+still matches. Positive-control evidence: `20260928T195554035967Z`.
+
+A separate 511x257 triangle probe checks centroid-derived nonlinear fine
+derivatives and independently calculated partial-triangle coverage. It passes
+on llvmpipe, M3 and M4 with checksum `f84e845a938bc6a8`. It exercises edge/helper
+behavior more directly than the earlier full-screen smoke test but does not
+qualify all interpolation patterns in the game.
+
+Disabling asynchronous pipeline creation (`--pipeline-creation-jobs 0`) still
+fails the first full M3 replay: 210 changed pixels, maximum 24. The M4 run reaches
+the 170-second bound during CPU setup and produces no screenshot; it is retained
+as incomplete, not an image result. The runner records this override as an
+unscored diagnostic without changing frozen capture metadata. Pipeline setup
+serialization is not a demonstrated remedy.
+
+Native memory preambles remain opt-in. No diagnostic above replaces the normal
+desktop driver or constitutes a new qualified performance result.
