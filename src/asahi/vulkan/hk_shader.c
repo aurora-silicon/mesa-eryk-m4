@@ -3770,11 +3770,27 @@ hk_deserialize_shader(struct hk_device *dev, struct blob_reader *blob,
    if (blob->overrun)
       return vk_error(dev, VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
 
+   /* Validate both payloads before allocating from serialized lengths. A
+    * truncated cache entry must cause a cache miss, not a potentially huge
+    * allocation followed by an overrun. These are separate reads so their
+    * lengths cannot overflow when added on a 32-bit host.
+    */
+   const void *code = blob_read_bytes(blob, code_size);
+   const void *data = blob_read_bytes(blob, data_size);
+   if (blob->overrun || (unsigned)info.stage > MESA_SHADER_COMPUTE ||
+       (unsigned)b_info.stage > MESA_SHADER_COMPUTE ||
+       b_info.binary_size != code_size ||
+       b_info.main_offset > code_size ||
+       b_info.main_size > code_size - b_info.main_offset ||
+       (b_info.has_preamble && b_info.preamble_offset >= code_size) ||
+       (b_info.rodata.size_16 &&
+        (b_info.rodata.offset > code_size ||
+         2u * b_info.rodata.size_16 > code_size - b_info.rodata.offset)))
+      return vk_error(dev, VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
+
    VkResult result = hk_init_link_ht(shader, info.stage);
    if (result != VK_SUCCESS)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   simple_mtx_init(&shader->linked.lock, mtx_plain);
 
    shader->b.info = b_info;
    shader->info = info;
@@ -3783,18 +3799,19 @@ hk_deserialize_shader(struct hk_device *dev, struct blob_reader *blob,
    shader->data_size = data_size;
    shader->b.info.binary_size = code_size;
 
-   shader->code_ptr = malloc(code_size);
-   if (shader->code_ptr == NULL)
-      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+   if (code_size) {
+      shader->code_ptr = malloc(code_size);
+      if (shader->code_ptr == NULL)
+         return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+      memcpy((void *)shader->code_ptr, code, code_size);
+   }
 
-   shader->data_ptr = malloc(data_size);
-   if (shader->data_ptr == NULL)
-      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   blob_copy_bytes(blob, (void *)shader->code_ptr, shader->code_size);
-   blob_copy_bytes(blob, (void *)shader->data_ptr, shader->data_size);
-   if (blob->overrun)
-      return vk_error(dev, VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
+   if (data_size) {
+      shader->data_ptr = malloc(data_size);
+      if (shader->data_ptr == NULL)
+         return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+      memcpy((void *)shader->data_ptr, data, data_size);
+   }
 
    shader->b.binary = (void *)shader->code_ptr;
    return hk_upload_shader(dev, shader);
@@ -3812,7 +3829,7 @@ hk_deserialize_api_shader(struct vk_device *vk_dev, struct blob_reader *blob,
       return vk_error(dev, VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
 
    mesa_shader_stage stage = blob_read_uint8(blob);
-   if (blob->overrun)
+   if (blob->overrun || stage > MESA_SHADER_COMPUTE)
       return vk_error(dev, VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
 
    size_t size = sizeof(struct hk_api_shader) +

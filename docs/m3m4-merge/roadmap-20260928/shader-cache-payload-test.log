@@ -1,0 +1,1 @@
+PASS: truncated/oversized payloads and code ranges rejected before allocation; empty data, copies and OOM ownership checked
