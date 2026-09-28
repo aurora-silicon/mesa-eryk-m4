@@ -44,3 +44,19 @@ unchanged. Packet32 boot files and the exact original initramfs were restored;
 normal-boot verification follows the planned restart. No compiler source was
 changed to make the memory control pass. Dynamic memory-pressure handling and
 bounded per-packet allocation remain open driver work.
+
+## Split the direct-buffer control
+
+Two temporary source controls were built and restored in a `finally` block;
+the normal source and desktop builds are unchanged. Keeping branched fragment
+alias lookup while enabling direct descriptors reproduces all the same
+346/377/435 differing pixels, max3/3/2. Enabling only branchless alias lookup
+without direct descriptors changes 2/12/5 pixels by at most one RGB level.
+The original exact comparison failures are retained; neither result changes the
+Satisfactory policy or enables an optimization by default. The split narrows
+the larger difference to direct descriptor lowering, rather than branchless
+alias lookup. Frostpunk qualification of the latter control is ongoing.
+
+M4 normal boot is verified restored: boot775cfd3f, packet32, same kernel module,
+active display manager and healthy idle native activity. Both smaller-packet
+DX12 controls completed without a reboot or GPU fault during replay.

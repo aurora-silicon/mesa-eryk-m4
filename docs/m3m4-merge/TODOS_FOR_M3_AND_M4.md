@@ -648,3 +648,10 @@ and a safe idle-aware policy remain open. See
   scoped controls until broader qualification. M4 DX12 packet32 hits the memory
   guard even without its desktop; recovery is healthy, packet8 control pending.
   See `roadmap-20260928/native-profile-controls.md`.
+
+- 2026-09-29: M4 packet8 DX12 controls complete with/without preambles; all
+  three images match each other and M3 exactly. Diagnostic compositor/memory
+  scope retained, no new performance score. Normal packet32 boot is restored
+  and healthy. Split descriptor/alias controls isolate the larger native-image
+  difference to direct descriptors; the branchless-only control has max1 at
+  2/12/5 pixels and retains its exact-policy failure pending qualification.

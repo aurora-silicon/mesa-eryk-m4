@@ -1,0 +1,46 @@
+[
+  {
+    "control": "direct-branched-alias",
+    "run": "20260928T223012050546Z-m3-satisfactory-vulkan-gameplay-check",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "7f699ab9842c84001c922308efe163075ffee9453e2ca4ac1e3f5217f557c1b3"
+    },
+    "correctness": "fail",
+    "comparisons": [
+      {
+        "maximum": 3,
+        "changed_pixels": 346
+      },
+      {
+        "maximum": 3,
+        "changed_pixels": 377
+      },
+      {
+        "maximum": 2,
+        "changed_pixels": 435
+      }
+    ]
+  },
+  {
+    "control": "branchless-alias-only",
+    "run": "20260928T223105138688Z-m3-satisfactory-vulkan-gameplay-check",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "e3ba37079e5b688039c1c5cc7898ec819fec8a67dd9ce1c4776825d691c4014b"
+    },
+    "correctness": "fail",
+    "comparisons": [
+      {
+        "maximum": 1,
+        "changed_pixels": 2
+      },
+      {
+        "maximum": 1,
+        "changed_pixels": 12
+      },
+      {
+        "maximum": 1,
+        "changed_pixels": 5
+      }
+    ]
+  }
+]
