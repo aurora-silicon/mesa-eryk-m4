@@ -554,3 +554,9 @@ and a safe idle-aware policy remain open. See
   CPU activity while GPU work is pending cannot renew the watchdog. Preserve
   the failed process-group-only diagnostic. Details in
   `roadmap-20260928/idle-progress-validation.md`.
+
+- [x] Preserve newer verified idle CPU progress when a submission starts; the
+  retained completion timestamp must not replace it. Actual guard-branch tests
+  reject the old assignment and retain the five-second pending stall limit.
+  The previously interrupted shader-isolation segment now completes in 86.713 s.
+  M3 published tools commit: `91e0e40a3a78`. Original interruption retained.
