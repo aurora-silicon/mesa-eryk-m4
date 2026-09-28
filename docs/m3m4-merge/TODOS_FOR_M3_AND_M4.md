@@ -533,3 +533,12 @@ no per-shader workaround, tolerance relaxation or default enablement.
   little tiling change. Six complete M3 and three M4 optimized checks are
   exact, but the original localized M3 mismatch remains unresolved. The
   diagnostic shader bisection did not reproduce it. Preambles stay opt-in.
+
+## 2026-09-28 compression and progress follow-up
+
+Satisfactory compression diagnostics isolate a captured buffer/image alias-layout
+issue; independent copy/sampling probes pass and detaching aliases restores exact
+images. This adapted replay is not benchmark qualification. Two cold M3 controls
+expose a retirement-only guard limitation during CPU pipeline work; qualification
+and a safe idle-aware policy remain open. See
+`roadmap-20260928/compression-capture-aliases.md`. No defaults changed.
