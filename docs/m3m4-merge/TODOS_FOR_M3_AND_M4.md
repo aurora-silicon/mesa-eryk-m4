@@ -382,3 +382,9 @@ carry enough retained evidence for another developer to reproduce them.
   returns. The guard verdict remains fault/reboot, never rendering success.
   Fixed report classification to reject terminal progress errors even if logs
   roll over. GPU-only reset and proof of stopped DMA remain open.
+
+- 2026-09-28: Command BO CPU-map failures now unwind ordinary/oversized ownership
+  and record OOM before publication. Extracted-function failure tests pass; M4
+  injected ordinary-pool failure returns OOM and same-device fill/readback works,
+  followed by 88 passing render cases. Unrestricted injection also exposed shader
+  upload failure being hidden as FEATURE_NOT_PRESENT; fixing that separately.

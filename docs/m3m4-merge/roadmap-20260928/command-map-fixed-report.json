@@ -1,0 +1,22 @@
+{
+  "id": "20260928T083046322583Z-roadmap-m4-command-pool-map-fixed",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T083046322583Z-roadmap-m4-command-pool-map-fixed",
+  "observations": {
+    "pixel_results": [],
+    "pixel_result_count": 0,
+    "thermal_samples": 3,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 57.75,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 57.75,
+      "Ta000m": 56.25,
+      "Te000m": 55.25,
+      "Te001m": 53.75,
+      "Tp000m": 57.75,
+      "Tp001m": 53.5
+    }
+  }
+}

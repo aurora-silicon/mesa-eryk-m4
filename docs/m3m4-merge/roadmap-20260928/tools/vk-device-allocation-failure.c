@@ -84,7 +84,7 @@ static void *reallocate(void *data, void *ptr, size_t size, size_t alignment, Vk
  */
 static VkResult resource_work(PFN_vkGetInstanceProcAddr gipa, VkInstance instance,
     VkPhysicalDevice physical, VkDevice device, uint32_t family,
-    const VkAllocationCallbacks *cb) {
+    const VkAllocationCallbacks *cb, bool fail_map) {
 #define RLOAD(name) PFN_##name name=(PFN_##name)gipa(instance,#name);CHECK(name)
     RLOAD(vkCreateBuffer);RLOAD(vkDestroyBuffer);RLOAD(vkGetBufferMemoryRequirements);
     RLOAD(vkGetPhysicalDeviceMemoryProperties);RLOAD(vkAllocateMemory);RLOAD(vkFreeMemory);
@@ -118,6 +118,9 @@ static VkResult resource_work(PFN_vkGetInstanceProcAddr gipa, VkInstance instanc
         .commandPool=pool,.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY,.commandBufferCount=1};
     VkCommandBuffer command;TRY(vkAllocateCommandBuffers(device,&ca,&command));
     VkCommandBufferBeginInfo begin={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    if(fail_map){
+        void (*arm_map)(void)=dlsym(RTLD_DEFAULT,"asahi_test_arm_map_failure");CHECK(arm_map);arm_map();
+    }
     TRY(vkBeginCommandBuffer(command,&begin));
     vkCmdFillBuffer(command,buffer,0,16384,0xa5c39e17);
     VkMemoryBarrier barrier={.sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT,.dstAccessMask=VK_ACCESS_HOST_READ_BIT};
@@ -153,15 +156,17 @@ cleanup:
     return result;
 }
 int main(int argc,char **argv) {
-    CHECK(argc==3 || (argc==4 && (!strcmp(argv[3],"resources") || !strcmp(argv[3],"bind-failure"))));
+    CHECK(argc==3 || (argc==4 && (!strcmp(argv[3],"resources") || !strcmp(argv[3],"bind-failure") || !strcmp(argv[3],"map-failure"))));
     bool resources=argc==4;
     bool bind_failure=resources && !strcmp(argv[3],"bind-failure");
+    bool map_failure=resources && !strcmp(argv[3],"map-failure");
+    bool boundary_failure=bind_failure || map_failure;
     void (*arm_bind)(void)=NULL;
     int (*bind_injected)(void)=NULL;
-    if(bind_failure){
+    if(boundary_failure){
         arm_bind=dlsym(RTLD_DEFAULT,"asahi_test_arm_bind_failure");
-        bind_injected=dlsym(RTLD_DEFAULT,"asahi_test_bind_failure_injected");
-        CHECK(arm_bind && bind_injected);
+        bind_injected=dlsym(RTLD_DEFAULT,map_failure?"asahi_test_map_failure_injected":"asahi_test_bind_failure_injected");
+        CHECK((!bind_failure || arm_bind) && bind_injected);
     }
     char *end; unsigned long chip=strtoul(argv[1],&end,0);
     CHECK(!*end && (chip==0x6030 || chip==0x8132));
@@ -199,22 +204,22 @@ int main(int argc,char **argv) {
             s->calls=0;s->fail_at=failure;
             pthread_mutex_unlock(&s->lock);
             if(bind_failure)arm_bind();
-            result=resource_work(gipa,instance,physical,device,family,&cb);
-            if(bind_failure){
-                fprintf(stderr,"BIND_FAILURE observed result=%d injected=%d\n",result,bind_injected());
-                CHECK(bind_injected() && result==VK_ERROR_OUT_OF_DEVICE_MEMORY);
-                CHECK(resource_work(gipa,instance,physical,device,family,&cb)==VK_SUCCESS);
+            result=resource_work(gipa,instance,physical,device,family,&cb,map_failure);
+            if(boundary_failure){
+                fprintf(stderr,"BOUNDARY_FAILURE observed result=%d injected=%d\n",result,bind_injected());
+                CHECK(bind_injected() && result==(map_failure?VK_ERROR_OUT_OF_HOST_MEMORY:VK_ERROR_OUT_OF_DEVICE_MEMORY));
+                CHECK(resource_work(gipa,instance,physical,device,family,&cb,false)==VK_SUCCESS);
             }
             vkDestroyDevice(device,&cb);device=VK_NULL_HANDLE;
         }
         CHECK(result==VK_SUCCESS || result==VK_ERROR_OUT_OF_HOST_MEMORY || result==VK_ERROR_OUT_OF_DEVICE_MEMORY);
-        if(!resources && result==VK_SUCCESS){CHECK(device);vkDestroyDevice(device,&cb);}else if(result!=VK_SUCCESS){CHECK(s->injected || bind_failure);}
+        if(!resources && result==VK_SUCCESS){CHECK(device);vkDestroyDevice(device,&cb);}else if(result!=VK_SUCCESS){CHECK(s->injected || boundary_failure);}
         fprintf(report,"{\"fail_at\":%u,\"calls\":%u,\"result\":%d,\"injected\":%s,\"live\":%u,\"peak\":%u}\n",failure,s->calls,result,s->injected?"true":"false",s->count,s->peak);fflush(report);
         CHECK(!s->count);
-        if(!failure){CHECK(result==VK_SUCCESS || bind_failure);total=bind_failure?0:s->calls;CHECK(total<=256 && (total>0 || bind_failure));}
+        if(!failure){CHECK(result==VK_SUCCESS || boundary_failure);total=boundary_failure?0:s->calls;CHECK(total<=256 && (total>0 || boundary_failure));}
         else CHECK(s->injected);
         CHECK(!pthread_mutex_destroy(&s->lock));free(s);
     }
     vkDestroyInstance(instance,NULL);fclose(report);dlclose(loader);
-    printf("DEVICE_ALLOCATION_FAILURE_PASS mode=%s tested=%u\n",bind_failure?"bind-failure":resources?"resources":"device",total);return 0;
+    printf("DEVICE_ALLOCATION_FAILURE_PASS mode=%s tested=%u\n",map_failure?"map-failure":bind_failure?"bind-failure":resources?"resources":"device",boundary_failure?1:total);return 0;
 }

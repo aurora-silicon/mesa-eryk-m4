@@ -1,0 +1,23 @@
+{
+  "selected": 88,
+  "recorded": 88,
+  "completed": 88,
+  "counts": {
+    "Pass": 88
+  },
+  "classifications": {
+    "regression": 88
+  },
+  "elapsed_seconds": 4.174832604010589,
+  "preparation_seconds": 1.3435906569939107,
+  "runner_seconds": 1.4315858160043717,
+  "jobs": 1,
+  "tests_per_group": 50,
+  "case_timeout_seconds": 60,
+  "cases_sha256": "0b3e4f766994b5195f239dab618d2b44e40227896fb726ff8b1f9cc48ec0c4bd",
+  "evidence": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T083134156353Z-m4-command-map-smoke",
+  "guard_verdict": "pass",
+  "command_returncode": 0,
+  "peak_temperature_c": 58.25,
+  "healthy": true
+}

@@ -121,6 +121,11 @@ hk_cmd_bo_create(struct hk_cmd_pool *pool, bool usc, struct hk_cmd_bo **bo_out)
    }
 
    bo->map = agx_bo_map(bo->bo);
+   if (bo->map == NULL) {
+      agx_bo_unreference(&dev->dev, bo->bo);
+      vk_free(&pool->vk.alloc, bo);
+      return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
 
    *bo_out = bo;
    return VK_SUCCESS;

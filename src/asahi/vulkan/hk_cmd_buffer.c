@@ -328,10 +328,17 @@ hk_pool_alloc_internal(struct hk_cmd_buffer *cmd, uint32_t size,
          return (struct agx_ptr){0};
       }
 
+      void *map = agx_bo_map(bo);
+      if (unlikely(map == NULL)) {
+         agx_bo_unreference(&dev->dev, bo);
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+         return (struct agx_ptr){0};
+      }
+
       util_dynarray_append(&cmd->large_bos, bo);
       return (struct agx_ptr){
          .gpu = bo->va->addr,
-         .cpu = agx_bo_map(bo),
+         .cpu = map,
       };
    }
 

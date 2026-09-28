@@ -1,0 +1,3 @@
+MAP_FAILURE injected fd=5 bytes=131072 offset=0x124330000
+BOUNDARY_FAILURE observed result=0 injected=1
+CHECK failed at line 210: bind_injected() && result==(map_failure?VK_ERROR_OUT_OF_HOST_MEMORY:VK_ERROR_OUT_OF_DEVICE_MEMORY)
