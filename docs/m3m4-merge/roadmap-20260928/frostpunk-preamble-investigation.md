@@ -131,3 +131,36 @@ the reference (17,335 pixels, maximum 30); this is not a fix.
 Diagnostic output-copy Vulkan library SHA256:
 `5070dae7b8191de214c20ddfb62c7a032459f13a7e031986e98230bbc264986a`.
 All original screenshots, references and guards are retained unchanged.
+
+## Confirmed helper-lifetime bug and correction
+
+The original reference concealed a pre-existing bug. Instrumenting the squared
+normal lengths and transformed-position derivatives shows stale neighbouring
+registers after the front-facing read. At pixel (3243,1945), ordinary compilation
+produces a transformed-normal squared length of infinity, while the preamble
+produces a finite but incorrect length. Clearing the BACKFACING SR read's
+original-coverage marker preserves helpers: both compilations then produce the
+same finite length (log2 approximately -18.47), agreeing with the independent
+software calculation within the derivative differences under investigation.
+
+An independent 31x31 fragment probe reads gl_FrontFacing, multiplies x*y by its
+sign, then checks dFdxFine/dFdyFine against y*sign/x*sign. Both M3 and M4 fail at
+pixel 30 (the first row's last pixel) with the original compiler. Both pass all
+961 pixels with the corrected marker. The exact regression shader is
+`src/asahi/compiler/test/probes/g16-frontface-derivative.frag`; build it with the
+workspace's `tools/vulkan-fragment-probe.py --extent 31 31 --rgba 0 255 0 255`.
+Use the shared `g17p_offscreen_triangle.c` fixture and TEST_DEVICE_ID 0x6030/0x8132.
+All runs used watchdog/thermal guards; expected pixel mismatches were recorded
+as diagnostic failures without triggering reboot. The 306 host compiler tests
+also pass.
+
+The correction extends the existing helper-retention rule for active-thread
+and input-sample-mask reads to backfacing. It does not special-case Frostpunk,
+change derivative semantics, or enable preambles by default. Earlier rejection
+of this control based solely on the old reference was insufficient: restoring
+correct helper execution legitimately changes that reference's bad normals.
+Full replay validation continues before accepting a replacement reference or
+publishing new performance results.
+
+Corrected shared Vulkan library SHA256:
+`4a89e7e00dc85c7579b64d6f06fbc932c22da069e5ad26490530931da745fac2`.

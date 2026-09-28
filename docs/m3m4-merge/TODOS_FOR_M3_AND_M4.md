@@ -501,3 +501,10 @@ no per-shader workaround, tolerance relaxation or default enablement.
   Software also gives finite values at those locations. Trace the originating
   normalization before declaring either hardware path correct or updating any
   reference. Original preamble qualification remains incomplete.
+
+- Confirmed and fixed a shared M3/M4 helper-lifetime bug: the backfacing SR
+  marker killed neighbouring lanes before derivatives. A 31x31 independent
+  shader fails on both original drivers and passes on both corrected drivers;
+  all 306 host compiler tests pass. Frostpunk normalization now agrees between
+  ordinary and preamble compilation. Full replay/reference qualification is
+  still in progress; the roadmap and preamble default remain incomplete.

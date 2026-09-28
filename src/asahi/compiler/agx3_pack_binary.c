@@ -5740,15 +5740,20 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t len = 0;
             if (!agx3_translate_sr(I, slot, wait, &d))
                AGX3_REFUSE(I);
-            /* The original-SR2/SR39 forms carry an input marker that drops
+            /* The original-coverage SR forms carry an input marker that drops
              * out-of-primitive helper lanes. Both reads in a statistics
              * prolog must leave those lanes alive for the following shader.
              * Apple's dfdx-using simd_is_helper_thread fragment likewise reads
              * SR2 without this marker. The SR value and covered-lane query
-             * accounting are unchanged; only helper lifetime differs. */
+             * accounting are unchanged; only helper lifetime differs.
+             * Backfacing carries the same marker. Retain neighbours when a
+             * shader reads gl_FrontFacing before computing derivatives: the
+             * covered lane's facing value remains valid, but killing helper
+             * execution leaves stale values in its neighbours' registers. */
             if (needs_quad_helpers &&
                 (I->sr == AGX_SR_IS_ACTIVE_THREAD ||
-                 I->sr == AGX_SR_INPUT_SAMPLE_MASK))
+                 I->sr == AGX_SR_INPUT_SAMPLE_MASK ||
+                 I->sr == AGX_SR_BACKFACING))
                d.original_coverage = false;
             if (!agx3_sr_encode(enc, &d, bytes, &len))
                AGX3_REFUSE(I);
