@@ -495,3 +495,9 @@ no per-shader workaround, tolerance relaxation or default enablement.
   controls do not repair the error. A duplicated-load comparison repairs the
   partial-motion boundary but not full motion; no production fix is claimed.
   Temporary diagnostics remain outside the shared compiler defaults.
+
+- Frostpunk normal readback now finds 970 NaN pixels in the ordinary M3 path,
+  versus finite outputs with the preamble; all other finite normals match.
+  Software also gives finite values at those locations. Trace the originating
+  normalization before declaring either hardware path correct or updating any
+  reference. Original preamble qualification remains incomplete.

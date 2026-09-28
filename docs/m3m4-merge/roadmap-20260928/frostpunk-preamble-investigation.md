@@ -64,7 +64,9 @@ Disabling register-cache hints, instruction scheduling or floating move folding
 retains the image error. Disabling all backend optimization cannot render this
 input: the compiler refuses an unlowered register-shift `extr`, and replay
 aborts at pipeline creation. This is an inconclusive diagnostic, not a GPU hang;
-the M3 boot and desktop remain healthy.
+the guard subsequently allowed watchdog recovery after the failed command.
+The following boot is `83fdd197-a255-45d8-b01d-f1ab64afb228`; no firmware fault
+snapshot was recorded. The normal desktop returned.
 
 Clearing the original-coverage marker on the backfacing special-register read
 also fails (17,541 pixels, maximum 27). An unconditional control-flow push/pop
@@ -80,3 +82,52 @@ it also changes uniform allocation and restores address control flow. With all
 memory motion admitted, the discrepancy remains (17,328, maximum 27). This does
 not establish a bad UBO value or a repair; it narrows the search toward the code
 changed by that instrumentation. All results use the existing fixed reference.
+
+## Draw boundary and normal-buffer isolation
+
+Frame-indexed resource snapshots identify pipeline 117877, secondary draws
+42253, 42257 and 42261, submitted at 42721. All four attachments match before
+the first draw. Only attachment 1 (A2B10G10R10, the normal output) changes:
+509 pixels after draw 42253, then 1,541 and 2,008 after the next two draws.
+The other three attachments and the three fragment UBO snapshots match exactly.
+This localizes the discrepancy before subsequent lighting/postprocessing.
+
+M4 cold-cache replay matches (8 changed pixels, maximum 1). Its captured compiler
+key is identical to M3's; its frontend NIR adds generation-specific texture-LOD
+bias correction. Both compile a 5,897-instruction, 64-half-register preamble
+without scratch. The M4 main shader has 16 bytes of scratch versus M3's zero.
+M4 is therefore not merely avoiding the problem through a preamble fallback.
+
+Explicit fine/generic derivative emulation retains the error (17,340 pixels,
+maximum 27). The normal calculation instead uses coarse derivatives; explicit
+coarse quad broadcasts change the image further (37,931 pixels, maximum 80),
+so neither transform is a repair. An exact nonlinear fine-derivative probe
+(x*y, whose derivatives are y and x) passes on both GPUs. A first draft of the
+instrumentation inserted fsub after its lowering pass and failed in the CPU
+compiler; the corrected diagnostic was compiled locally from the captured input
+before hardware execution. These altered shaders are diagnostic only.
+
+## NaN isolation (investigation, not reference approval)
+
+A source-selected diagnostic appends raw register copies after the final main
+shader dependency drain, leaving its IR, scheduling and register allocation
+unchanged. It routes normal RGB or alpha into attachment 2 (RGBA16F), forcing
+that attachment's source alpha to 1 to avoid blending away the evidence.
+Alpha readbacks match exactly. Normal readbacks identify 970 pixels where the
+ordinary M3 result is NaN in all three RGB channels and the preamble result is
+finite. There are no NaNs in the latter, no shared NaNs, and every other finite
+pixel agrees exactly. Thus the image discrepancy does not establish that the
+preamble path is the incorrect one.
+
+An independent lavapipe replay replaces just the target fragment's attachment-2
+stores with its normal RGB and alpha 1. All 970 locations are finite there too,
+although normal directions differ from M3. This software replay explicitly uses
+unsupported-feature removal and SPIR-V instrumentation; it is diagnostic, not
+qualification of the original application or grounds for replacing references.
+Investigation now follows the derivative-based normal/tangent normalization.
+Explicit fine quad differences for all derivative variants still differ from
+the reference (17,335 pixels, maximum 30); this is not a fix.
+
+Diagnostic output-copy Vulkan library SHA256:
+`5070dae7b8191de214c20ddfb62c7a032459f13a7e031986e98230bbc264986a`.
+All original screenshots, references and guards are retained unchanged.
