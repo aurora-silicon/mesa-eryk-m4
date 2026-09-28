@@ -38,3 +38,22 @@ Full-serialization binary: SHA256
 Private compiler captures, diagnostic patches and original/invalid/corrected
 results are retained in gpu-replay-bench. No diagnostic default or normal
 desktop installation changed. All runs retain watchdog and thermal guards.
+
+## Memory-read boundary
+
+A selected-source diagnostic cumulatively admits memory definitions by their
+indexed pre-preamble NIR definition. The last matching limit is694 (8 changed
+pixels, maximum1); limit695 reproduces17,346 pixels, maximum27. This permits one
+additional scalar32 `load_agx`: definition694, reading UBO byte offset132 after
+native sparse-address translation. Its value contributes to the Y texture
+coordinate. The surrounding arithmetic remains per-lane. These are diagnostic
+frame1 results, not a full-capture qualification or a production restriction.
+
+The two retained host compiles have identical floating-op counts in their
+lowered main NIR, but different address/control-flow and register allocation.
+The complete failing compiler input has404 uniform halves,64 preamble GPR
+halves, zero preamble scratch and no promoted-constant rodata. That rules out
+an overlap with a promoted-constant range for this shader. The compiler replay
+tool now prints those resource boundaries alongside its existing statistics;
+its generated shader binary remains byte-identical to the retained baseline.
+Disabling preamble float comparisons also retains the error.

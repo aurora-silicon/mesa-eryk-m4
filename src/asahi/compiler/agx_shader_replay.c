@@ -156,6 +156,12 @@ int main(int argc, char **argv)
       fprintf(stderr, "Compiler binary hash: %08x\n",
               _mesa_hash_data(out.binary, out.info.binary_size));
       agx2_stats_fprintf(stderr, "replay", &out.info.stats);
+      fprintf(stderr,
+              "Compiler resources: uniforms=%u preamble=%u preamble_gprs=%u "
+              "preamble_scratch=%u rodata_uniform=%u rodata_halves=%u\n",
+              out.info.push_count, out.info.has_preamble,
+              out.info.nr_preamble_gprs, out.info.preamble_scratch_size,
+              out.info.rodata.base_uniform, out.info.rodata.size_16);
       if (argc == 3 && !strncmp(argv[2], "--binary-output=", 16)) {
          FILE *binary = fopen(argv[2] + 16, "wb");
          if (!binary) {
