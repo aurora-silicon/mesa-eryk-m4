@@ -19,6 +19,18 @@
 extern "C" {
 #endif
 
+/* G15/G16 fragment constant-program input publication. This is a conservative
+ * drain, not a claim about the minimum instruction latency on other chips. */
+#define HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE 16
+
+/* Append a compiled constant program after the loader's uniform writes, keeping
+ * the fragment dependency release last. Both inputs must end in STOP; the
+ * loader must also have the expected PIXREL suffix. Failure leaves output and
+ * *length unchanged. The preamble may overlap the output allocation. */
+bool hk_agx3_fragment_preamble_append(
+   enum agx_chip chip, bool writes_sample_mask, void *output, size_t capacity,
+   size_t *length, const void *preamble, size_t preamble_size);
+
 struct agx_tilebuffer_layout;
 
 struct hk_agx3_ioto_program_desc {

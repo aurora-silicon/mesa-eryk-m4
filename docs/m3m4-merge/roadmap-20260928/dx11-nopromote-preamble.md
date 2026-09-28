@@ -378,3 +378,50 @@ amount of program space even at zero NOPs to separate instruction delay from
 allocation-layout effects. A delay experiment alone does not establish the
 hardware's required synchronization or justify a universal timing workaround.
 The default desktop preamble policy is still unchanged.
+
+### Matched placement controls and bounded composition
+
+The fixed-capacity zero-NOP control fails on both GPUs: M3's first replay
+changes 1,218 pixels (maximum 41); M4's extended control fails with 749 pixels
+(maximum 24) after two exact replays. Merely allocating the additional 16 bytes
+therefore does not explain the improvement. One entry NOP gives five exact M3
+replays. Ten M4 repetitions yield nine exact images and one image identical to
+the known two-pixel baseline difference.
+
+Placing one NOP at the loader's start instead keeps the appended preamble at
+the same instruction offset but fails on the first M3 replay (1,085 pixels,
+maximum 125). Moving it to the preamble entry produces only the known baseline
+image. A third placement, after the loader COPYs but before PIXREL, gives four
+exact M3 images and one identical baseline image in five repetitions. These
+controls favor a producer/consumer publication hazard over an instruction-offset
+explanation; they do not directly capture a stale pointer or define a minimum
+hardware latency.
+
+The full memory-preamble entry-delay candidate gives an exact first M4 replay;
+the second differs only by the same two baseline pixels in frame 31, with
+frames 1 and 16 exact. Combining eight entry NOPs with PIXREL after the final
+preamble exports gives six exact complete M3 replays, followed by a two-pixel
+frame-31 difference. The normal check stops at that difference. Native memory
+preambles remain disabled by default and no image tolerance was changed.
+
+The shared implementation factors composition into a bounded G15/G16 helper.
+It verifies the loader's expected coverage-specific PIXREL/STOP suffix and the
+preamble STOP, checks capacity without overflow, supports overlapping input,
+and leaves the output/length unchanged on validation failure. The conservative
+16-byte delay is an experimental mitigation, not a qualified ISA timing rule.
+The helper's host test covers both target encodings and release masks, exact
+capacity, overlap and malformed inputs; the complete program-core test reports
+7,153 checks. Both ARM64 compilation and host tests pass. Hardware validation
+of this final implementation is recorded separately from the private candidates.
+
+The first shared-helper binary (`0100ea4e22e7899c65631ac52d02592c7432f55770605686734bf00e87e1a20b`)
+produces nine exact complete M3 replays. The tenth has exact frames 1/16 and a
+frame-31 image byte-identical to the retained two-pixel baseline control. This
+is not a clean ten-pass qualification. M4 repetitions are still running.
+A final size-type hardening keeps the append size in `size_t`, avoiding unsigned
+intermediate wrap before the already checked allocation addition. Its isolated
+binary is `b656c92fb83e0839698ade836e18aa0c41fb805d9013dba5f516bfe4453e09b0`.
+It is being checked against a pinned 2,570-case selection: all 2,058 retained
+front-facing/helper regression cases plus 512 evenly indexed descriptor/UBO
+cases. Catalog indices and original outcomes remain unchanged. Neither this
+checkpoint nor the diagnostic replay timings enables preambles in the desktop.

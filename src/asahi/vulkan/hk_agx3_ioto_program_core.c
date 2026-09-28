@@ -313,6 +313,54 @@ hk_agx3_g17p_graphics_program_bound(
 }
 
 bool
+hk_agx3_fragment_preamble_append(
+   enum agx_chip chip, bool writes_sample_mask, void *output, size_t capacity,
+   size_t *length, const void *preamble, size_t preamble_size)
+{
+   const uint8_t terminal[] = {
+      0x07, 0x02, 0x54, writes_sample_mask ? 0xf2 : 0xf3, 0x02, 0x00,
+      0x0e, 0x00, 0x00, 0x00,
+   };
+   const size_t stop_size = 4;
+   if (!agx_chip_uses_g15_g16_shader_abi(chip) || !output || !length ||
+       !preamble || preamble_size < stop_size || *length < sizeof(terminal) ||
+       *length > capacity)
+      return false;
+
+   const size_t body_size = preamble_size - stop_size;
+   if (body_size > capacity - *length ||
+       HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE > capacity - *length - body_size)
+      return false;
+
+   uint8_t *dst = output;
+   const uint8_t *src = preamble;
+   const size_t insertion = *length - sizeof(terminal);
+   if (memcmp(dst + insertion, terminal, sizeof(terminal)) ||
+       memcmp(src + body_size, terminal + 6, stop_size))
+      return false;
+
+   /* The resource loader publishes root/descriptor pointers through uniform
+    * COPYs. Matched G15S/G16G replays isolate intermittent corruption to this
+    * producer/consumer boundary, consistent with incomplete publication of
+    * those inputs. Padding the loader's start or merely reserving more space
+    * does not resolve the matched replay. Keep this conservative while native
+    * memory preambles remain opt-in; see dx11-nopromote-preamble.md.
+    *
+    * Move the body before writing padding, allowing an overlapping input.
+    * PIXREL follows the final preamble exports, not just the loader's COPYs.
+    */
+   memmove(dst + insertion + HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE,
+           src, body_size);
+   for (unsigned i = 0; i < HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE;
+        i += AGX_IOTO_LOAD_NOP_SIZE)
+      agx_ioto_load_pack_nop(0, dst + insertion + i);
+   memcpy(dst + insertion + HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE + body_size,
+          terminal, sizeof(terminal));
+   *length += HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE + body_size;
+   return true;
+}
+
+bool
 hk_agx3_g17p_basic_graphics_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
    struct hk_agx3_g17p_graphics_program *program)

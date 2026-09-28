@@ -2246,10 +2246,74 @@ test_mixed_target_layout_bounds(void)
    return 0;
 }
 
+static int
+test_fragment_preamble_publication(void)
+{
+   const uint8_t preamble[] = {0x8b, 0, 0x41, 4, 0x0e, 0, 0, 0};
+   const enum agx_chip chips[] = {AGX_CHIP_G15S, AGX_CHIP_G16G};
+   for (unsigned c = 0; c < ARRAY_SIZE(chips); ++c) {
+      for (unsigned coverage = 0; coverage < 2; ++coverage) {
+         const uint8_t loader[] = {
+            0x06, 0, 0x07, 0x02, 0x54, coverage ? 0xf2 : 0xf3, 0x02, 0,
+            0x0e, 0, 0, 0,
+         };
+         uint8_t output[64], original[64];
+         memset(original, 0xcc, sizeof(original));
+         memcpy(original, loader, sizeof(loader));
+         memcpy(output, original, sizeof(output));
+         size_t length = sizeof(loader);
+         const size_t required = length + sizeof(preamble) - 4 +
+            HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE;
+         CHECK(!hk_agx3_fragment_preamble_append(chips[c], coverage, output,
+            required - 1, &length, preamble, sizeof(preamble)));
+         CHECK(length == sizeof(loader));
+         CHECK(!memcmp(output, original, sizeof(output)));
+         CHECK(hk_agx3_fragment_preamble_append(chips[c], coverage, output,
+            required, &length, preamble, sizeof(preamble)));
+         CHECK(length == required);
+         CHECK(!memcmp(output, loader, 2));
+         for (unsigned i = 0; i < HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE; i += 2)
+            CHECK(output[2 + i] == 0x06 && output[3 + i] == 0);
+         CHECK(!memcmp(output + 2 + HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE,
+                       preamble, sizeof(preamble) - 4));
+         CHECK(!memcmp(output + length - 10, loader + 2, 10));
+         CHECK(!memcmp(output + length, original + length,
+                       sizeof(output) - length));
+
+         /* An input spanning the insertion area must be copied before padding. */
+         memcpy(output, original, sizeof(output));
+         memcpy(output + sizeof(loader), preamble, sizeof(preamble));
+         length = sizeof(loader);
+         CHECK(hk_agx3_fragment_preamble_append(chips[c], coverage, output,
+            sizeof(output), &length, output + sizeof(loader), sizeof(preamble)));
+         CHECK(!memcmp(output + 2 + HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE,
+                       preamble, sizeof(preamble) - 4));
+
+         for (unsigned invalid = 0; invalid < 5; ++invalid) {
+            memcpy(output, original, sizeof(output));
+            length = sizeof(loader);
+            uint8_t bad[sizeof(preamble)];
+            memcpy(bad, preamble, sizeof(bad));
+            if (invalid == 0)
+               bad[sizeof(bad) - 1] = 1;
+            const size_t size = invalid == 1 ? 3 :
+                                invalid == 2 ? SIZE_MAX : sizeof(bad);
+            CHECK(!hk_agx3_fragment_preamble_append(
+               invalid == 3 ? AGX_CHIP_G17P : chips[c],
+               invalid == 4 ? !coverage : coverage,
+               output, sizeof(output), &length, bad, size));
+            CHECK(length == sizeof(loader));
+            CHECK(!memcmp(output, original, sizeof(output)));
+         }
+      }
+   }
+   return 0;
+}
+
 int
 main(void)
 {
-   if (test_mixed_target_layout_bounds() ||
+   if (test_fragment_preamble_publication() || test_mixed_target_layout_bounds() ||
        test_coverage_initial_pixel_dependencies() ||
        test_exact_target_order() || test_terminal_suffix_modes() ||
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
