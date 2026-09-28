@@ -1,0 +1,4 @@
+Device: Apple M4 (G16G B0)
+MAP_FAILURE injected fd=4 bytes=16384 offset=0x17b4e0000
+DESCRIPTOR_MAP_RESULT injected=1 result=-1
+PASS: descriptor map failure then 64x64 fragment writes bad=0/4096

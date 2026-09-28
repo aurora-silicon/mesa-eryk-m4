@@ -17,6 +17,7 @@ same-device retry and 4096 checked fragment outputs. M3 passes injected mapping 
 fragment outputs, then 178 rendering/memory CTS cases (six unsupported). The
 first attempt failed in setup because the wrapper referenced a nonexistent
 injector filename; the guard recovered by reboot, before GPU submission. Its
-original receipt remains separate from the corrected pass. M4 qualification
-is pending its ongoing preamble replay campaign. This private binary has not
+original receipt remains separate from the corrected pass. M4 passes the same injected failure and all 4096 fragment outputs, followed
+by 178 rendering/memory CTS cases (six unsupported). Both guarded executions
+finish healthy with the normal display managers active. This private binary has not
 replaced that campaign candidate or either normal desktop.

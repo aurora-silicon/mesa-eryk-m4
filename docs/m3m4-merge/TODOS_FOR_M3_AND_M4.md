@@ -474,3 +474,9 @@ carry enough retained evidence for another developer to reproduce them.
   NS). Broader preamble replays found one intermittent M3 SuperTuxKart mismatch;
   controls, preceding-workload replay and ten alternating cold-cache checks pass
   without reproducing it. Preserve the original failure and keep options opt-in.
+
+- 2026-09-28: M4 also passes descriptor-pool mapping failure/retry, all 4096
+  fragment outputs and 178 rendering/memory cases (six NS). The broader M4
+  preamble campaign finishes all 19 selected replay modes with image checks
+  and three timings each. M3 remaining games and matched slow-game controls
+  continue; experimental compiler options remain off by default.

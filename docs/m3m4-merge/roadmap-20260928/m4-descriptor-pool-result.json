@@ -1,0 +1,70 @@
+{
+  "command": [
+    "python3",
+    "/root/check-descriptor-map.py",
+    "/root/asahi-evidence/20260928T114812110088Z-m4-descriptor-pool-map-failure",
+    "/opt/asahi-m3m4-descriptor-pool-20260928"
+  ],
+  "seconds": 40,
+  "boot_id": "f79f74a5-410d-425b-9b73-3c2252590972",
+  "watchdog": {
+    "device": "/dev/watchdog0",
+    "identity": "Apple SoC Watchdog",
+    "timeout_seconds": 60,
+    "initial_timeleft_seconds": 59,
+    "periodic_keepalive": false,
+    "armed": true,
+    "ssh_broker_lease": true
+  },
+  "progress_source": "debugfs-host-verified-v1",
+  "returncode": 0,
+  "thermal": {
+    "startup_limit_mc": 95000,
+    "stop_limit_mc": 120000,
+    "interval_seconds": 0.5,
+    "samples": 1,
+    "sync_interval_seconds": 5,
+    "peak_temperatures_mc": {
+      "PMP aggregate die hotspot": 73500,
+      "Ta000m": 73000,
+      "Te000m": 71250,
+      "Te001m": 69500,
+      "Tp000m": 73500,
+      "Tp001m": 69250
+    },
+    "failure": null,
+    "all_peak_temperatures_mc": {
+      "class/hwmon/hwmon0/temp1_input": 73500,
+      "class/hwmon/hwmon0/temp2_input": 73000,
+      "class/hwmon/hwmon0/temp3_input": 71250,
+      "class/hwmon/hwmon0/temp4_input": 69500,
+      "class/hwmon/hwmon0/temp5_input": 73500,
+      "class/hwmon/hwmon0/temp6_input": 69250,
+      "class/hwmon/hwmon5/temp1_input": 34699,
+      "class/hwmon/hwmon5/temp2_input": 47520,
+      "class/hwmon/hwmon5/temp3_input": 49980,
+      "class/hwmon/hwmon5/temp4_input": 51540,
+      "class/thermal/thermal_zone0/temp": 73250
+    },
+    "dedicated_gpu_sensor_verified": false,
+    "log": "temperatures.jsonl",
+    "cpu_frequency_caps": [
+      {
+        "policy": "policy0",
+        "old_min_khz": 912000,
+        "old_max_khz": 4104000,
+        "max_khz": 4104000,
+        "effective_max_khz": 4104000,
+        "cap_applied": false
+      },
+      {
+        "policy": "policy1",
+        "old_min_khz": 900000,
+        "old_max_khz": 2892000,
+        "max_khz": 2892000,
+        "effective_max_khz": 2892000,
+        "cap_applied": false
+      }
+    ]
+  }
+}

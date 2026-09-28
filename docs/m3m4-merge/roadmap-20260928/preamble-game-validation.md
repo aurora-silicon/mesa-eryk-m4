@@ -18,8 +18,10 @@ Do not enable read-only preambles by default on the strength of passing retries.
 Private source/capture data and full image/log records are committed locally in
 gpu-replay-bench/provenance/roadmap-20260928-preamble-games. Original failed run:
 20260928T112336497927Z-m3-supertuxkart-zink-check. Broader M3 checks continue with
-this unresolved issue explicitly retained. M4 has passed through Frostpunk and
-Satisfactory DX11 menu; Satisfactory gameplay is ongoing.
+this unresolved issue explicitly retained. M4 completes all 19 selected game modes, with passing full image checks,
+warmup and three scored timing samples each. This excludes the separately
+profiled native Vulkan and DX12 Satisfactory cases. Matched slow-game controls
+are next; historical cross-revision scores alone do not isolate a speedup.
 
 The first M4 0 A.D. attempt used the superseded reference map. It reproduced the
 previously documented buffer-address fallback reference mismatch. A comparison
