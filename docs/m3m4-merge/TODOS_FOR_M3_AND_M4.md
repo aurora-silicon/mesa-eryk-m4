@@ -44,9 +44,10 @@ earlier representation cleanup intentionally deferred.
 - [x] Finish M4's 3,206,030-case frozen Linux catalog. No further failures
   appeared after the known fixes. Original 134 failures, one crash and four
   QualityWarnings remain in the versioned campaign record.
-- [ ] Finish M3's catalog. Resumed from 2,712,963 recorded cases after fixing
-  a premature firmware TA progress timeout. The original `Crash` record
-  remains; process SIGKILL followed the guard observing the GPU fault.
+- [x] Finish M3's 3,206,030-case frozen Linux catalog. Every index/name pair
+  was verified against the pinned catalog. Original 31 Fail, one Crash, one
+  Timeout and four QualityWarnings are retained; fixes/retests remain separate.
+  The intermittent XCB audit timeout remains open.
 - [ ] Eventually run a complete qualification campaign on a single final
   kernel/Mesa revision. The current campaign spans explicitly recorded fixes
   and uses an existing corrected CTS binary; it is not an official unmodified
@@ -453,3 +454,10 @@ carry enough retained evidence for another developer to reproduce them.
   Keep the option disabled by default; do not count this as a performance gain.
   Exact output-byte comparison confirms all 123 ordinary compiler outputs remain
   unchanged. The next performance gate broadens preamble replay qualification.
+
+- 2026-09-28: M3 completed the frozen3,206,030-case catalog:1,574,713 Pass,
+  1,631,280 NotSupported,31 Fail,one Crash,one Timeout,four QualityWarnings.
+  Checked all ordered index/name pairs against the pinned catalog and retained
+  database hash,original non-pass rows and approved revision identities. This
+  completes indexed coverage, not single-revision qualification or the open
+  intermittent XCB audit investigation.

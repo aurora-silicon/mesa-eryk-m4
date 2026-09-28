@@ -1,0 +1,27 @@
+{
+  "progress": {
+    "state": "complete",
+    "machine": "m3",
+    "total": 3206030,
+    "completed": 3206030,
+    "counts": {
+      "Crash": 1,
+      "Fail": 31,
+      "NotSupported": 1631280,
+      "Pass": 1574713,
+      "QualityWarning": 4,
+      "Timeout": 1
+    },
+    "updated_unix": 1790593787.9629307,
+    "active": null
+  },
+  "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+  "indexed_rows_verified": 3206030,
+  "indices": [
+    0,
+    3206030
+  ],
+  "results_database_sha256": "12a2211e8527cea7faf981b554bea62f788dd928a34c3a65a6712d955210f4b1",
+  "scope": "Frozen Linux catalog on explicitly recorded multiple revisions; corrected CTS binary, not official conformance",
+  "separate_open_issue": "Intermittent XCB acquire timeout in prior X11 audit; not an erased or reclassified catalog record"
+}

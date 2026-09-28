@@ -1,0 +1,127 @@
+[
+  {
+    "identity": {
+      "kernel": "7.1.9-dirtyroom-asahi1+",
+      "files": {
+        "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+        "/opt/asahi-m3m4-buffer-diagnostic-complete/lib/libvulkan_asahi.so": "372e6351a85b681e7d42731f4dd1c988e0fc7a640a6859a82ebcfc07c791999f",
+        "/root/m3-gpu-tools/asahi.ko": "4eda32a289b8923a584f5b0bfc21ca5d90a1aff66826d4d698a3ffd3ca6793a1"
+      },
+      "parameters": {}
+    },
+    "reason": "Kernel completion observer now uses verified state independently of printk. Original 128 KiB ring deliberately overrun while 88 CTS cases passed. Counters/fault and thermal/watchdog gates retained. No Mesa code changes in this campaign.",
+    "first_catalog_index": 1264666,
+    "source_commit": "4acd2bfb5b79",
+    "published_commit": "c07786baa30b",
+    "time": 1790505262.0579603
+  },
+  {
+    "identity": {
+      "kernel": "7.1.9-dirtyroom-asahi1+",
+      "files": {
+        "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+        "/opt/asahi-m3m4-cts-20260927/lib/libvulkan_asahi.so": "912b52dd8c52f7a693e5ee84193cff891fe728ef308d7706b98a5362ce39ead8",
+        "/root/m3-gpu-tools/asahi.ko": "4eda32a289b8923a584f5b0bfc21ca5d90a1aff66826d4d698a3ffd3ca6793a1"
+      },
+      "parameters": {}
+    },
+    "reason": "Fix transform-feedback metadata overflow, advanced blend pipeline binds, unbound static vertex inputs, float16 tessellation IO and M3 sample-location limits. Separate regression evidence retained; original catalog outcomes remain immutable.",
+    "mesa_commit": "0ac1527e3f1f92782e494177f747078fd1c8eb3f",
+    "completed_before_revision": 1306415
+  },
+  {
+    "identity": {
+      "kernel": "7.1.9-dirtyroom-asahi1+",
+      "files": {
+        "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+        "/opt/asahi-m3m4-cts-20260927/lib/libvulkan_asahi.so": "912b52dd8c52f7a693e5ee84193cff891fe728ef308d7706b98a5362ce39ead8",
+        "/root/m3-gpu-tools/asahi.ko": "d714d3112c3e953be7885e2cb0112d500bc9925b897b378117be41ff610e1222"
+      },
+      "parameters": {}
+    },
+    "reason": "Resolve premature M3 TA progress timeout: normal unmodified CTS shader retires in 35.73 ms with finite firmware poll interval 100. Original 68-case batch passes; final module after quiet reboot passes all 140 logical family cases and 88 render smoke cases. Failure latch and bounded firmware snapshot collection retained. Original failure outcomes remain immutable.",
+    "source_commit": "ad030b321e46",
+    "published_commit": "cc3a3b104f91",
+    "completed_before_revision": 2712963,
+    "time": 1790542980.9177382
+  },
+  {
+    "identity": {
+      "kernel": "7.1.9-dirtyroom-asahi1+",
+      "files": {
+        "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+        "/opt/asahi-m3m4-cts-20260927/lib/libvulkan_asahi.so": "912b52dd8c52f7a693e5ee84193cff891fe728ef308d7706b98a5362ce39ead8",
+        "/root/m3-gpu-tools/asahi.ko": "16a30679f5ba0b7bc85b5e017fea0c3202a3c6dfec41e47cd71729a9a8fee5da"
+      },
+      "parameters": {}
+    },
+    "reason": "P1/P2 checkpoint: idempotent packet completion, primary-fault snapshots, shared host progress and GEM allocation accounting. Final installed module passes 140 logical and 88 rendering cases, GEM boundaries, queued exit/SIGKILL lifetimes and all eight observed Vulkan device allocator failure points. Deliberate timeout reports DEVICE_LOST and retains first fault before watchdog reboot; final guard health check prevents false success. Preserve original catalog outcomes.",
+    "source_commit": "0984ca081cd1",
+    "published_commit": "d027554bcafd",
+    "completed_before_revision": 2757077,
+    "time": 1790547172.9553394
+  },
+  {
+    "identity": {
+      "kernel": "7.1.9-dirtyroom-asahi1+",
+      "files": {
+        "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+        "/opt/asahi-m3m4-imports-20260928/lib/libvulkan_asahi.so": "b177fd900a73041f630978dc3ff787f0596124a2e3b0a13e96297ccdc1b9d3a9",
+        "/root/m3-gpu-tools/asahi.ko": "16a30679f5ba0b7bc85b5e017fea0c3202a3c6dfec41e47cd71729a9a8fee5da"
+      },
+      "parameters": {}
+    },
+    "reason": "Shared Mesa allocation/lifetime checkpoint: release idle-wait sync after recoverable submit OOM; unwind failed dma-buf imports without handle leaks or aborts. Both GPUs pass all 15 resource allocator failure points on idle-sync build; final import build passes 90 external-memory CTS cases (six unsupported) and 88 rendering cases on each. Offline production import/free injection covers seven failure boundaries. Original catalog records remain immutable.",
+    "mesa_commit": "6b8dc9410c5",
+    "completed_before_revision": 2758216,
+    "time": 1790548077.4768124
+  },
+  {
+    "identity": {
+      "kernel": "7.1.9-dirtyroom-asahi1+",
+      "files": {
+        "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+        "/opt/asahi-m3m4-memory-final-20260928/lib/libvulkan_asahi.so": "f3141473a77b726bf41fb3b9c58979908bd58daed640bbe2d66f8032cd87e53b",
+        "/root/m3-gpu-tools/asahi.ko": "147b67a9dbfc08b215ba75469c5e0bedfeb1cb8bce977063ffbce465f268d5e2"
+      },
+      "parameters": {}
+    },
+    "reason": "Final P1/P2 checkpoint: reserved native fault snapshot storage now validated on both GPUs, and four exported kernel fences signal errors on deliberate timeout before Vulkan observes device loss. Both watchdog recoveries restore desktop and 88 rendering tests. Shared Mesa memory rollback fixes pass ioctl-boundary injection/readback plus 178 memory/render cases (six unsupported) on each GPU. Original records remain immutable.",
+    "mesa_commit": "7541b1d6147",
+    "source_commit": "1ace524c28f0",
+    "published_commit": "e9268a4002d9",
+    "completed_before_revision": 2759040,
+    "time": 1790549188.687655
+  },
+  {
+    "identity": {
+      "kernel": "7.1.9-dirtyroom-asahi1+",
+      "files": {
+        "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+        "/opt/asahi-m3m4-allocation-20260928/lib/libvulkan_asahi.so": "2e2f0cb06def7e6a7407059cb4da2bd295a486965e57dd60280908f61ca2b688",
+        "/root/m3-gpu-tools/asahi.ko": "147b67a9dbfc08b215ba75469c5e0bedfeb1cb8bce977063ffbce465f268d5e2"
+      },
+      "parameters": {}
+    },
+    "reason": "Command BO CPU-map rollback and eager shader upload/link error propagation validated on both GPUs. Each passes 178 external-memory/render cases (six unsupported). M3 command/cold-shader injection returns host OOM, cached deserialize failure legitimately falls back to successful fresh compilation; all paths then pass same-device GPU fill/readback with zero callback ownership at destruction. Kernel unchanged; preserve every earlier catalog outcome.",
+    "mesa_commit": "8d7f8eeeaf4",
+    "source_commit": "1ace524c28f0",
+    "published_commit": "e9268a4002d9",
+    "completed_before_revision": 3139686,
+    "time": 1790584798.9182546
+  },
+  {
+    "identity": {
+      "kernel": "7.1.9-dirtyroom-asahi1+",
+      "files": {
+        "/root/cts-1.4.6.2/deqp-vk-seed30-scaled-blit": "36bcc144d4b3c0edc5b638f20331fbc4e1be388d89da652890af870b8e5697dc",
+        "/opt/asahi-m3m4-allocation-20260928/lib/libvulkan_asahi.so": "2e2f0cb06def7e6a7407059cb4da2bd295a486965e57dd60280908f61ca2b688",
+        "/root/m3-gpu-tools/asahi.ko": "950a52f4b8a0188cf65b9ad2db12e427110dffb7a03fb8a47eb0a93ddb85d474"
+      },
+      "parameters": {}
+    },
+    "reason": "Native timing counters deployed with normal desktop, 178 memory/render Pass and six NS; exact 0ad baseline images. X11 compositor audit complete: 243 Pass, 3753 NS, one intermittent XCB acquire timeout remains OPEN, not classified as fixed; original failing sequence plus 80 completed guarded repeat cases pass without a GPU fault. Preserve all original full-catalog and separate audit outcomes. Continue missing indices only; new test failures now stop for review. Experimental preamble stays OFF in this full campaign.",
+    "at_completed": 3139946,
+    "reviewed_unix": 1790588128.1670673
+  }
+]
