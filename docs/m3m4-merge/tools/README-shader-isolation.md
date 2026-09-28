@@ -4,6 +4,10 @@
 executes one bounded guarded replay with a diagnostic Mesa that calls
 nir_shader_bisect_select() around the suspected compiler transformation.
 `--compiler-debug nopromote` pins the exact flags in the state and replay.
+`--verify-complement` verifies the other half after a passing selection instead
+of inferring that it fails. If both halves pass it retains an inconclusive
+state and stops, avoiding false single-shader attribution for intermittent
+errors or interacting transforms. The flag is pinned in the state.
 It retains selections and exact pixel outcomes; diagnostic checks never qualify
 performance results. Preserve an interrupted step log under a distinct name
 before retrying; failed execution cannot advance the candidate state.

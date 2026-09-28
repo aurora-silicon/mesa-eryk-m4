@@ -19,6 +19,8 @@ p.add_argument('--env', action='append', default=[])
 p.add_argument('--case', default='satisfactory-vulkan-gameplay')
 p.add_argument('--frame',type=int,default=0,help='Single-frame diagnostic instead of the full capture')
 p.add_argument('--compiler-debug',help='Explicit compiler flags for the failing configuration')
+p.add_argument('--verify-complement', action='store_true',
+               help='Verify the retained half actually fails after excluding a passing half')
 p.add_argument('--machine', choices=['m3','m4'], default='m3')
 p.add_argument('--channel-tolerance', type=int, default=0)
 p.add_argument('--max-changed', type=int, default=0)
@@ -29,8 +31,10 @@ p.add_argument('--reference', required=True, type=Path)
 a = p.parse_args()
 bench = Path('/home/council/dev/gpu-replay-bench')
 state = json.loads(a.state.read_text()) if a.state.exists() else {
-    'compiler_debug': a.compiler_debug, 'prefix': a.prefix, 'sha256': a.sha256, 'reference': str(a.reference), 'env': a.env, 'machine': a.machine, 'case': a.case, 'frame': a.frame, 'channel_tolerance': a.channel_tolerance, 'max_changed': a.max_changed, 'steps': []}
+    'verify_complement': a.verify_complement, 'compiler_debug': a.compiler_debug, 'prefix': a.prefix, 'sha256': a.sha256, 'reference': str(a.reference), 'env': a.env, 'machine': a.machine, 'case': a.case, 'frame': a.frame, 'channel_tolerance': a.channel_tolerance, 'max_changed': a.max_changed, 'steps': []}
 assert state.get('compiler_debug') == a.compiler_debug
+assert state.get('verify_complement', False) == a.verify_complement
+assert not state.get('inconclusive'), 'Both halves passed; inspect retained evidence before starting a new search'
 assert state.get('env', []) == a.env
 assert state.get('case', 'satisfactory-vulkan-gameplay') == a.case
 assert state.get('machine', 'm3') == a.machine
@@ -41,7 +45,9 @@ assert (state['prefix'], state['sha256'], state['reference']) == (a.prefix, a.sh
 bad = state.get('remaining')
 if bad is not None and len(bad) <= 1:
     print(json.dumps(state, indent=2)); raise SystemExit(0)
-lo, hi = (bad[0], bad[(len(bad)-1)//2]) if bad else ('0'*64, 'f'*64)
+complement = state.get('pending_complement')
+lo, hi = ((complement[0], complement[-1]) if complement else
+          (bad[0], bad[(len(bad)-1)//2]) if bad else ('0'*64, 'f'*64))
 step = a.state.with_name(a.state.stem + f'-{len(state["steps"]):02d}.log')
 cmd = ['python3', str(bench/'tools'/('replay-m3.py' if a.machine == 'm3' else 'run-m4.py')), a.case,
        '--mesa-prefix', a.prefix, '--expected-mesa-sha256', a.sha256,
@@ -90,10 +96,24 @@ for frame in ((a.frame,) if a.frame else (1,16,31)):
 exact = all(row['maximum'] <= a.channel_tolerance and row['changed_pixels'] <= a.max_changed for row in rows)
 assert bad is not None or not exact, 'Full selection does not reproduce discrepancy'
 remaining = sorted(set(bad)-set(selected)) if exact else selected
+if a.verify_complement and exact:
+    if complement:
+        state['inconclusive'] = 'Both complementary selections passed: intermittent failure or interacting transforms'
+    else:
+        assert remaining, 'No untested complement remains'
+        state['pending_complement'] = remaining
+    # Do not infer failure of an untested complement from a passing half.
+    remaining = bad
+elif complement:
+    state.pop('pending_complement')
 assert remaining, 'No candidate remains; investigate interacting transforms'
 record = dict(machine=a.machine, lo=lo, hi=hi, command=cmd, run=str(run), selected=selected, exact=exact, comparison=rows)
 state['steps'].append(record); state['remaining'] = remaining
 a.state.write_text(json.dumps(state, indent=2)+'\n')
 (remote/'exact-comparison.json').write_text(json.dumps(rows, indent=2)+'\n')
 print(json.dumps(dict(run=str(run), selected=len(selected), exact=exact, comparison=rows,
-                     remaining=len(remaining), candidates=remaining if len(remaining)<5 else [])), flush=True)
+                     remaining=len(remaining), candidates=remaining if len(remaining)<5 else [],
+                     pending_complement=bool(state.get('pending_complement')),
+                     inconclusive=state.get('inconclusive'))), flush=True)
+if state.get('inconclusive'):
+    raise SystemExit(2)

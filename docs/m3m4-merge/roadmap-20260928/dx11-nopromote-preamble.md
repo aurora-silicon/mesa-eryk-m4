@@ -53,4 +53,7 @@ release after the native preamble and before its STOP, without changing either
 shader instructions or the release mask. This is a release-order hypothesis,
 not yet a proven fix. Candidate Vulkan SHA256:
 18bcee4b55528d1f8f1a3bc5ad9552e31d7b077698756e4b5f8d3ddd13138220.
-Ordinary desktop installations are unchanged. Both full image checks are pending.
+Both full image checks complete but still fail: M3 maximum errors 203/81/84;
+M4 27/79/226. Moving PIXREL alone is not a fix. The temporary source patch
+was restored and the ordinary library rebuilt; the diagnostic and images are
+retained privately. Ordinary desktop installations are unchanged.
