@@ -1,0 +1,5 @@
+Device: Apple M4 (G16G B0)
+MAP_FAILURE injected fd=4 bytes=16384 offset=0x13a3a4000
+agx_fast_link: executable BO mapping failed (size 808, VA 0x10000078000, handle 18)
+LAZY_MAP_RESULT injected=1 result=-1 expected=-1
+PASS: lazy map failure then 64x64 fragment writes bad=0/4096

@@ -29,3 +29,11 @@ first test failure even when GPU/guard health remains good. Separate test
 failure from guard health in summaries; retain all child receipts after a
 controller interruption. The first audit has 1,120 child outcomes even though
 its interrupted outer summary only reached 1,104.
+
+Follow-up: 60 further guarded single-case repeats (three private compositor
+lifetimes) all pass with complete guards. Together with the earlier completed
+20-case guard, 80 guarded retries pass, but the intermittent cause remains open.
+Full catalog resumed from 3,139,946 with the timing-kernel identity review,
+unchanged allocation Mesa, and preambles disabled. New test failures stop the
+controller for review without rewriting old outcomes. Revision receipt:
+build/driver-roadmap-20260928/timing-catalog-revision.json.

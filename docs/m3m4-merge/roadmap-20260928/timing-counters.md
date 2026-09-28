@@ -42,3 +42,13 @@ The first external timing wrapper was rejected by replay.py's direct-guard
 parent check before any replay. Retained as process_failure, not a GPU fault.
 The qualified replay script now takes optional debugfs snapshots immediately
 outside its child timing interval, retaining its original parent guard check.
+
+## Broader preamble validation completed
+
+Both GPUs finish all 14,741 selected frozen-catalog cases: 10,445 Pass and
+4,296 NotSupported each, no failure/crash. Three complete families selected
+without result/capability filtering: ubo, robustness.buffer_access and
+binding_model.descriptor_copy. Indexed outcomes and catalog/selection hashes
+are retained in preamble-ubo-results.tsv and preamble-ubo-validation.json.
+This is substantial affected-feature coverage, not full Vulkan conformance
+or qualification of every application. Options remain opt-in for now.

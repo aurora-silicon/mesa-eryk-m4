@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "cases_sha256": "651f3fe3c66777d3f1eb0931057843a737f09c5a0e1a7837cb431ca1cd7ae1a9",
+  "provenance": {
+    "schema": 1,
+    "cts_revision": "vulkan-cts-1.4.6.2:f6a29701220f34dd1407513bfe80d74ca7b392ce",
+    "source": "/home/council/dev/dirtyroom_m4/build/cts-1.4-baseline/mustpass/mustpass.txt",
+    "source_sha256": "fe29a62a97e128542b3c6cf46c892ba168d7856f3e57f130b40b82f25cfb40a6",
+    "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+    "count": 3206030,
+    "source_count": 3247552,
+    "excluded_count": 41522,
+    "order": "ASCII lexicographic (LC_ALL=C)",
+    "linux_only": true,
+    "exclusion_rule": "win32 or .android. in case name",
+    "capability_filter": false,
+    "result_filter": false,
+    "index_convention": "zero-based; start inclusive, end exclusive"
+  },
+  "summary": {
+    "m3": {
+      "Pass": 10445,
+      "NotSupported": 4296
+    },
+    "m4": {
+      "Pass": 10445,
+      "NotSupported": 4296
+    }
+  },
+  "environment": {
+    "HK_M4_NATIVE_PREAMBLE": "true",
+    "AGX_NATIVE_MEMORY_PREAMBLE": "true",
+    "AGX_MESA_DEBUG": "",
+    "ASAHI_MESA_DEBUG": "nocompress"
+  },
+  "mesa_sha256": "2e2f0cb06def7e6a7407059cb4da2bd295a486965e57dd60280908f61ca2b688",
+  "scope": "UBO, robustness.buffer_access, binding_model.descriptor_copy families; not full CTS qualification"
+}

@@ -46,3 +46,11 @@ logs identify the stage; ordinal alone is not proof on an arbitrary workload.
 Run only inside the established GPU guard. The diagnostic wrapper retains
 mismatches without deliberately rebooting a healthy GPU; its `matched` field,
 not merely its exit code, establishes the expected outcome.
+
+M4 now reproduces the same VS and FS mapping boundaries: old binary returns
+-8, candidate returns -1, and all four same-device retries have zero mismatches
+in 4,096 fragment writes. Normal GPU health/guards retained. The general M4
+classifier intentionally calls the old binary's unsupported-shader log a
+shader_error; these two baseline diagnostics are not new GPU faults or claimed
+passing driver behavior. Candidate diagnostics classify pass. Exact receipts
+are in m4-lazy-map-{old,new}-{1,2}.

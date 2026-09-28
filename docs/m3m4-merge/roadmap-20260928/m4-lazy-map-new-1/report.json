@@ -1,0 +1,24 @@
+{
+  "id": "20260928T093838103834Z-roadmap-m4-lazy-map-new-1",
+  "verdict": "pass",
+  "transport_returncode": 0,
+  "evidence_fetched": true,
+  "directory": "/home/council/dev/dirtyroom_m4/_provenance/experiments/20260928T093838103834Z-roadmap-m4-lazy-map-new-1",
+  "observations": {
+    "pixel_results": [
+      "PASS: lazy map failure then 64x64 fragment writes bad=0/4096"
+    ],
+    "pixel_result_count": 1,
+    "thermal_samples": 1,
+    "malformed_thermal_samples": 0,
+    "peak_temperature_c": 63.25,
+    "channel_peaks_c": {
+      "PMP aggregate die hotspot": 63.0,
+      "Ta000m": 63.0,
+      "Te000m": 61.0,
+      "Te001m": 59.0,
+      "Tp000m": 63.25,
+      "Tp001m": 58.5
+    }
+  }
+}
