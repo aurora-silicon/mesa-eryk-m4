@@ -257,3 +257,35 @@ than assuming these final-frame draws directly contain the bad values. The
 native centroid/nonlinear-derivative smoke probe at 31x31 passes on both GPUs;
 it does not qualify every interpolation pattern. Original raw attachments and
 all diagnostic patches are retained in the local-only benchmark repository.
+
+### First-frame repetition and a captured material-buffer difference
+
+The discrepancy does not require replay history. With the four-instruction
+candidate, M3 frame 1 matches 13 times, then differs in 1,319 RGB pixels
+(maximum 118). M4 matches ten times, then differs in 1,983 pixels (maximum
+247). The identical M4 binary with no admitted loads matches all 20 first-frame
+repetitions. These bounded repetitions improve isolation, not a statistical
+qualification or proof that the control can never fail.
+
+Twenty M3 first-frame replays with before/after readback around draw 406589 all
+produce exact final screenshots. However, repetition 13 contains a difference
+in three intermediate color attachments: 276 pixels in the rectangle
+[1792,800]..[1841,831], totaling 2,384 changed bytes. All before-draw attachments
+match. The differing pixels were unchanged by the reference draw; this is not
+proof they were outside its coverage, since overdraw may reproduce the same
+values. The emissive attachment and the fifth, write-disabled attachment match.
+This localizes one observed discrepancy to the selected draw even though later
+processing hides it in the final screenshot. Evidence:
+`20260928T192617708770Z-m3-satisfactory-dx11-gameplay-check`.
+
+A diagnostic candidate that limits native ioctls to one hardware command,
+adds synchronous queue waits, disables CDM merging, and disables early tiling
+matches all 20 first-frame M3 repetitions. These simultaneous changes only test
+an ordering hypothesis; none is a proposed performance fix. Source shaders and
+game settings are unchanged. The candidate is not the desktop installation.
+M4 validation and a descriptor-equality diagnostic remain in progress.
+
+The raw comparison helper now reports before-draw byte differences explicitly
+and rejects asymmetric or truncated before-draw snapshots. Three offline tests
+cover those cases. All game readbacks remain private in the local benchmark
+repository; no assets or raw game attachments are published with Mesa.
