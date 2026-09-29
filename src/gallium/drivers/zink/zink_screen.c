@@ -3563,6 +3563,24 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
       goto fail;
    }
 
+   if (debug_get_bool_option("ZINK_DISABLE_SAMPLER_MINMAX", false)) {
+      /* Some Vulkan implementations emulate reduction in every sampling
+       * shader when this feature is enabled. Allow an application to opt
+       * out, including the GL capability, without weakening other clients
+       * of the Vulkan driver. The extension also enables the core feature,
+       * so both must be removed before device creation.
+       */
+      screen->info.feats12.samplerFilterMinmax = VK_FALSE;
+      screen->info.have_EXT_sampler_filter_minmax = false;
+      unsigned count = 0;
+      for (unsigned i = 0; i < screen->info.num_extensions; ++i) {
+         if (strcmp(screen->info.extensions[i],
+                    VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME))
+            screen->info.extensions[count++] = screen->info.extensions[i];
+      }
+      screen->info.num_extensions = count;
+   }
+
    if (!screen->info.rb2_feats.nullDescriptor) {
       mesa_loge("Zink requires the nullDescriptor feature of KHR/EXT robustness2.");
       goto fail;

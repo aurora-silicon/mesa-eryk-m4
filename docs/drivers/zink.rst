@@ -267,6 +267,15 @@ Performance
 If you notice poor performance and high CPU usage while running an application,
 changing the descriptor manager may improve performance:
 
+.. envvar:: ZINK_DISABLE_SAMPLER_MINMAX
+
+   Set to ``true`` to disable Vulkan sampler min/max reduction for this Zink
+   process and stop exposing the corresponding OpenGL capability. This can
+   diagnose the cost of shader emulation on Vulkan drivers without native
+   sampler reduction. Applications requiring the OpenGL extension will no
+   longer have it available. Other Vulkan clients are unaffected. Default:
+   ``false``.
+
 .. envvar:: ZINK_DESCRIPTORS <mode> ("auto")
 
 ``auto``
