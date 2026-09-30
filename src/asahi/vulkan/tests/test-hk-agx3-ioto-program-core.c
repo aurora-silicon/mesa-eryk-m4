@@ -2313,6 +2313,39 @@ test_fragment_preamble_publication(void)
 int
 main(void)
 {
+   /* Vertex constant programs retain STOP and never add fragment PIXREL.
+    * Reject bad tails and short destinations without partially publishing. */
+   {
+      const uint8_t loader[] = {0x06, 0, 0x0e, 0, 0, 0};
+      const uint8_t preamble[] = {0x8b, 0, 0x41, 4, 0x0e, 0, 0, 0};
+      uint8_t output[64], original[64];
+      memset(original, 0xcc, sizeof(original));
+      memcpy(original, loader, sizeof(loader));
+      const size_t required = sizeof(loader) + sizeof(preamble) - 4 +
+         HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE;
+      for (unsigned invalid = 0; invalid < 5; ++invalid) {
+         memcpy(output, original, sizeof(output));
+         size_t length = sizeof(loader);
+         uint8_t bad[sizeof(preamble)];
+         memcpy(bad, preamble, sizeof(bad));
+         if (invalid == 0) bad[sizeof(bad) - 1] = 1;
+         CHECK(!hk_agx3_vertex_preamble_append(
+            invalid == 1 ? AGX_CHIP_G16G : AGX_CHIP_G15S,
+            output, invalid == 2 ? required - 1 : sizeof(output), &length,
+            bad, invalid == 3 ? SIZE_MAX : invalid == 4 ? 3 : sizeof(bad)));
+         CHECK(length == sizeof(loader));
+         CHECK(!memcmp(output, original, sizeof(output)));
+      }
+      size_t length = sizeof(loader);
+      memcpy(output, original, sizeof(output));
+      memcpy(output + sizeof(loader), preamble, sizeof(preamble));
+      CHECK(hk_agx3_vertex_preamble_append(AGX_CHIP_G15S, output, required,
+         &length, output + sizeof(loader), sizeof(preamble)));
+      CHECK(length == required);
+      CHECK(!memcmp(output, loader, 2));
+      CHECK(!memcmp(output + 2 + HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE,
+                    preamble, sizeof(preamble)));
+   }
    if (test_fragment_preamble_publication() || test_mixed_target_layout_bounds() ||
        test_coverage_initial_pixel_dependencies() ||
        test_exact_target_order() || test_terminal_suffix_modes() ||

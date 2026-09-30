@@ -33,6 +33,13 @@ hk_vertex_ubo_prefetch_enabled(enum agx_chip chip)
           debug_get_bool_option("HK_M3_VERTEX_PREFETCH_UBOS", true);
 }
 
+static inline bool
+hk_vertex_preamble_enabled(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S &&
+          debug_get_bool_option("HK_M3_VERTEX_PREAMBLE", false);
+}
+
 /* Cache resource-program structure, while patching each draw's GPU addresses.
  * Other chips retain the opt-in policy until separately qualified. */
 static inline bool

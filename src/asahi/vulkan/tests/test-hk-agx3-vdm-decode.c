@@ -314,6 +314,12 @@ test_g17p_vertex_program_info(void)
                                            &program));
    CHECK(program.source_layout ==
          AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED);
+   invalid_info.inline_preamble = true;
+   invalid_info.nr_preamble_gprs = 32;
+   CHECK(hk_agx3_g17p_vertex_program_info(AGX_CHIP_G15S, &invalid_info, &program));
+   CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G16G, &invalid_info, &program));
+   invalid_info.preamble_scratch_size = 16;
+   CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G15S, &invalid_info, &program));
    invalid_info = vkcube_info;
    invalid_info.user_size = HK_AGX3_G17P_MAX_USER_WORDS + 1;
    invalid_info.psiz_off = invalid_info.layer_viewport_off =

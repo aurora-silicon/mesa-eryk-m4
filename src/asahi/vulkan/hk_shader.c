@@ -156,6 +156,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)hk_ubo_prefetch_variant_enabled(pdev->dev.chip) << 33;
       flags |= (uint64_t)hk_plain_samplers_enabled(pdev->dev.chip) << 34;
       flags |= (uint64_t)hk_vertex_ubo_prefetch_enabled(pdev->dev.chip) << 45;
+      flags |= (uint64_t)hk_vertex_preamble_enabled(pdev->dev.chip) << 46;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) << 35;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
@@ -181,7 +182,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    static_assert(AGX_DBG_REMAT < BITFIELD_BIT(17));
    static_assert(((AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
                    AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
-                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 3) == 0);
+                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 7) == 0);
    flags |= (agx_get_compiler_debug() &
              (AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
               AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
@@ -3130,10 +3131,14 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       robust2_modes |= nir_var_mem_ssbo;
 #endif
 
-   const bool native_preamble = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
-      (nir->info.stage == MESA_SHADER_FRAGMENT ||
-       nir->info.stage == MESA_SHADER_COMPUTE) &&
-      debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false);
+   const bool vertex_preamble = sw_stage == MESA_SHADER_VERTEX && hw &&
+      nir->info.stage == MESA_SHADER_VERTEX &&
+      hk_vertex_preamble_enabled(dev->dev.chip);
+   const bool native_preamble = vertex_preamble ||
+      (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
+       (nir->info.stage == MESA_SHADER_FRAGMENT ||
+        nir->info.stage == MESA_SHADER_COMPUTE) &&
+       debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false));
 
    /* Ioto-populated inputs and native preamble outputs must not share the
     * final 128-bit uniform block. On G15S and G16G, placing outputs at half
@@ -3232,6 +3237,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
           * even when those words are undefined and never rasterized. */
          .position_only = (shader->b.info.outputs & ~VARYING_BIT_POS) == 0,
          .has_preamble = shader->b.info.has_preamble,
+         .inline_preamble = vertex_preamble && shader->b.info.has_preamble,
          .nr_preamble_gprs = shader->b.info.nr_preamble_gprs,
          .preamble_scratch_size = shader->b.info.preamble_scratch_size,
          .uvs_written = shader->info.uvs.written,

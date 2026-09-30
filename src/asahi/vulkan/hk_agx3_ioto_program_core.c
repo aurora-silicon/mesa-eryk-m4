@@ -361,6 +361,36 @@ hk_agx3_fragment_preamble_append(
 }
 
 bool
+hk_agx3_vertex_preamble_append(
+   enum agx_chip chip, void *output, size_t capacity,
+   size_t *length, const void *preamble, size_t preamble_size)
+{
+   const uint8_t stop[] = {0x0e, 0, 0, 0};
+   if (chip != AGX_CHIP_G15S || !output || !length || !preamble ||
+       preamble_size < sizeof(stop) || *length < sizeof(stop) ||
+       *length > capacity)
+      return false;
+   const size_t body = preamble_size - sizeof(stop);
+   if (body > capacity - *length ||
+       HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE > capacity - *length - body)
+      return false;
+   uint8_t *dst = output;
+   const uint8_t *src = preamble;
+   const size_t insertion = *length - sizeof(stop);
+   if (memcmp(dst + insertion, stop, sizeof(stop)) ||
+       memcmp(src + body, stop, sizeof(stop)))
+      return false;
+   memmove(dst + insertion + HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE, src, body);
+   for (unsigned i = 0; i < HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE;
+        i += AGX_IOTO_LOAD_NOP_SIZE)
+      agx_ioto_load_pack_nop(0, dst + insertion + i);
+   memcpy(dst + insertion + HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE + body,
+          stop, sizeof(stop));
+   *length += HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE + body;
+   return true;
+}
+
+bool
 hk_agx3_g17p_basic_graphics_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
    struct hk_agx3_g17p_graphics_program *program)

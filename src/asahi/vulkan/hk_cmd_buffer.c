@@ -1327,8 +1327,10 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
    if (!linked || !linked->b.bo || !linked->b.bo->va || linked->b.size == 0 ||
        linked->b.size > UINT32_MAX ||
        (s->b.info.has_preamble &&
-        (s->info.stage != MESA_SHADER_FRAGMENT ||
-         !debug_get_option_hk_m4_native_preamble())) ||
+        !((s->info.stage == MESA_SHADER_FRAGMENT &&
+           debug_get_option_hk_m4_native_preamble()) ||
+          (s->info.stage == MESA_SHADER_VERTEX &&
+           hk_vertex_preamble_enabled(hk_cmd_buffer_device(cmd)->dev.chip)))) ||
        s->b.info.preamble_scratch_size != 0 ||
        s->b.info.texture_state_count != 0 ||
        (s->b.info.sampler_state_count != 0 &&
@@ -1958,11 +1960,13 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       size_t program_length = program.length;
       memcpy(program_map, program.bytes, program.length);
       if (preamble_size) {
-         if (!desc.fragment || !hk_agx3_fragment_preamble_append(
+         const void *preamble = (const uint8_t *)s->b.binary + s->b.info.preamble_offset;
+         const bool appended = desc.fragment ? hk_agx3_fragment_preamble_append(
                 dev->dev.chip, desc.writes_sample_mask, program_map,
-                program_capacity, &program_length,
-                (const uint8_t *)s->b.binary + s->b.info.preamble_offset,
-                preamble_size)) {
+                program_capacity, &program_length, preamble, preamble_size) :
+            hk_agx3_vertex_preamble_append(dev->dev.chip, program_map,
+                program_capacity, &program_length, preamble, preamble_size);
+         if (!appended) {
             vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
             return 0;
          }

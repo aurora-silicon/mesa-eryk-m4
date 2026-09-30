@@ -31,6 +31,11 @@ bool hk_agx3_fragment_preamble_append(
    enum agx_chip chip, bool writes_sample_mask, void *output, size_t capacity,
    size_t *length, const void *preamble, size_t preamble_size);
 
+/* Vertex programs have no PIXREL; retain their terminal STOP. */
+bool hk_agx3_vertex_preamble_append(
+   enum agx_chip chip, void *output, size_t capacity,
+   size_t *length, const void *preamble, size_t preamble_size);
+
 struct agx_tilebuffer_layout;
 
 struct hk_agx3_ioto_program_desc {

@@ -117,7 +117,10 @@ hk_agx3_g17p_vertex_program_info(
 
    if (!agx_chip_uses_hal200_ioto(chip) || !compiler_info || !program ||
        !compiler_info->hardware_vertex ||
-       compiler_info->has_preamble || compiler_info->nr_preamble_gprs != 0 ||
+       (compiler_info->inline_preamble &&
+        (chip != AGX_CHIP_G15S || !compiler_info->has_preamble)) ||
+       (!compiler_info->inline_preamble &&
+        (compiler_info->has_preamble || compiler_info->nr_preamble_gprs != 0)) ||
        compiler_info->preamble_scratch_size != 0 ||
        compiler_info->position_off != 0 || compiler_info->varyings_off != 4 ||
        compiler_info->psiz_off != 4 + compiler_info->user_size ||
