@@ -5069,6 +5069,8 @@ hk_shader_can_use_direct_ubos(struct hk_cmd_buffer *cmd, mesa_shader_stage stage
          return false;
    }
    for (unsigned i = 0; i < info->ubo_prefetch_count; ++i) {
+      if (!hk_ubo_prefetch_group_first(info->ubo_prefetch, i))
+         continue;
       const struct hk_ubo_prefetch *load = &info->ubo_prefetch[i];
       struct hk_buffer_address address;
       if (!hk_prefetch_buffer_address(state, load, &address))

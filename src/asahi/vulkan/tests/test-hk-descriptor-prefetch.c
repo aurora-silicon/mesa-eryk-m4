@@ -22,6 +22,44 @@ static bool allow_ubo(void *data, unsigned set, unsigned offset)
    return *(bool *)data && set == 0 && offset == 64;
 }
 
+static void test_coalesced_uniform_addresses(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL,
+                                                 "coalesced uniform inputs");
+   /* Interleaved descriptors, reverse source order, and shared flag words. */
+   struct hk_ubo_prefetch loads[] = {
+      {.set=1, .descriptor_offset_B=64, .offset_B=12, .size_B=4,
+       .uniform_half=40, .direct_half=42},
+      {.set=0, .descriptor_offset_B=32, .offset_B=0, .size_B=4,
+       .uniform_half=44, .direct_half=46},
+      {.set=1, .descriptor_offset_B=64, .offset_B=8, .size_B=4,
+       .uniform_half=48, .direct_half=42},
+      {.set=1, .descriptor_offset_B=64, .offset_B=0, .size_B=4,
+       .uniform_half=50, .direct_half=42},
+   };
+   const unsigned before[] = {40, 42, 44, 46, 48, 50};
+   const unsigned after[] = {48, 50, 40, 42, 46, 44};
+   nir_intrinsic_instr *reads[ARRAY_SIZE(before)];
+   for (unsigned i = 0; i < ARRAY_SIZE(before); ++i) {
+      nir_def *value = nir_load_preamble(&b, 1, 32, .base=before[i]);
+      reads[i] = nir_instr_as_intrinsic(nir_def_instr(value));
+      nir_store_global(&b, value, nir_imm_int64(&b, 0x1000 + i * 4), .align_mul=4);
+   }
+   assert(hk_nir_coalesce_ubo_prefetch(b.shader, loads, ARRAY_SIZE(loads)));
+   for (unsigned i = 0; i < ARRAY_SIZE(before); ++i)
+      assert(nir_intrinsic_base(reads[i]) == after[i]);
+   assert(loads[0].set == 0 && loads[0].uniform_half == 40);
+   assert(loads[1].offset_B == 0 && loads[1].uniform_half == 44);
+   assert(loads[2].offset_B == 8 && loads[2].uniform_half == 46);
+   assert(loads[3].offset_B == 12 && loads[3].uniform_half == 48);
+   assert(hk_ubo_prefetch_group_first(loads, 0));
+   assert(hk_ubo_prefetch_group_first(loads, 1));
+   assert(!hk_ubo_prefetch_group_first(loads, 2));
+   assert(!hk_ubo_prefetch_group_first(loads, 3));
+   nir_validate_shader(b.shader, "coalesced UBO addresses");
+   ralloc_free(b.shader);
+}
+
 static void test_ubo(bool early, bool direct, unsigned access, bool eligible)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
@@ -327,6 +365,7 @@ test_compact_descriptors(void)
 
 int main(void)
 {
+   test_coalesced_uniform_addresses();
    test_compact_descriptors();
    for (unsigned generic = 0; generic < 2; generic++)
       for (unsigned offset = 40; offset <= 42; offset += 2)

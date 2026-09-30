@@ -512,6 +512,72 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
    return progress;
 }
 
+/* Arrange admitted scalar inputs by source buffer and byte offset. Moving only
+ * the uniform addresses preserves the shader's arithmetic and control flow.
+ * The loader still checks every scalar independently, including partial OOB. */
+bool
+hk_nir_coalesce_ubo_prefetch(nir_shader *nir,
+                           struct hk_ubo_prefetch *loads, unsigned count)
+{
+   if (!count)
+      return false;
+   assert(count <= HK_UBO_PREFETCH_MAX);
+   unsigned remap[AGX_NUM_UNIFORMS];
+   for (unsigned i = 0; i < ARRAY_SIZE(remap); ++i)
+      remap[i] = i;
+   unsigned start = AGX_NUM_UNIFORMS;
+   for (unsigned i = 0; i < count; ++i)
+      start = MIN2(start, MIN2(loads[i].uniform_half, loads[i].direct_half));
+   for (unsigned i = 1; i < count; ++i) {
+      struct hk_ubo_prefetch value = loads[i];
+      unsigned j = i;
+      while (j && (loads[j - 1].set > value.set ||
+             (loads[j - 1].set == value.set &&
+              (loads[j - 1].descriptor_offset_B > value.descriptor_offset_B ||
+               (loads[j - 1].descriptor_offset_B == value.descriptor_offset_B &&
+                loads[j - 1].offset_B > value.offset_B))))) {
+         loads[j] = loads[j - 1];
+         --j;
+      }
+      loads[j] = value;
+   }
+   for (unsigned first = 0; first < count;) {
+      unsigned end = first + 1;
+      while (end < count && loads[end].set == loads[first].set &&
+             loads[end].descriptor_offset_B == loads[first].descriptor_offset_B)
+         ++end;
+      unsigned flag = start + 2 * (end - first);
+      assert(flag + 2 <= AGX_NUM_UNIFORMS);
+      for (unsigned i = first; i < end; ++i) {
+         remap[loads[i].uniform_half] = start;
+         remap[loads[i].direct_half] = flag;
+         loads[i].uniform_half = start;
+         loads[i].direct_half = flag;
+         start += 2;
+      }
+      start += 2;
+      first = end;
+   }
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_load_preamble)
+               continue;
+            unsigned base = nir_intrinsic_base(intr);
+            if (base < ARRAY_SIZE(remap) && remap[base] != base) {
+               assert(intr->def.bit_size == 32 && intr->def.num_components == 1);
+               nir_intrinsic_set_base(intr, remap[base]);
+            }
+         }
+      }
+      nir_progress(true, impl, nir_metadata_all);
+   }
+   return true;
+}
+
 /* Descriptor predicates are checked by command recording for the alternate
  * executable. Retain all other sampler fields and native texture operations. */
 bool

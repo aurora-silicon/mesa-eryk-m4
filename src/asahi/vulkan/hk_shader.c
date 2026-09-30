@@ -156,6 +156,8 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)hk_ubo_prefetch_variant_enabled(pdev->dev.chip) << 33;
       flags |= (uint64_t)hk_plain_samplers_enabled(pdev->dev.chip) << 34;
       flags |= (uint64_t)hk_vertex_ubo_prefetch_enabled(pdev->dev.chip) << 45;
+      flags |= (uint64_t)hk_coalesce_ubos_enabled(pdev->dev.chip) << 47;
+      flags |= (uint64_t)hk_vertex_plain_samplers_enabled(pdev->dev.chip) << 48;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) << 35;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
@@ -176,12 +178,14 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
     * bits 44..60 for the compiler's original bit positions. Compiler bit 0
     * is unused, so flag 44 holds the diagnostic buffer shortcut above. Bit 1
     * only logs shaders; flag 45 holds the vertex input-loader policy.
+    * Compiler bits 3/4 are logging options too; flags 47/48 identify input
+    * coalescing and the ordinary vertex-sampler variant.
     * Logging/validation options do not change code and need no separate cache.
     */
    static_assert(AGX_DBG_REMAT < BITFIELD_BIT(17));
    static_assert(((AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
                    AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
-                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 3) == 0);
+                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 27) == 0);
    flags |= (agx_get_compiler_debug() &
              (AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
               AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
@@ -2987,9 +2991,15 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                   AGX_NUM_UNIFORMS - (vertex_ubo_prefetch ? AGX_ABI_VUNI_NATIVE_PREFIX : 0),
                   shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
                   hk_ubo_prefetch_binding_allowed, (void *)&prefetch_layouts);
+         if (hk_coalesce_ubos_enabled(dev->dev.chip))
+            NIR_PASS(_, nir, hk_nir_coalesce_ubo_prefetch,
+                     shader->info.ubo_prefetch, shader->info.ubo_prefetch_count);
       }
       if (shader->info.ubo_prefetch_direct) {
-         if (sw_stage == MESA_SHADER_FRAGMENT && hk_plain_samplers_enabled(dev->dev.chip)) {
+         if (hk_plain_samplers_enabled(dev->dev.chip) &&
+             (sw_stage == MESA_SHADER_FRAGMENT ||
+              (sw_stage == MESA_SHADER_VERTEX &&
+               hk_vertex_plain_samplers_enabled(dev->dev.chip)))) {
             for (unsigned set = 0; set < set_count; ++set) {
                if (!set_layouts || !set_layouts[set])
                   continue;

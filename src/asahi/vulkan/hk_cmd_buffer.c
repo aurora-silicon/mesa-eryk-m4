@@ -1661,7 +1661,20 @@ hk_g17p_graphics_uniform_ranges(
             .address = source,
          };
       }
-      if (load->direct_half == load->uniform_half + 2) {
+   }
+   /* Eligibility flags must not split adjacent data ranges. Their values
+    * depend on immutable descriptors, never on CPU reads of UBO contents. */
+   for (unsigned i = 0; i < s->info.ubo_prefetch_count; ++i) {
+      const struct hk_ubo_prefetch *load = &s->info.ubo_prefetch[i];
+      /* The ordinary executable has folded all eligibility words to true.
+       * Its descriptor predicates were checked when choosing the variant. */
+      if (s->info.ubo_prefetch_direct)
+         break;
+      if (hk_ubo_prefetch_group_first(s->info.ubo_prefetch, i)) {
+         struct hk_buffer_address address;
+         if (!hk_prefetch_buffer_address(&cmd->state.gfx.descriptors, load, &address))
+            return false;
+         const bool direct = !agx_addr_is_ro(&dev->dev, address.base_addr);
          const uint32_t eligible = direct;
          if (!cmd->native_prefetch_eligible[eligible])
             cmd->native_prefetch_eligible[eligible] =

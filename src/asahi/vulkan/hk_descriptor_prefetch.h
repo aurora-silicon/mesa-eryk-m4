@@ -33,6 +33,20 @@ hk_vertex_ubo_prefetch_enabled(enum agx_chip chip)
           debug_get_bool_option("HK_M3_VERTEX_PREFETCH_UBOS", true);
 }
 
+static inline bool
+hk_coalesce_ubos_enabled(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S &&
+          debug_get_bool_option("HK_M3_COALESCE_UBOS", false);
+}
+
+static inline bool
+hk_vertex_plain_samplers_enabled(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S &&
+          debug_get_bool_option("HK_M3_VERTEX_PLAIN_SAMPLERS", false);
+}
+
 /* Cache resource-program structure, while patching each draw's GPU addresses.
  * Other chips retain the opt-in policy until separately qualified. */
 static inline bool
@@ -81,6 +95,17 @@ struct hk_ubo_prefetch {
    uint16_t size_B;
    uint16_t direct_half;
 };
+static inline bool
+hk_ubo_prefetch_group_first(const struct hk_ubo_prefetch *loads, unsigned index)
+{
+   for (unsigned i = 0; i < index; ++i)
+      if (loads[i].direct_half == loads[index].direct_half)
+         return false;
+   return true;
+}
+
+bool hk_nir_coalesce_ubo_prefetch(nir_shader *nir,
+                                struct hk_ubo_prefetch *loads, unsigned count);
 typedef bool (*hk_ubo_prefetch_allowed)(void *data, unsigned set, unsigned offset);
 bool hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                          unsigned *uniform_end, unsigned uniform_limit,
