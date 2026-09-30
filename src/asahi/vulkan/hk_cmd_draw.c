@@ -5038,13 +5038,14 @@ hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
 /* Descriptor contents are immutable for these bindings while pending. Sparse
  * and capture/replay shadow addresses must retain GPU-side alias resolution. */
 static bool
-hk_fs_can_use_direct_ubos(struct hk_cmd_buffer *cmd)
+hk_shader_can_use_direct_ubos(struct hk_cmd_buffer *cmd, mesa_shader_stage stage,
+                            unsigned variant)
 {
    struct hk_graphics_state *gfx = &cmd->state.gfx;
-   struct hk_api_shader *api = gfx->shaders[MESA_SHADER_FRAGMENT];
-   if (!api || !api->variants[1].info.ubo_prefetch_direct)
+   struct hk_api_shader *api = gfx->shaders[stage];
+   if (!api || !api->variants[variant].info.ubo_prefetch_direct)
       return false;
-   const struct hk_shader_info *info = &api->variants[1].info;
+   const struct hk_shader_info *info = &api->variants[variant].info;
    const struct hk_descriptor_state *state = &gfx->descriptors;
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    for (unsigned i = 0; i < info->plain_sampler_count; ++i) {
@@ -5106,13 +5107,25 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
          return NULL;
    }
 
-   bool direct_ubos = hk_fs_can_use_direct_ubos(cmd);
+   bool direct_ubos = hk_shader_can_use_direct_ubos(cmd, MESA_SHADER_FRAGMENT, 1);
    if (direct_ubos != gfx->fs_ubo_direct) {
       if (debug_get_option_hk_m4_prefetch_audit())
          fprintf(stderr, "M4 fragment UBO variant: %s\n",
                  direct_ubos ? "ordinary" : "general");
       gfx->fs_ubo_direct = direct_ubos;
       gfx->shaders_dirty |= BITFIELD_BIT(MESA_SHADER_FRAGMENT);
+      desc->root_dirty = true;
+   }
+
+   bool direct_vertex = !gfx->shaders[MESA_SHADER_TESS_EVAL] &&
+      !gfx->shaders[MESA_SHADER_GEOMETRY] &&
+      hk_shader_can_use_direct_ubos(cmd, MESA_SHADER_VERTEX, HK_VS_VARIANTS);
+   if (direct_vertex != gfx->vs_ubo_direct) {
+      if (debug_get_option_hk_m4_prefetch_audit())
+         fprintf(stderr, "M3 vertex UBO variant: %s\n",
+                 direct_vertex ? "ordinary" : "general");
+      gfx->vs_ubo_direct = direct_vertex;
+      gfx->shaders_dirty |= BITFIELD_BIT(MESA_SHADER_VERTEX);
       desc->root_dirty = true;
    }
 
