@@ -174,7 +174,10 @@ hk_prefetch_buffer_address(const struct hk_descriptor_state *state,
       const struct hk_descriptor_set *set = state->sets[load->set];
       data = set ? set->mapped_ptr :
          state->push[load->set] ? state->push[load->set]->data : NULL;
-      size = state->set_sizes[load->set];
+      /* Push data is already available before its first GPU upload. The
+       * cached set size is only filled by flush_push_descriptors later. */
+      size = set ? state->set_sizes[load->set] :
+         state->push[load->set] ? sizeof(state->push[load->set]->data) : 0;
    }
    if (!data || load->descriptor_offset_B > size ||
        sizeof(*address) > size - load->descriptor_offset_B)

@@ -5065,8 +5065,31 @@ hk_shader_can_use_direct_ubos(struct hk_cmd_buffer *cmd, mesa_shader_stage stage
       if ((sw.sampler.opaque[1] & (3u << HK_MINMAX_MODE_SHIFT)) ||
           (sw.min_lod_fp16 & 0x7fff) || sw.min_lod_uint16 ||
           sw.scaled_conversion ||
-          sw.clamp_0_sampler_index_or_negative >= 0)
+          sw.clamp_0_sampler_index_or_negative >= 0) {
+         if (debug_get_option_hk_m4_prefetch_audit()) {
+            /* Bounded descriptor-state sample, not a draw-frequency counter. */
+            static _Thread_local uint64_t seen[128];
+            static _Thread_local unsigned seen_count;
+            uint32_t code = _mesa_hash_data(api->variants[0].b.binary,
+                                            api->variants[0].b.info.binary_size);
+            uint64_t key = ((uint64_t)code << 32) |
+               _mesa_hash_data(&sw, sizeof(sw));
+            bool found = false;
+            for (unsigned k = 0; k < seen_count; ++k)
+               found |= seen[k] == key;
+            if (!found && seen_count < ARRAY_SIZE(seen)) {
+               seen[seen_count++] = key;
+               fprintf(stderr, "HK_DIRECT_REJECT stage=%u code=%08x reason=sampler "
+                       "set=%u offset=%u minmax=%u minlod_fp16=%u minlod_uint=%u "
+                       "scaled=%u clamp0=%d\n", stage, code, sampler->set,
+                       sampler->descriptor_offset_B,
+                       (sw.sampler.opaque[1] >> HK_MINMAX_MODE_SHIFT) & 3,
+                       sw.min_lod_fp16, sw.min_lod_uint16, sw.scaled_conversion,
+                       sw.clamp_0_sampler_index_or_negative);
+            }
+         }
          return false;
+      }
    }
    for (unsigned i = 0; i < info->ubo_prefetch_count; ++i) {
       const struct hk_ubo_prefetch *load = &info->ubo_prefetch[i];
@@ -5075,10 +5098,28 @@ hk_shader_can_use_direct_ubos(struct hk_cmd_buffer *cmd, mesa_shader_stage stage
       if (load->direct_half != load->uniform_half + 2)
          continue;
       struct hk_buffer_address address;
-      if (!hk_prefetch_buffer_address(state, load, &address))
+      bool valid = hk_prefetch_buffer_address(state, load, &address);
+      if (!valid || agx_addr_is_ro(&dev->dev, address.base_addr)) {
+         if (debug_get_option_hk_m4_prefetch_audit()) {
+            static _Thread_local uint64_t seen[128];
+            static _Thread_local unsigned seen_count;
+            uint32_t code = _mesa_hash_data(api->variants[0].b.binary,
+                                            api->variants[0].b.info.binary_size);
+            uint64_t key = ((uint64_t)code << 32) | ((uint32_t)valid << 31) |
+                           (load->set << 24) | load->descriptor_offset_B;
+            bool found = false;
+            for (unsigned k = 0; k < seen_count; ++k)
+               found |= seen[k] == key;
+            if (!found && seen_count < ARRAY_SIZE(seen)) {
+               seen[seen_count++] = key;
+               fprintf(stderr, "HK_DIRECT_REJECT stage=%u code=%08x reason=%s "
+                       "set=%u offset=%u address=%" PRIx64 "\n", stage, code,
+                       valid ? "alias" : "descriptor", load->set,
+                       load->descriptor_offset_B, valid ? address.base_addr : 0);
+            }
+         }
          return false;
-      if (agx_addr_is_ro(&dev->dev, address.base_addr))
-         return false;
+      }
    }
    return true;
 }

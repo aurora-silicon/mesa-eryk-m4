@@ -591,8 +591,41 @@ check_coalesced_rejections(void)
    puts("PASS: coalescing rejects unaligned, volatile, mutable and intervening stores");
 }
 
+static void
+check_unflushed_push_prefetch(void)
+{
+   struct hk_descriptor_state state = {0};
+   struct hk_push_descriptor_set push = {0};
+   struct hk_buffer_address expected = {
+      .base_addr = UINT64_C(0x12340000) | HK_BUFFER_ADDRESS_DIRECT_BIT,
+      .size = 4096,
+   }, result;
+   struct hk_ubo_prefetch load = {.set = 0, .descriptor_offset_B = 64};
+   memcpy(push.data + 64, &expected, sizeof(expected));
+   state.push[0] = &push;
+   /* First draw after a push: no upload, cached size still zero. */
+   CHECK(hk_prefetch_buffer_address(&state, &load, &result));
+   CHECK(result.base_addr == UINT64_C(0x12340000));
+   CHECK(result.size == expected.size);
+   /* A stale size from an earlier bound set cannot restrict push data. */
+   state.set_sizes[0] = 16;
+   CHECK(hk_prefetch_buffer_address(&state, &load, &result));
+   load.descriptor_offset_B = sizeof(push.data) - sizeof(expected);
+   memcpy(push.data + load.descriptor_offset_B, &expected, sizeof(expected));
+   CHECK(hk_prefetch_buffer_address(&state, &load, &result));
+   load.descriptor_offset_B++;
+   CHECK(!hk_prefetch_buffer_address(&state, &load, &result));
+   load.descriptor_offset_B = UINT32_MAX;
+   CHECK(!hk_prefetch_buffer_address(&state, &load, &result));
+   state.push[0] = NULL;
+   load.descriptor_offset_B = 64;
+   CHECK(!hk_prefetch_buffer_address(&state, &load, &result));
+   puts("PASS: prefetch sees pending push descriptors and retains buffer bounds");
+}
+
 int main(void)
 {
+   check_unflushed_push_prefetch();
    check_coalesced_bounded();
    check_coalesced_rejections();
    check_buffer_bounds();
