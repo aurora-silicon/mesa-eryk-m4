@@ -158,14 +158,21 @@ main(void)
       const unsigned count = counts[round / 16];
       const unsigned value[4] = {(round * 73 + 19) & 255,
          (round * 41 + 7) & 255, (round * 137 + 23) & 255, 255};
-      const unsigned mask[4] = {(round * 17) & 255,
+      unsigned mask[4] = {(round * 17) & 255,
          (round * 59) & 255, (round * 101) & 255, 0};
       glBindBuffer(GL_UNIFORM_BUFFER, buffers[sparse]);
       glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(value), value);
       glBindBufferRange(GL_UNIFORM_BUFFER, 0, buffers[sparse], offset, 16);
       glBindBuffer(GL_UNIFORM_BUFFER, buffers[2]);
       glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(mask), mask);
-      glBindBufferRange(GL_UNIFORM_BUFFER, 1, buffers[2], offset, 16);
+      if (round & 1) {
+         /* The argument BO is simultaneously a UBO. Its first command stays
+          * fixed while per-draw ABI addresses advance through other records. */
+         memcpy(mask, &draws[0], sizeof(mask));
+         glBindBufferRange(GL_UNIFORM_BUFFER, 1, indirect, 0, 16);
+      } else {
+         glBindBufferRange(GL_UNIFORM_BUFFER, 1, buffers[2], offset, 16);
+      }
       glBindSampler(0, samplers[border]);
       glClearColor(0.75, 0.5, 0.25, 0);
       glClear(GL_COLOR_BUFFER_BIT);

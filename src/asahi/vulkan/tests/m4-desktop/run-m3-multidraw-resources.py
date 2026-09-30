@@ -17,11 +17,13 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--source', required=True, type=Path)
 p.add_argument('--prefix', required=True)
 p.add_argument('--sha256', required=True)
+p.add_argument('--gallium-sha256', help='Also verify an isolated Gallium candidate')
 p.add_argument('--output', required=True, type=Path)
 p.add_argument('--option', default='HK_M3_MULTIDRAW_UBO_PROOF',
                help='Boolean diagnostic option compared false/true')
 a = p.parse_args()
-assert a.option.startswith('HK_') and a.option.replace('_', '').isalnum()
+assert ((a.option.startswith('HK_') and a.option.replace('_', '').isalnum()) or
+        a.option == 'ZINK_PREFER_HIGH_CAPACITY_CPUS')
 a.output = a.output.resolve()
 a.output.mkdir(parents=True, exist_ok=False)
 ssh = ['ssh', '-oConnectTimeout=10', 'root@fedora-m3']
@@ -38,10 +40,14 @@ with (a.output / 'compile.log').open('w') as f:
 code = '''import sys,json,hashlib;from pathlib import Path
 p=Path(sys.argv[1]);assert not (p/'CANDIDATE_INCOMPLETE').exists()
 assert hashlib.sha256((p/'lib/libvulkan_asahi.so').read_bytes()).hexdigest()==sys.argv[2]
+g=hashlib.sha256((p/'lib/libgallium-26.1.4.so').read_bytes()).hexdigest()
+if sys.argv[4]:assert g==sys.argv[4]
 print(json.dumps(dict(boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+ gallium_sha256=g,
  binary_sha256=hashlib.sha256(Path(sys.argv[3]).read_bytes()).hexdigest())))'''
 manifest = json.loads(subprocess.check_output(ssh + [shlex.join(
-    ['python3', '-c', code, a.prefix, a.sha256, remote + '/probe'])], text=True))
+    ['python3', '-c', code, a.prefix, a.sha256, remote + '/probe',
+     a.gallium_sha256 or ''])], text=True))
 manifest.update(remote=remote, compile_command=command, option=a.option,
     source_sha256=hashlib.sha256(a.source.read_bytes()).hexdigest(),
     mesa_prefix=a.prefix, mesa_sha256=a.sha256,
