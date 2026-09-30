@@ -204,5 +204,28 @@ Candidate `74f101b7406a` passes the same six image checks: both Minecraft
 renderers, Satisfactory and 0 A.D. are exact; Factorio and SuperTuxKart remain
 within one level. Full compiler tests check that direct replacement removes
 the old memory read, whereas conditional replacement retains a runtime
-memory fallback. Paired timings and targeted CTS are pending. This follow-up
-is experimental; the shared branch remains at its validated checkpoint.
+memory fallback. Final timing and CTS results are recorded below. This candidate is now
+the validated follow-up; it has not been installed into the desktop.
+
+### Final partial-prefetch validation
+
+Candidate `74f101b7406a` improves the same 30-frame Minecraft GL replay from
+26.0959 to 51.8316 FPS median (+98.62%) in three alternating pairs. Candidate
+samples are 51.8316, 53.0108 and 46.5359 FPS; no low sample is omitted. Its
+three Minecraft RGB images match exactly. Six game checks pass with the
+exact/one-level distinctions above. The frozen 1429-case Vulkan selection
+again completed healthy: 965 Pass, 464 NotSupported, zero failures.
+
+A fresh guarded M1 Zink run with unchanged trace, replayer and Mesa hashes
+gives 50.6521, 51.5155 and 51.6924 FPS (median 51.5155). Its images are
+identical to its earlier M1 reference. The M3 median is 0.61% higher, but
+the timing ranges overlap: this establishes rough parity, not a meaningful
+performance lead. Both replay the same completed/predecoded 3024x1837 frames;
+the kernel and Mesa stacks differ. These are not live Minecraft frame rates.
+
+Full concise receipts: `m3-zink-late-ubo-20260930/general-deferred-qualified.json`.
+M3 peak monitored channel temperatures across the six timed segments ranged
+from 80.75 to 92.5 C, with watchdog and thermal guards active; this is not a
+dedicated GPU temperature measurement. The low candidate sample was at a
+lower peak temperature than its faster samples. M4 was not executed, and
+the normal M3 desktop remains on `/opt/asahi-m3m4-01d77ea1a25`.

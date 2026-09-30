@@ -1,0 +1,176 @@
+{
+  "candidate": "74f101b7406ad9c5cd0b90be9c17cc368e6f6577ba4b876738bb30d49b0e09f4",
+  "game_checks": [
+    {
+      "case": "factorio-linux-wayland",
+      "result": "pass",
+      "maximum_errors": [
+        1,
+        1,
+        1
+      ],
+      "receipt": "results/factorio-linux-wayland/m3/20260930T142634639046Z-m3-factorio-linux-wayland-check/benchmark.json"
+    },
+    {
+      "case": "supertuxkart-zink",
+      "result": "pass",
+      "maximum_errors": [
+        1,
+        1,
+        1
+      ],
+      "receipt": "results/supertuxkart-zink/m3/20260930T142659151192Z-m3-supertuxkart-zink-check/benchmark.json"
+    },
+    {
+      "case": "0ad-vulkan",
+      "result": "pass",
+      "maximum_errors": [
+        0,
+        0,
+        0
+      ],
+      "receipt": "results/0ad-vulkan/m3/20260930T142649543379Z-m3-0ad-vulkan-check/benchmark.json"
+    },
+    {
+      "case": "satisfactory-vulkan-gameplay",
+      "result": "pass",
+      "maximum_errors": [
+        0,
+        0,
+        0
+      ],
+      "receipt": "results/satisfactory-vulkan-gameplay/m3/20260930T142607718052Z-m3-satisfactory-vulkan-gameplay-check/benchmark.json"
+    },
+    {
+      "case": "minecraft-demo-vulkan",
+      "result": "pass",
+      "maximum_errors": [
+        0,
+        0,
+        0
+      ],
+      "receipt": "results/minecraft-demo-vulkan/m3/20260930T142557317838Z-m3-minecraft-demo-vulkan-check/benchmark.json"
+    },
+    {
+      "case": "minecraft-demo-zink",
+      "result": "pass",
+      "maximum_errors": [
+        0,
+        0,
+        0
+      ],
+      "receipt": "results/minecraft-demo-zink/m3/20260930T142539555197Z-m3-minecraft-demo-zink-check/benchmark.json"
+    }
+  ],
+  "cts": {
+    "healthy": true,
+    "counts": {
+      "NotSupported": 464,
+      "Pass": 965
+    },
+    "selected": 1429,
+    "completed_batches_end": 1429,
+    "stopped_on_test_failure": false
+  },
+  "timing": {
+    "false": {
+      "samples_fps": [
+        26.09589874663242,
+        27.06219671655486,
+        25.95701462311261
+      ],
+      "median_fps": 26.09589874663242
+    },
+    "true": {
+      "samples_fps": [
+        51.83158686599821,
+        53.01076110852294,
+        46.535862846415036
+      ],
+      "median_fps": 51.83158686599821
+    },
+    "fps_improvement_percent": 98.61966575374946,
+    "comparison": "mesa-build",
+    "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+  },
+  "images": [
+    {
+      "image": "frame-0001392082.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001429009.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001468244.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    }
+  ],
+  "temperatures": [
+    {
+      "candidate": false,
+      "fps": 26.09589874663242,
+      "max_c": 87.5,
+      "zone_max_c": 87.5
+    },
+    {
+      "candidate": true,
+      "fps": 51.83158686599821,
+      "max_c": 92.5,
+      "zone_max_c": 87.75
+    },
+    {
+      "candidate": true,
+      "fps": 53.01076110852294,
+      "max_c": 86.5,
+      "zone_max_c": 86.25
+    },
+    {
+      "candidate": false,
+      "fps": 27.06219671655486,
+      "max_c": 83.5,
+      "zone_max_c": 84.5
+    },
+    {
+      "candidate": false,
+      "fps": 25.95701462311261,
+      "max_c": 80.75,
+      "zone_max_c": 81.75
+    },
+    {
+      "candidate": true,
+      "fps": 46.535862846415036,
+      "max_c": 81.25,
+      "zone_max_c": 80.0
+    }
+  ],
+  "m1_comparison": {
+    "m1_samples_fps": [
+      50.65212218217791,
+      51.51553562851449,
+      51.69238810975824
+    ],
+    "m1_median_fps": 51.51553562851449,
+    "m3_samples_fps": [
+      51.83158686599821,
+      53.01076110852294,
+      46.535862846415036
+    ],
+    "m3_median_fps": 51.83158686599821,
+    "m3_median_percent": 0.6135066512028775,
+    "scope": "Same 30 completed predecoded 3024x1837 OpenGL capture frames through Zink. Separately guarded machines and different Mesa stacks. Timing spread overlaps; no meaningful performance lead established."
+  }
+}

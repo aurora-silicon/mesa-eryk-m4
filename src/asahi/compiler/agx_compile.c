@@ -7070,9 +7070,10 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                                               : NULL);
 
    /* Preserve the original read's convergence and arithmetic decisions until
-    * optimization is complete. The driver has already qualified these words
-    * for its GPU input loader. Only dead address work is cleaned up after the
-    * replacement; do not reassociate the now-uniform floating-point values. */
+    * optimization is complete. The driver qualifies either an input-loader
+    * word or an eligibility-controlled memory fallback as its replacement.
+    * Only clean up dead address work afterwards; do not reassociate floating-
+    * point values using the replacement's potentially different convergence. */
    bool prefetched = false;
    NIR_PASS(prefetched, nir, nir_shader_intrinsics_pass, lower_prefetched_uniform,
             nir_metadata_control_flow, NULL);
