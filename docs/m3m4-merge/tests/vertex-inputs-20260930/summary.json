@@ -1,0 +1,18 @@
+{
+  "healthy": true,
+  "counts": {
+    "NotSupported": 353,
+    "Pass": 716
+  },
+  "selected": 1069,
+  "completed_batches_end": 1069,
+  "stopped_on_test_failure": false,
+  "prefix": "/opt/asahi-m3-vertex-early-only-9c0bf9e93d3e",
+  "vulkan_sha256": "9c0bf9e93d3e4c1978f8d076ae081e86277bba2910d33f9adb5bb54c6a397e27",
+  "environment": {
+    "HK_M3_VERTEX_PREFETCH_UBOS": "true",
+    "HK_M4_IOTO_TEMPLATES": "true",
+    "AGX_MESA_DEBUG": "nopromote"
+  },
+  "scope": "Targeted indexed CTS regression selection; not full conformance"
+}

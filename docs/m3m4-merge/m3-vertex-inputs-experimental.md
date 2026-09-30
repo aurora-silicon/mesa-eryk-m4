@@ -41,10 +41,36 @@ regression coverage, not a full conformance run. M4 was not exercised.
 Evidence is in `build/minecraft-auto-prefetch/{cts-vertex-selection,
 cts-vertex-early-only,cts-vertex-image-*,vertex-early-only-stage}` and the
 benchmark repository's `diagnostics/m3-vertex-*`. Exact Minecraft check:
-`20260930T030645822727Z`. Final package timings and desktop deployment will be
-recorded separately after validation with default options.
+`20260930T030645822727Z`. Final package timings and desktop deployment are recorded below.
 
 The naive vertex-loader implementation spent too much CPU time constructing
 Ioto resource programs. Reusing their structure while patching each draw's GPU
 addresses removes that cost; the template path retains bounds and allocation
 checks. Shader input loading and CPU template reuse are separate optimizations.
+
+## Final default package and deployment
+
+Clean shared Mesa `f7b0d4dce0a`, full package
+`/opt/asahi-m3m4-f7b0d4dce0a`, Vulkan SHA256
+`08e1c6978ebeba79750566ab16797a2eb31e1d32ac4a58974a2786e1a4de3b2b`.
+With no shader-input overrides, three alternating same-binary Minecraft
+Vulkan runs give **97.2551 FPS median versus 54.7870 disabled (+77.51%)**.
+All three saved frames are exact in both configurations. M1's prior diagnostic
+median is 93.5593; it was not rerun and retains its original thermal-evidence
+limitation. These are completed 30-frame replay timings, not live game FPS.
+
+The separate Minecraft OpenGL/Zink capture also passes exactly. Default samples
+are 25.5695, 24.4311, 24.4240 FPS; the vertex/template-disabled control samples
+are 23.6930, 25.3488, 24.1196. The respective medians are 24.4311 and 24.1196.
+This does not establish a substantial GL performance gain. All samples are
+retained, not filtered. The original storage-image CTS regression also passes
+on the final package with default options.
+
+Persistent and runtime M3 graphics environments select this prefix. A guarded
+stop of the login manager and old user session followed by normal autologin
+completed in 4.5 seconds, with KWin mapping the new Vulkan library and Plasma
+running. Deployment backups, journal, mapped libraries and telemetry are in
+`build/minecraft-auto-prefetch/deployment/m3-vertex-production-deployment*`.
+The 1,069-case selection and summary are retained alongside this document
+under `tests/vertex-inputs-20260930/`; the published benchmark selection pins
+`m3-complete-inputs-paired` and `m3-complete-inputs-gl-20260930`.

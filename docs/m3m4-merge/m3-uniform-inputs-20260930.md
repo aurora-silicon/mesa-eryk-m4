@@ -64,4 +64,5 @@ It passed the 45-second guarded check in 4.5 seconds, with KWin and Plasma
 running and KWin mapping the new Vulkan library. Backup, journal, library maps
 and guarded telemetry are in
 `build/minecraft-auto-prefetch/deployment/m3-uniform-production-deployment-v2*`.
-No experimental vertex changes are selected for the desktop.
+That deployment contained the fragment-only change. The later qualified
+vertex deployment is recorded in `m3-vertex-inputs-experimental.md`.
