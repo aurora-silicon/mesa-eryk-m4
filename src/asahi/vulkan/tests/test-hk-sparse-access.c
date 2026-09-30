@@ -14,6 +14,46 @@ static mesa_shader_stage test_stage = MESA_SHADER_COMPUTE;
 static const uint64_t base = 0x20000000, size = 0x10000000, map = 0x80000000;
 
 static void
+check_multidraw_fragment_root(void)
+{
+   struct hk_root_descriptor_table a = {0}, b = {0};
+   a.root_desc_addr = 0x10000;
+   b.root_desc_addr = 0x20000;
+   a.draw.attrib_base[0] = 0x30000;
+   b.draw.attrib_base[0] = 0x40000;
+   b.draw.attrib_clamps[1] = 32;
+   b.draw.attrib_strides[2] = 16;
+   CHECK(hk_multidraw_fragment_root_equal(&a, &b));
+
+   /* Resource addresses, bounds, views, queries and epilog inputs must each
+    * invalidate reuse, even if the vertex-only state also differs. */
+   const unsigned offsets[] = {
+      hk_root_descriptor_offset(sets[1]),
+      hk_root_descriptor_offset(draw.view_index),
+      hk_root_descriptor_offset(draw.ppp_multisamplectl),
+      hk_root_descriptor_offset(draw.vertex_outputs),
+      hk_root_descriptor_offset(draw.pipeline_stats),
+      hk_root_descriptor_offset(draw.pipeline_stats_flags),
+      hk_root_descriptor_offset(draw.blend_constant[0]),
+      hk_root_descriptor_offset(draw.uvs_index[0]),
+      hk_root_descriptor_offset(push[0]),
+      hk_root_descriptor_offset(dynamic_buffers[0]),
+      hk_root_descriptor_offset(set_dynamic_buffer_start[1]),
+      hk_root_descriptor_offset(sparse_residency_map),
+      hk_root_descriptor_offset(sparse_va_base),
+      hk_root_descriptor_offset(buffer_alias_table),
+      hk_root_descriptor_offset(fragment_constant_data_addr),
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(offsets); ++i) {
+      ((uint8_t *)&b)[offsets[i]] ^= 1;
+      CHECK(!hk_multidraw_fragment_root_equal(&a, &b));
+      ((uint8_t *)&b)[offsets[i]] ^= 1;
+   }
+   CHECK(hk_multidraw_fragment_root_equal(&a, &b));
+   puts("PASS: multi-draw fragment reuse excludes vertex state and checks resources");
+}
+
+static void
 fold(nir_shader *s)
 {
    if (specialize_geometry)
@@ -625,6 +665,7 @@ check_unflushed_push_prefetch(void)
 
 int main(void)
 {
+   check_multidraw_fragment_root();
    check_unflushed_push_prefetch();
    check_coalesced_bounded();
    check_coalesced_rejections();

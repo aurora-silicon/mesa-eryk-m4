@@ -83,6 +83,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_vdm_draw_barrier, "HK_M4_VDM_DRAW_BARRIER", fal
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_profile_each_draw, "HK_M4_PROFILE_EACH_DRAW", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_count_fragments, "HK_M4_COUNT_FRAGMENTS", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_batch_robust_index, "HK_BATCH_ROBUST_INDEX", true)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_multidraw_fs_program, "HK_M3_MULTIDRAW_FS_PROGRAM", true)
 
 #define IS_DIRTY(bit) BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_##bit)
 
@@ -6113,6 +6114,18 @@ hk_draw_indexed_indirect_inner(VkCommandBuffer commandBuffer, uint64_t buffer,
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G15S &&
       debug_get_option_hk_batch_robust_index();
 
+   /* API bindings cannot change between draws inside this call. Keep this
+    * separate from the index batch: each graphics CS and fragment root is
+    * still checked before reuse, and vertex programs remain per-draw. */
+   struct hk_multidraw_fragment_cache fragment_cache = {0};
+   struct hk_multidraw_fragment_cache *previous_cache =
+      cmd->multidraw_fragment_cache;
+   cmd->multidraw_fragment_cache = NULL;
+   if (drawCount > 1 && !cmd->state.conditional &&
+       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G15S &&
+       debug_get_option_hk_m3_multidraw_fs_program())
+      cmd->multidraw_fragment_cache = &fragment_cache;
+
    for (unsigned draw_id = 0; draw_id < drawCount; ++draw_id) {
       uint64_t addr = buffer + stride * draw_id;
       struct hk_addr_range buf = cmd->state.gfx.index.buffer;
@@ -6122,6 +6135,7 @@ hk_draw_indexed_indirect_inner(VkCommandBuffer commandBuffer, uint64_t buffer,
          agx_draw_indexed_indirect(addr, buf.addr, buf.range, 0, 0),
          batch_enabled ? &batch : NULL);
    }
+   cmd->multidraw_fragment_cache = previous_cache;
 }
 
 VKAPI_ATTR void VKAPI_CALL

@@ -159,6 +159,32 @@ struct hk_descriptor_state {
    uint32_t push_dirty;
 };
 
+/* A hardware fragment shader cannot consume vertex-input buffer state. The
+ * root's self address may differ while its fragment-visible fields are equal;
+ * a reused program keeps the previous immutable root alive in the same CB. */
+static inline bool
+hk_multidraw_fragment_root_equal(const struct hk_root_descriptor_table *a,
+                                 const struct hk_root_descriptor_table *b)
+{
+   const size_t begin = sizeof(a->root_desc_addr);
+   const size_t vertex_begin = offsetof(struct hk_root_descriptor_table,
+                                       draw.attrib_base);
+   const size_t vertex_end = offsetof(struct hk_root_descriptor_table,
+                                     draw.vertex_outputs);
+   return !memcmp((const uint8_t *)a + begin, (const uint8_t *)b + begin,
+                  vertex_begin - begin) &&
+          !memcmp((const uint8_t *)a + vertex_end,
+                  (const uint8_t *)b + vertex_end, sizeof(*a) - vertex_end);
+}
+
+struct hk_multidraw_fragment_cache {
+   struct hk_cs *cs;
+   struct hk_shader *shader;
+   struct hk_linked_shader *linked;
+   uint64_t images, samplers, program;
+   struct hk_root_descriptor_table root;
+};
+
 static inline bool
 hk_prefetch_buffer_address(const struct hk_descriptor_state *state,
                            const struct hk_ubo_prefetch *load,
@@ -625,6 +651,8 @@ struct hk_fragment_count {
 struct hk_cmd_buffer {
    struct vk_command_buffer vk;
    struct agx3_ioto_uniform_template *uniform_templates[2];
+   /* Stack-owned only during one indexed indirect multi-draw API call. */
+   struct hk_multidraw_fragment_cache *multidraw_fragment_cache;
 
    /* Immutable native heap/query pointer uploads. Small direct-mapped cache;
     * contents and size, never descriptor object identity, determine reuse. */
