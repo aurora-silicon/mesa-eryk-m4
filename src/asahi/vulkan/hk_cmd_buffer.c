@@ -1661,7 +1661,10 @@ hk_g17p_graphics_uniform_ranges(
             .address = source,
          };
       }
-      if (load->direct_half == load->uniform_half + 2) {
+      /* hk_specialize_ubo_direct folds every eligibility read in the ordinary
+       * variant. Keep GPU loads of the actual data, but omit those dead flags. */
+      if (!s->info.ubo_prefetch_direct &&
+          load->direct_half == load->uniform_half + 2) {
          const uint32_t eligible = direct;
          if (!cmd->native_prefetch_eligible[eligible])
             cmd->native_prefetch_eligible[eligible] =

@@ -33,6 +33,16 @@ hk_vertex_ubo_prefetch_enabled(enum agx_chip chip)
           debug_get_bool_option("HK_M3_VERTEX_PREFETCH_UBOS", true);
 }
 
+/* Reuse the ordinary descriptor predicates for the hardware vertex variant.
+ * Scaled formats, special LOD handling and mutable bindings keep the general
+ * executable. Other chips retain their existing policy. */
+static inline bool
+hk_vertex_plain_samplers_enabled(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S &&
+          debug_get_bool_option("HK_M3_VERTEX_PLAIN_SAMPLERS", true);
+}
+
 /* Cache resource-program structure, while patching each draw's GPU addresses.
  * Other chips retain the opt-in policy until separately qualified. */
 static inline bool

@@ -179,10 +179,10 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
    ralloc_free(b.shader);
 }
 
-static void test_plain_sampler(void)
+static void test_plain_sampler(mesa_shader_stage stage)
 {
    static const nir_shader_compiler_options options = {0};
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, &options,
+   nir_builder b = nir_builder_init_simple_shader(stage, &options,
                                                  "plain sampler predicates");
    nir_def *table = nir_load_descriptor_set_agx(&b, .desc_set = 1);
    nir_def *state = nir_load_global_constant(&b, 2, 32,
@@ -223,9 +223,9 @@ static void test_plain_sampler(void)
 /* The scaled-format load comes through an image handle, not the sampler
  * descriptor address. Exercise exact matching and leave dynamic/other views
  * untouched so their format is still interpreted on the GPU. */
-static void test_plain_image(void)
+static void test_plain_image(mesa_shader_stage stage)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
+   nir_builder b = nir_builder_init_simple_shader(stage, NULL,
                                                  "plain image predicates");
    nir_intrinsic_instr *out[4];
    for (unsigned i = 0; i < 4; ++i) {
@@ -332,8 +332,10 @@ int main(void)
       for (unsigned offset = 40; offset <= 42; offset += 2)
          for (unsigned components = 1; components <= 3; components++)
             test_halfword_descriptors(generic, offset, components);
-   test_plain_sampler();
-   test_plain_image();
+   test_plain_sampler(MESA_SHADER_FRAGMENT);
+   test_plain_sampler(MESA_SHADER_VERTEX);
+   test_plain_image(MESA_SHADER_FRAGMENT);
+   test_plain_image(MESA_SHADER_VERTEX);
    unsigned access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER;
    test_ubo(false, false, access, true); test_ubo(false, true, access, true);
    test_ubo(true, false, access, true); test_ubo(true, true, access, true);

@@ -5070,6 +5070,10 @@ hk_shader_can_use_direct_ubos(struct hk_cmd_buffer *cmd, mesa_shader_stage stage
    }
    for (unsigned i = 0; i < info->ubo_prefetch_count; ++i) {
       const struct hk_ubo_prefetch *load = &info->ubo_prefetch[i];
+      /* The first admitted word reserves the descriptor's eligibility word;
+       * later words share it. Check each immutable descriptor only once. */
+      if (load->direct_half != load->uniform_half + 2)
+         continue;
       struct hk_buffer_address address;
       if (!hk_prefetch_buffer_address(state, load, &address))
          return false;
