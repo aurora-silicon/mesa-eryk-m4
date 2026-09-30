@@ -43,6 +43,20 @@ hk_vertex_plain_samplers_enabled(enum agx_chip chip)
           debug_get_bool_option("HK_M3_VERTEX_PLAIN_SAMPLERS", true);
 }
 
+static inline bool
+hk_vertex_uniform_cse_enabled(enum agx_chip chip)
+{
+   return agx_chip_uses_g15_g16_shader_abi(chip) &&
+          debug_get_bool_option("AGX_NATIVE_VERTEX_UNIFORM_CSE", chip == AGX_CHIP_G15S);
+}
+
+static inline bool
+hk_short_sample_loops_enabled(enum agx_chip chip)
+{
+   return agx_chip_uses_g15_g16_shader_abi(chip) &&
+          debug_get_bool_option("HK_NATIVE_SHORT_SAMPLE_LOOPS", chip == AGX_CHIP_G15S);
+}
+
 /* Cache resource-program structure, while patching each draw's GPU addresses.
  * Other chips retain the opt-in policy until separately qualified. */
 static inline bool

@@ -21,9 +21,11 @@ textures(nir_shader *s)
 }
 
 static void
-loop(nir_builder *b, bool sample, unsigned depth)
+loop(nir_builder *b, bool sample, unsigned depth, unsigned iterations)
 {
-   nir_def *zero = nir_imm_int(b, 0), *limit = nir_imm_int(b, 4);
+   nir_def *zero = nir_imm_int(b, 0);
+   nir_def *limit = iterations ? nir_imm_int(b, iterations) :
+      nir_load_uniform(b, 1, 32, zero, .range = 4);
    nir_def *one = nir_imm_int(b, 1);
    nir_loop *cf = nir_push_loop(b);
    cf->control = nir_loop_control_unroll;
@@ -34,7 +36,7 @@ loop(nir_builder *b, bool sample, unsigned depth)
    nir_phi_instr_add_src(phi, before, zero);
    nir_break_if(b, nir_ige(b, &phi->def, limit));
    if (depth) {
-      loop(b, sample, depth - 1);
+      loop(b, sample, depth - 1, iterations);
    } else {
       nir_def *value = &phi->def;
       if (sample) {
@@ -65,7 +67,7 @@ test(bool sample, unsigned depth, bool preserve)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
                                                  &agx_nir_options, "sample loop cost");
-   loop(&b, sample, depth);
+   loop(&b, sample, depth, 4);
    nir_validate_shader(b.shader, "before preservation");
    if (preserve) {
       bool changed = false;
@@ -81,6 +83,25 @@ test(bool sample, unsigned depth, bool preserve)
    CHECK(unrolled == (!preserve || !sample));
    CHECK(textures(b.shader) == (sample ? (preserve ? 1 : (depth ? 16 : 4)) : 0));
    nir_validate_shader(b.shader, "after unrolling");
+   ralloc_free(b.shader);
+}
+
+static void
+test_release(unsigned iterations, unsigned depth, bool expected)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
+                                                 &agx_nir_options, "late short loop");
+   loop(&b, true, depth, iterations);
+   nir_validate_shader(b.shader, "before short loop release");
+   CHECK(hk_nir_preserve_sample_loops(b.shader));
+   CHECK(hk_nir_release_short_sample_loops(b.shader) == expected);
+   CHECK(!hk_nir_release_short_sample_loops(b.shader));
+   bool unrolled = false;
+   while (nir_opt_loop_unroll(b.shader))
+      unrolled = true;
+   CHECK(unrolled == expected);
+   CHECK(textures(b.shader) == (expected ? iterations : 1));
+   nir_validate_shader(b.shader, "after short loop release");
    ralloc_free(b.shader);
 }
 
@@ -114,6 +135,10 @@ int main(int argc, char **argv)
       for (unsigned depth = 0; depth < 2; ++depth)
          for (unsigned preserve = 0; preserve < 2; ++preserve)
             test(sample, depth, preserve);
+   test_release(4, 0, true);
+   test_release(16, 0, false);
+   test_release(0, 0, false);
+   test_release(4, 1, false);
    if (argc == 2) {
       /* Trusted developer capture from HK_NIR_CAPTURE_DIR; same Mesa ABI. */
       FILE *file = fopen(argv[1], "rb");

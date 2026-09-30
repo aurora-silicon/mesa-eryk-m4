@@ -157,6 +157,8 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)hk_plain_samplers_enabled(pdev->dev.chip) << 34;
       flags |= (uint64_t)hk_vertex_ubo_prefetch_enabled(pdev->dev.chip) << 45;
       flags |= (uint64_t)hk_vertex_plain_samplers_enabled(pdev->dev.chip) << 48;
+      flags |= (uint64_t)hk_vertex_uniform_cse_enabled(pdev->dev.chip) << 46;
+      flags |= (uint64_t)hk_short_sample_loops_enabled(pdev->dev.chip) << 49;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) << 35;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
@@ -179,12 +181,14 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
     * only logs shaders; flag 45 holds the vertex input-loader policy.
     * Compiler bit 4 only controls internal shader dumps; flag 48 holds the
     * ordinary vertex-sampler policy.
+    * Bits 2 and 5 only control logging/validation; flags 46 and 49 hold
+    * vertex uniform reuse and bounded late texture-loop policy.
     * Logging/validation options do not change code and need no separate cache.
     */
    static_assert(AGX_DBG_REMAT < BITFIELD_BIT(17));
    static_assert(((AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
                    AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
-                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 19) == 0);
+                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 63) == 0);
    flags |= (agx_get_compiler_debug() &
              (AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
               AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
@@ -3021,6 +3025,9 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          NIR_PASS(_, nir, nir_opt_constant_folding);
          NIR_PASS(_, nir, nir_opt_dead_cf);
          NIR_PASS(_, nir, nir_opt_dce);
+         if (sw_stage == MESA_SHADER_FRAGMENT &&
+             hk_short_sample_loops_enabled(dev->dev.chip))
+            NIR_PASS(_, nir, hk_nir_release_short_sample_loops);
       }
       NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
       if (features & HK_FEAT_STRICT_SPARSE)
@@ -3164,6 +3171,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
        * unhandled descriptor shapes must fail closed in the main packer.
        */
       .no_preamble = agx_chip_uses_hal200_ioto(dev->dev.chip) && !native_preamble,
+      .native_vertex_uniform_cse = hk_vertex_uniform_cse_enabled(dev->dev.chip),
    };
 
    /* For now, sample shading is always dynamic. Indicate that. */
