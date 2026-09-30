@@ -530,7 +530,12 @@
 #error "the RGBA16 SINT fixture is a guarded single-sample GPU-copy oracle"
 #endif
 
-#if G17P_RGBA16_SINT
+#if defined(AGX_ROBUST_INDEX_BATCH_PROBE)
+#define PROBE_NAME "agx-robust-index-batch"
+#define READBACK_IMAGE_USAGE 0
+#define READBACK_GUARD_BYTES 64
+#define READBACK_BYTES (IMAGE_BYTES + 2 * READBACK_GUARD_BYTES)
+#elif G17P_RGBA16_SINT
 #define PROBE_NAME "g17p-vulkan-rgba16-sint"
 #define READBACK_IMAGE_USAGE 0
 #define READBACK_GUARD_BYTES 64
@@ -690,7 +695,7 @@ VK_FN(vkGetInstanceProcAddr);
 VK_FN(vkGetDeviceProcAddr);
 VK_FN(vkCreateInstance);
 VK_FN(vkEnumeratePhysicalDevices);
-#if G17P_F16_IO
+#if G17P_F16_IO || defined(AGX_ROBUST_INDEX_BATCH_PROBE)
 VK_FN(vkGetPhysicalDeviceFeatures2);
 #endif
 VK_FN(vkGetPhysicalDeviceProperties);
@@ -721,6 +726,13 @@ VK_FN(vkCmdBeginRenderPass);
 VK_FN(vkCmdBindPipeline);
 VK_FN(vkCmdBindVertexBuffers);
 VK_FN(vkCmdDraw);
+#ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+VK_FN(vkCmdBindIndexBuffer);
+VK_FN(vkCmdDrawIndexedIndirect);
+VK_FN(vkCmdDrawIndexedIndirectCountKHR);
+VK_FN(vkCmdUpdateBuffer);
+VK_FN(vkCmdPipelineBarrier);
+#endif
 VK_FN(vkCmdEndRenderPass);
 #if G17P_HOST_IMAGE_COPY
 VK_FN(vkCopyImageToMemoryEXT);
@@ -802,6 +814,59 @@ fnv1a64(const uint8_t *bytes, size_t size)
    }
    return hash;
 }
+
+#ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+/* A single selected draw must paint the reference triangle, even when it is
+ * the last entry of a partial batch. All other draws are no-ops. The parallel
+ * modes make every subgroup allocate a padded/all-zero index stream. */
+static bool batch_expect_empty;
+
+static unsigned
+batch_option(const char *name, unsigned fallback, unsigned maximum)
+{
+   const char *value = getenv(name);
+   if (!value)
+      return fallback;
+   char *end;
+   unsigned long result = strtoul(value, &end, 10);
+   if (!*value || *end || result > maximum)
+      die("invalid bounded batch probe option");
+   return result;
+}
+
+static VkBuffer
+batch_buffer(VkDevice device,
+              const VkPhysicalDeviceMemoryProperties *properties,
+              size_t size, VkBufferUsageFlags usage, const void *data)
+{
+   VkBuffer buffer;
+   VkBufferCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = size,
+      .usage = usage,
+   };
+   check(vkCreateBuffer(device, &info, NULL, &buffer), "batch buffer");
+   VkMemoryRequirements req;
+   vkGetBufferMemoryRequirements(device, buffer, &req);
+   VkMemoryAllocateInfo alloc = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .allocationSize = req.size,
+      .memoryTypeIndex = find_memory_type(properties, req.memoryTypeBits,
+         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+   };
+   VkDeviceMemory memory;
+   check(vkAllocateMemory(device, &alloc, NULL, &memory), "batch memory");
+   check(vkBindBufferMemory(device, buffer, memory, 0), "bind batch buffer");
+   void *map;
+   check(vkMapMemory(device, memory, 0, size, 0, &map), "map batch buffer");
+   if (data)
+      memcpy(map, data, size);
+   else
+      memset(map, 0, size);
+   vkUnmapMemory(device, memory);
+   return buffer;
+}
+#endif
 
 static bool
 verify_readback(const uint8_t *map)
@@ -891,7 +956,14 @@ verify_readback(const uint8_t *map)
       0,0,0x80,0x3f, 0x29,0x5c,0x8f,0x3e, 0xcd,0xcc,0x4c,0x3d, 0,0,0x80,0x3f,
    };
 #else
-   static const uint8_t expected[4] = {255, 71, 13, 255};
+   const uint8_t expected[4] = {
+#ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+      batch_expect_empty ? 0 : 255, batch_expect_empty ? 0 : 71,
+      batch_expect_empty ? 0 : 13, 255,
+#else
+      255, 71, 13, 255,
+#endif
+   };
 #endif
 #endif
    for (size_t pixel = 0; pixel < IMAGE_WIDTH * IMAGE_HEIGHT; ++pixel) {
@@ -989,7 +1061,7 @@ main(void)
 
    LOAD_INSTANCE(instance, vkGetDeviceProcAddr);
    LOAD_INSTANCE(instance, vkEnumeratePhysicalDevices);
-#if G17P_F16_IO
+#if G17P_F16_IO || defined(AGX_ROBUST_INDEX_BATCH_PROBE)
    LOAD_INSTANCE(instance, vkGetPhysicalDeviceFeatures2);
 #endif
    LOAD_INSTANCE(instance, vkGetPhysicalDeviceProperties);
@@ -1097,9 +1169,40 @@ main(void)
       .storageInputOutput16 = VK_TRUE,
    };
 #endif
+#ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+   VkPhysicalDeviceRobustness2FeaturesEXT robust_available = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
+   };
+   VkPhysicalDeviceFeatures2 batch_available = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+      .pNext = &robust_available,
+   };
+   vkGetPhysicalDeviceFeatures2(physical, &batch_available);
+   if (!robust_available.robustBufferAccess2 ||
+       !batch_available.features.robustBufferAccess ||
+       !batch_available.features.multiDrawIndirect)
+      die("robust indexed multi-draw is not supported");
+   const VkPhysicalDeviceRobustness2FeaturesEXT robust_enabled = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
+      .robustBufferAccess2 = VK_TRUE,
+   };
+   const VkPhysicalDeviceFeatures batch_features = {
+      .robustBufferAccess = VK_TRUE,
+      .multiDrawIndirect = VK_TRUE,
+   };
+   const char *batch_extensions[] = {
+      VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
+      VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,
+   };
+#endif
    const VkDeviceCreateInfo device_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-#if G17P_F16_IO
+#ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+      .pNext = &robust_enabled,
+      .pEnabledFeatures = &batch_features,
+      .enabledExtensionCount = 2,
+      .ppEnabledExtensionNames = batch_extensions,
+#elif G17P_F16_IO
       .pNext = &enabled11,
 #elif G17P_HOST_IMAGE_COPY
       .pNext = &host_copy_features,
@@ -1138,6 +1241,13 @@ main(void)
    LOAD_DEVICE(device, vkCmdBindPipeline);
    LOAD_DEVICE(device, vkCmdBindVertexBuffers);
    LOAD_DEVICE(device, vkCmdDraw);
+#ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+   LOAD_DEVICE(device, vkCmdBindIndexBuffer);
+   LOAD_DEVICE(device, vkCmdDrawIndexedIndirect);
+   LOAD_DEVICE(device, vkCmdDrawIndexedIndirectCountKHR);
+   LOAD_DEVICE(device, vkCmdUpdateBuffer);
+   LOAD_DEVICE(device, vkCmdPipelineBarrier);
+#endif
    LOAD_DEVICE(device, vkCmdEndRenderPass);
 #if G17P_HOST_IMAGE_COPY
    LOAD_DEVICE(device, vkCopyImageToMemoryEXT);
@@ -1199,6 +1309,48 @@ main(void)
                      &vertex_map),
          "vkMapMemory(vertex)");
    memcpy(vertex_map, vertices, sizeof(vertices));
+
+#ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+   unsigned batch_count = batch_option("AGX_BATCH_COUNT", 257, 2048);
+   if (!batch_count)
+      die("batch count must be positive");
+   unsigned active = batch_option("AGX_BATCH_ACTIVE_DRAW", batch_count - 1,
+                                   batch_count - 1);
+   unsigned scenario = batch_option("AGX_BATCH_SCENARIO", 1, 4);
+   unsigned parallel = batch_option("AGX_BATCH_PARALLEL", 0, 1);
+   unsigned use_count = batch_option("AGX_BATCH_INDIRECT_COUNT", 0, 1);
+   unsigned executed = batch_option("AGX_BATCH_EXECUTED", batch_count, batch_count);
+   unsigned index_bits = batch_option("AGX_BATCH_INDEX_BITS", 32, 32);
+   if (index_bits != 16 && index_bits != 32)
+      die("batch probe supports 16- and 32-bit indices");
+   uint32_t indices32[] = {0, 1, 2};
+   uint16_t indices16[] = {0, 1, 2};
+   VkBuffer indices = batch_buffer(device, &memory_properties, 3 * index_bits / 8,
+      VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      index_bits == 16 ? (void *)indices16 : (void *)indices32);
+   VkDrawIndexedIndirectCommand *args = calloc(batch_count, sizeof(*args));
+   if (!args)
+      die("batch probe allocation failed");
+   for (unsigned i = 0; i < batch_count; ++i) {
+      args[i].instanceCount = 1;
+      if (parallel || i == active) {
+         args[i].indexCount = scenario == 4 ? 0 : 3;
+         args[i].instanceCount = scenario == 3 ? 0 : 1;
+         args[i].firstIndex = scenario == 1 ? 1 : scenario == 2 ? 3 : 0;
+      }
+   }
+   batch_expect_empty = scenario >= 2 || (use_count &&
+      (parallel ? executed == 0 : active >= executed));
+   size_t args_size = batch_count * sizeof(*args);
+   VkBuffer indirect = batch_buffer(device, &memory_properties, args_size,
+      VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, NULL);
+   VkBuffer count_buffer = batch_buffer(device, &memory_properties, sizeof(uint32_t),
+      VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, NULL);
+   fprintf(stderr, "BATCH_PROBE count=%u active=%u scenario=%u parallel=%u "
+                   "index_bits=%u indirect_count=%u executed=%u empty=%u\n",
+      batch_count, active, scenario, parallel, index_bits, use_count, executed,
+      batch_expect_empty);
+#endif
 
    const VkImageCreateInfo image_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -1564,6 +1716,20 @@ main(void)
    };
    check(vkBeginCommandBuffer(command_buffer, &begin_info),
          "vkBeginCommandBuffer");
+#ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+   /* Arguments and the count begin as zeroes on the CPU. Their real values
+    * come from GPU transfer commands, so recording-time snapshots are wrong. */
+   vkCmdUpdateBuffer(command_buffer, indirect, 0, args_size, args);
+   vkCmdUpdateBuffer(command_buffer, count_buffer, 0, sizeof(executed), &executed);
+   free(args);
+   VkMemoryBarrier batch_barrier = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
+   };
+   vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &batch_barrier, 0, NULL, 0, NULL);
+#endif
 #if G17P_R32_SINT || G17P_RG16_SINT || G17P_RG32_SINT ||              \
    G17P_RG8_SINT || G17P_RGBA8_SINT || G17P_R8_SINT || G17P_RGBA16_SINT
    const VkClearValue clear = {.color = {.int32 = {0, 0, 0, 0}}};
@@ -1588,7 +1754,18 @@ main(void)
    const VkDeviceSize vertex_offset = 0;
    vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertex_buffer,
                           &vertex_offset);
+#ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+   vkCmdBindIndexBuffer(command_buffer, indices, 0,
+      index_bits == 16 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+   if (use_count)
+      vkCmdDrawIndexedIndirectCountKHR(command_buffer, indirect, 0,
+         count_buffer, 0, batch_count, sizeof(VkDrawIndexedIndirectCommand));
+   else
+      vkCmdDrawIndexedIndirect(command_buffer, indirect, 0, batch_count,
+         sizeof(VkDrawIndexedIndirectCommand));
+#else
    vkCmdDraw(command_buffer, 3, 1, 0, 0);
+#endif
    vkCmdEndRenderPass(command_buffer);
 #ifdef M4_UPLOAD_SUBRECT
    VkImageMemoryBarrier upload_barrier = {
@@ -1734,7 +1911,7 @@ main(void)
    if (waited == VK_TIMEOUT)
       die("vkWaitForFences timed out after three seconds");
    check(waited, "vkWaitForFences");
-#elif G17P_HOST_IMAGE_COPY || G17P_MSAA_SAMPLES > 1
+#elif G17P_HOST_IMAGE_COPY || G17P_MSAA_SAMPLES > 1 || defined(AGX_ROBUST_INDEX_BATCH_PROBE)
    const VkResult waited =
       vkWaitForFences(device, 1, &fence, true, UINT64_C(5000000000));
    if (waited == VK_TIMEOUT)

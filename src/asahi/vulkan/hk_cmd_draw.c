@@ -82,6 +82,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_prefetch_audit, "HK_M4_PREFETCH_AUDIT", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_vdm_draw_barrier, "HK_M4_VDM_DRAW_BARRIER", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_profile_each_draw, "HK_M4_PROFILE_EACH_DRAW", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_count_fragments, "HK_M4_COUNT_FRAGMENTS", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_batch_robust_index, "HK_BATCH_ROBUST_INDEX", true)
 
 #define IS_DIRTY(bit) BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_##bit)
 
@@ -5428,8 +5429,76 @@ hk_ia_update(struct hk_cmd_buffer *cmd, struct agx_draw draw,
    }
 }
 
+struct hk_robust_index_batch {
+   struct libagx_robust_index_batch *table;
+   struct hk_cs *gfx, *pre_gfx;
+   uint64_t index_buffer;
+   uint32_t index_buffer_range_B;
+   enum agx_index_size index_size;
+   enum agx_primitive topology;
+   bool restart;
+   unsigned capacity;
+};
+
 static void
-hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
+hk_draw_robust_index(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
+                     uint64_t target, struct agx_draw draw,
+                     enum agx_primitive topology,
+                     struct hk_robust_index_batch *batch)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   uint64_t heap = hk_heap(cmd);
+
+   if (!batch) {
+      libagx_draw_robust_index(cmd, agx_1d(32), AGX_BARRIER_ALL | AGX_PREGFX,
+                               target, heap, draw.b.ptr, draw.index_buffer,
+                               draw.index_buffer_range_B, draw.restart,
+                               dev->dev.chip, topology, draw.index_size);
+      return;
+   }
+
+   /* Never extend a batch across a retained-render boundary: heap reset is
+    * queued after each graphics stream. Likewise, a replaced pre-GFX stream
+    * or a different index domain needs its own producer. */
+   if (!batch->table || batch->gfx != cs ||
+       batch->pre_gfx != cmd->current_cs.pre_gfx ||
+       batch->table->count == batch->capacity ||
+       batch->index_buffer != draw.index_buffer ||
+       batch->index_buffer_range_B != draw.index_buffer_range_B ||
+       batch->index_size != draw.index_size ||
+       batch->restart != draw.restart || batch->topology != topology) {
+      struct agx_ptr p = hk_pool_alloc(cmd, sizeof(*batch->table), 8);
+      if (!p.cpu)
+         return;
+      batch->table = p.cpu;
+      batch->table->count = 0;
+      batch->table->reserved = 0;
+      batch->gfx = cs;
+      batch->index_buffer = draw.index_buffer;
+      batch->index_buffer_range_B = draw.index_buffer_range_B;
+      batch->index_size = draw.index_size;
+      batch->restart = draw.restart;
+      batch->topology = topology;
+
+      /* Emit at the first consumer, then fill the immutable table while
+       * recording later draws. All entries are ready before submission.
+       * This stays after earlier argument producers (e.g. indirect count)
+       * and before every consumer in this graphics stream. */
+      libagx_draw_robust_index_batch(
+         cmd, agx_1d(32 * batch->capacity), AGX_BARRIER_ALL | AGX_PREGFX,
+         p.gpu, heap, draw.index_buffer, draw.index_buffer_range_B,
+         draw.restart, dev->dev.chip, topology, draw.index_size);
+      batch->pre_gfx = cmd->current_cs.pre_gfx;
+   }
+
+   batch->table->entries[batch->table->count++] =
+      (struct libagx_robust_index_entry){.vdm = target, .cmd = draw.b.ptr};
+}
+
+static void
+hk_draw_with_robust_batch(struct hk_cmd_buffer *cmd, uint16_t draw_id,
+                          struct agx_draw draw_,
+                          struct hk_robust_index_batch *batch)
 {
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
@@ -5719,11 +5788,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
             libagx_draw_robust_index_vdm_size(dev->dev.chip);
          uint64_t target = hk_cs_alloc_for_indirect(cs, size_B);
 
-         libagx_draw_robust_index(cmd, agx_1d(32), AGX_BARRIER_ALL | AGX_PREGFX,
-                                  target, hk_heap(cmd), draw.b.ptr,
-                                  draw.index_buffer, draw.index_buffer_range_B,
-                                  draw.restart, dev->dev.chip, topology,
-                                  draw.index_size);
+         hk_draw_robust_index(cmd, cs, target, draw, topology, batch);
       } else {
          if (agx_native_graphics(&dev->dev)) {
             /* This context-relative PPP record selects the latest scissor
@@ -5869,6 +5934,12 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
          cmd, VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT));
       cs->stats.cmds++;
    }
+}
+
+static void
+hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw)
+{
+   hk_draw_with_robust_batch(cmd, draw_id, draw, NULL);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -6031,12 +6102,25 @@ hk_draw_indexed_indirect_inner(VkCommandBuffer commandBuffer, uint64_t buffer,
       assert(stride >= sizeof(VkDrawIndexedIndirectCommand));
    }
 
+   /* Conditional rendering creates a new GPU argument producer inside each
+    * draw; it cannot be consumed by a batch emitted at an earlier draw.
+    * Geometry, tessellation and adjacency never use this robustness path.
+    * Initially enable the native batching path on the qualified M3 chip. */
+   struct hk_robust_index_batch batch = {
+      .capacity = MIN2(drawCount, LIBAGX_ROBUST_INDEX_BATCH_SIZE),
+   };
+   bool batch_enabled = drawCount > 1 && !cmd->state.conditional &&
+      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G15S &&
+      debug_get_option_hk_batch_robust_index();
+
    for (unsigned draw_id = 0; draw_id < drawCount; ++draw_id) {
       uint64_t addr = buffer + stride * draw_id;
       struct hk_addr_range buf = cmd->state.gfx.index.buffer;
 
-      hk_draw(cmd, draw_id,
-              agx_draw_indexed_indirect(addr, buf.addr, buf.range, 0, 0));
+      hk_draw_with_robust_batch(
+         cmd, draw_id,
+         agx_draw_indexed_indirect(addr, buf.addr, buf.range, 0, 0),
+         batch_enabled ? &batch : NULL);
    }
 }
 

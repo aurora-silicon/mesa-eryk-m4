@@ -1,0 +1,1119 @@
+{
+  "candidate": {
+    "prefix": "/opt/asahi-m3-robust-index-batch-9d83ae85c9bf",
+    "sha256": "9d83ae85c9bf7aa2b06684eca9f5cbd951bef790081ce30059f213dece3c60e5",
+    "revision": "1da4a4fdc676d36683ee3646b498256970028fb0",
+    "base": "/opt/asahi-m3-descriptor-decode-once-ba83c8b99ff9",
+    "patch_sha256": "f15046910b626d5a6451eb249697a07fec3852c9df8b2a6e2f146c758e4867d6",
+    "libraries": {
+      "lib/libEGL_mesa.so.0.0.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+      "lib/libGLX_mesa.so.0.0.0": "e11d8506382a3d6de989a74d6c49982eeadc613d72a5bbd97774fdb7ea37e32a",
+      "lib/libgallium-26.1.4.so": "4f58b871e773618f0b50e95f22ab60aa0ba998505e48a786d1bffb6c6290d3a4",
+      "lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+      "lib/libvulkan_asahi.so": "9d83ae85c9bf7aa2b06684eca9f5cbd951bef790081ce30059f213dece3c60e5"
+    },
+    "scope": "Isolated Vulkan candidate, no desktop configuration change"
+  },
+  "cts": {
+    "healthy": true,
+    "counts": {
+      "NotSupported": 506,
+      "Pass": 469
+    },
+    "selected": 975,
+    "completed_batches_end": 975,
+    "stopped_on_test_failure": false
+  },
+  "synthetic_witnesses": [
+    {
+      "case": {
+        "name": "last-valid-2",
+        "env": {
+          "AGX_BATCH_COUNT": "2",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/00-last-valid-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-2",
+        "env": {
+          "AGX_BATCH_COUNT": "2",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/01-last-partial-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-127",
+        "env": {
+          "AGX_BATCH_COUNT": "127",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/02-last-valid-127",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-127",
+        "env": {
+          "AGX_BATCH_COUNT": "127",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/03-last-partial-127",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-128",
+        "env": {
+          "AGX_BATCH_COUNT": "128",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/04-last-valid-128",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-128",
+        "env": {
+          "AGX_BATCH_COUNT": "128",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/05-last-partial-128",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-129",
+        "env": {
+          "AGX_BATCH_COUNT": "129",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/06-last-valid-129",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-129",
+        "env": {
+          "AGX_BATCH_COUNT": "129",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/07-last-partial-129",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-257",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/08-last-valid-257",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-257",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/09-last-partial-257",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-2048",
+        "env": {
+          "AGX_BATCH_COUNT": "2048",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/10-last-valid-2048",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-2048",
+        "env": {
+          "AGX_BATCH_COUNT": "2048",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/11-last-partial-2048",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-1",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/12-parallel-16-1",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-2",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "2",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/13-parallel-16-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-3",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "3",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/14-parallel-16-3",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-4",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "4",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/15-parallel-16-4",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-1",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/16-parallel-32-1",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-2",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "2",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/17-parallel-32-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-3",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "3",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/18-parallel-32-3",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-4",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "4",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/19-parallel-32-4",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-0",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "0",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/20-selected-0",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-127",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "127",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/21-selected-127",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-128",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "128",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/22-selected-128",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-255",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "255",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/23-selected-255",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-256",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "256",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/24-selected-256",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "count-last-partial",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_INDIRECT_COUNT": "1",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/25-count-last-partial",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "count-predicated-last",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_INDIRECT_COUNT": "1",
+          "AGX_BATCH_EXECUTED": "256",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/26-count-predicated-last",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "count-zero",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_INDIRECT_COUNT": "1",
+          "AGX_BATCH_EXECUTED": "0",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v1/27-count-zero",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    }
+  ],
+  "m1": [
+    {
+      "diagnostic_only": false,
+      "phase": "time",
+      "gpu": "Apple M1 via Zink",
+      "suite_qualified": false,
+      "kernel": "7.1.12-egpu1",
+      "boot_id": "13eeb7ba-bbf4-4596-98f1-97d0d46d6d6b",
+      "command": [
+        "/root/gpu-replay-bench-m1/bin/eglretrace",
+        "--headless",
+        "-b",
+        "/root/gpu-replay-bench-m1/workload-gl/capture.trace"
+      ],
+      "resolution": [
+        3024,
+        1837
+      ],
+      "measured_call_range": [
+        1392082,
+        1468244
+      ],
+      "environment": {
+        "VK_DRIVER_FILES": "/usr/share/vulkan/icd.d/asahi_icd.json",
+        "__EGL_VENDOR_LIBRARY_FILENAMES": "/usr/share/glvnd/egl_vendor.d/50_mesa.json",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "EGL_PLATFORM": "surfaceless",
+        "DISPLAY": ":0",
+        "vblank_mode": "0",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench-m1/cache/minecraft-zink",
+        "APITRACE_BENCH_CALL_RANGE": "1392082-1468244",
+        "APITRACE_PREDECODE_RANGE": "1392082-1468244",
+        "APITRACE_BENCH_FRAME_CALLS": "1392082,1395171,1397997,1401317,1401819,1404430,1407666,1410277,1413429,1413931,1416702,1419770,1422381,1425841,1428507,1429009,1432077,1434848,1437965,1440576,1441078,1444342,1446953,1450287,1453058,1456133,1456635,1459301,1462558,1465169,1468244"
+      },
+      "sha256": {
+        "/root/gpu-replay-bench-m1/workload-gl/capture.trace": "2f3cf560f5cca90c4b9a6b0a37f997a9981b081af12bfde503e07b78b2c99708",
+        "/root/gpu-replay-bench-m1/bin/eglretrace": "96b38e5ff74d2ba5ab25ed7c430ffd7578ed2338b9eb22afb246552d91bb46c0",
+        "/root/gpu-replay-bench-m1/tools/m1-zink-replay.py": "4742b4e8df5ef4655b13d16a0f349a53175cc189b565e0d30f604d40fb5aee93",
+        "/usr/lib/libvulkan_asahi.so": "765c4336b0d4b96e2576fe3243f05901550143d1996d5f3b3becd6080ff85bc9",
+        "/usr/lib/libgallium-26.2.2-arch1.1.so": "b552cd6c748afc4eda241b7506c6d102968775f6323d005b8ef6485ed8a70d1f"
+      },
+      "guard_scope": "60-second hardware watchdog, 45-second process bound, 0.5-second available SMC board/battery telemetry; CPU/GPU die telemetry and kernel thermal policy not qualified",
+      "adaptations": [
+        "Hidden EGL X11 window in private Xvfb; binary explicitly selects X11 despite EGL_PLATFORM",
+        "Same completed/predecoded 30-frame interval as M3; setup and screenshots excluded"
+      ],
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "returncode": 0,
+      "wall_seconds": 11.147092529005022,
+      "errors": [],
+      "success": true,
+      "seconds": 0.59277052,
+      "fps": 50.609804279740494,
+      "measured_frames": 30,
+      "watchdog_final_timeleft": 48,
+      "watchdog_disarmed": true
+    },
+    {
+      "diagnostic_only": false,
+      "phase": "time",
+      "gpu": "Apple M1 via Zink",
+      "suite_qualified": false,
+      "kernel": "7.1.12-egpu1",
+      "boot_id": "13eeb7ba-bbf4-4596-98f1-97d0d46d6d6b",
+      "command": [
+        "/root/gpu-replay-bench-m1/bin/eglretrace",
+        "--headless",
+        "-b",
+        "/root/gpu-replay-bench-m1/workload-gl/capture.trace"
+      ],
+      "resolution": [
+        3024,
+        1837
+      ],
+      "measured_call_range": [
+        1392082,
+        1468244
+      ],
+      "environment": {
+        "VK_DRIVER_FILES": "/usr/share/vulkan/icd.d/asahi_icd.json",
+        "__EGL_VENDOR_LIBRARY_FILENAMES": "/usr/share/glvnd/egl_vendor.d/50_mesa.json",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "EGL_PLATFORM": "surfaceless",
+        "DISPLAY": ":0",
+        "vblank_mode": "0",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench-m1/cache/minecraft-zink",
+        "APITRACE_BENCH_CALL_RANGE": "1392082-1468244",
+        "APITRACE_PREDECODE_RANGE": "1392082-1468244",
+        "APITRACE_BENCH_FRAME_CALLS": "1392082,1395171,1397997,1401317,1401819,1404430,1407666,1410277,1413429,1413931,1416702,1419770,1422381,1425841,1428507,1429009,1432077,1434848,1437965,1440576,1441078,1444342,1446953,1450287,1453058,1456133,1456635,1459301,1462558,1465169,1468244"
+      },
+      "sha256": {
+        "/root/gpu-replay-bench-m1/workload-gl/capture.trace": "2f3cf560f5cca90c4b9a6b0a37f997a9981b081af12bfde503e07b78b2c99708",
+        "/root/gpu-replay-bench-m1/bin/eglretrace": "96b38e5ff74d2ba5ab25ed7c430ffd7578ed2338b9eb22afb246552d91bb46c0",
+        "/root/gpu-replay-bench-m1/tools/m1-zink-replay.py": "4742b4e8df5ef4655b13d16a0f349a53175cc189b565e0d30f604d40fb5aee93",
+        "/usr/lib/libvulkan_asahi.so": "765c4336b0d4b96e2576fe3243f05901550143d1996d5f3b3becd6080ff85bc9",
+        "/usr/lib/libgallium-26.2.2-arch1.1.so": "b552cd6c748afc4eda241b7506c6d102968775f6323d005b8ef6485ed8a70d1f"
+      },
+      "guard_scope": "60-second hardware watchdog, 45-second process bound, 0.5-second available SMC board/battery telemetry; CPU/GPU die telemetry and kernel thermal policy not qualified",
+      "adaptations": [
+        "Hidden EGL X11 window in private Xvfb; binary explicitly selects X11 despite EGL_PLATFORM",
+        "Same completed/predecoded 30-frame interval as M3; setup and screenshots excluded"
+      ],
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "returncode": 0,
+      "wall_seconds": 11.1097265540011,
+      "errors": [],
+      "success": true,
+      "seconds": 0.591349534,
+      "fps": 50.73141733464188,
+      "measured_frames": 30,
+      "watchdog_final_timeleft": 48,
+      "watchdog_disarmed": true
+    },
+    {
+      "diagnostic_only": false,
+      "phase": "time",
+      "gpu": "Apple M1 via Zink",
+      "suite_qualified": false,
+      "kernel": "7.1.12-egpu1",
+      "boot_id": "13eeb7ba-bbf4-4596-98f1-97d0d46d6d6b",
+      "command": [
+        "/root/gpu-replay-bench-m1/bin/eglretrace",
+        "--headless",
+        "-b",
+        "/root/gpu-replay-bench-m1/workload-gl/capture.trace"
+      ],
+      "resolution": [
+        3024,
+        1837
+      ],
+      "measured_call_range": [
+        1392082,
+        1468244
+      ],
+      "environment": {
+        "VK_DRIVER_FILES": "/usr/share/vulkan/icd.d/asahi_icd.json",
+        "__EGL_VENDOR_LIBRARY_FILENAMES": "/usr/share/glvnd/egl_vendor.d/50_mesa.json",
+        "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+        "GALLIUM_DRIVER": "zink",
+        "EGL_PLATFORM": "surfaceless",
+        "DISPLAY": ":0",
+        "vblank_mode": "0",
+        "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench-m1/cache/minecraft-zink",
+        "APITRACE_BENCH_CALL_RANGE": "1392082-1468244",
+        "APITRACE_PREDECODE_RANGE": "1392082-1468244",
+        "APITRACE_BENCH_FRAME_CALLS": "1392082,1395171,1397997,1401317,1401819,1404430,1407666,1410277,1413429,1413931,1416702,1419770,1422381,1425841,1428507,1429009,1432077,1434848,1437965,1440576,1441078,1444342,1446953,1450287,1453058,1456133,1456635,1459301,1462558,1465169,1468244"
+      },
+      "sha256": {
+        "/root/gpu-replay-bench-m1/workload-gl/capture.trace": "2f3cf560f5cca90c4b9a6b0a37f997a9981b081af12bfde503e07b78b2c99708",
+        "/root/gpu-replay-bench-m1/bin/eglretrace": "96b38e5ff74d2ba5ab25ed7c430ffd7578ed2338b9eb22afb246552d91bb46c0",
+        "/root/gpu-replay-bench-m1/tools/m1-zink-replay.py": "4742b4e8df5ef4655b13d16a0f349a53175cc189b565e0d30f604d40fb5aee93",
+        "/usr/lib/libvulkan_asahi.so": "765c4336b0d4b96e2576fe3243f05901550143d1996d5f3b3becd6080ff85bc9",
+        "/usr/lib/libgallium-26.2.2-arch1.1.so": "b552cd6c748afc4eda241b7506c6d102968775f6323d005b8ef6485ed8a70d1f"
+      },
+      "guard_scope": "60-second hardware watchdog, 45-second process bound, 0.5-second available SMC board/battery telemetry; CPU/GPU die telemetry and kernel thermal policy not qualified",
+      "adaptations": [
+        "Hidden EGL X11 window in private Xvfb; binary explicitly selects X11 despite EGL_PLATFORM",
+        "Same completed/predecoded 30-frame interval as M3; setup and screenshots excluded"
+      ],
+      "watchdog": {
+        "device": "/dev/watchdog0",
+        "identity": "Apple SoC Watchdog",
+        "timeout_seconds": 60,
+        "initial_timeleft_seconds": 59,
+        "periodic_keepalive": false,
+        "armed": true,
+        "ssh_broker_lease": false
+      },
+      "returncode": 0,
+      "wall_seconds": 10.614309065997077,
+      "errors": [],
+      "success": true,
+      "seconds": 0.581977619,
+      "fps": 51.548374062130385,
+      "measured_frames": 30,
+      "watchdog_final_timeleft": 49,
+      "watchdog_disarmed": true
+    }
+  ],
+  "images": [
+    {
+      "image": "frame-0001392082.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001429009.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001468244.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    }
+  ],
+  "paired_timings": {
+    "false": {
+      "samples_fps": [
+        57.51646878636838,
+        52.28323647259615,
+        50.98577356196886
+      ],
+      "median_fps": 52.28323647259615
+    },
+    "true": {
+      "samples_fps": [
+        63.8689005487386,
+        70.09663276454705,
+        69.51900357577946
+      ],
+      "median_fps": 69.51900357577946
+    },
+    "fps_improvement_percent": 32.96614415256658,
+    "comparison": "mesa-build",
+    "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+  },
+  "diagnostic_profile": {
+    "diagnostic_only": true,
+    "log": "/home/council/dev/gpu-replay-bench/runs/20260930T164014498586Z-m3-minecraft-demo-zink-time/remote/replay.log",
+    "first": 1392082,
+    "last": 1468244,
+    "frames": 30,
+    "interval_ns": 395877036,
+    "monotonic_ns": [
+      9745174585015,
+      9745570501151
+    ],
+    "process_cpu_delta_us": {
+      "user_us": 86881,
+      "system_us": 11337
+    },
+    "cpu_calls": [
+      {
+        "name": "glXSwapBuffers",
+        "count": 30,
+        "ns": 315684235,
+        "maximum_ns": 11748550
+      },
+      {
+        "name": "glClientWaitSync",
+        "count": 180,
+        "ns": 68195748,
+        "maximum_ns": 2376879
+      },
+      {
+        "name": "glBindTexture",
+        "count": 8681,
+        "ns": 681322,
+        "maximum_ns": 3750
+      },
+      {
+        "name": "glNamedBufferSubData",
+        "count": 90,
+        "ns": 635515,
+        "maximum_ns": 53893
+      },
+      {
+        "name": "glDrawArraysInstanced",
+        "count": 5321,
+        "ns": 498061,
+        "maximum_ns": 11267
+      },
+      {
+        "name": "glTexParameteri",
+        "count": 18382,
+        "ns": 374450,
+        "maximum_ns": 1125
+      },
+      {
+        "name": "glBindSampler",
+        "count": 9191,
+        "ns": 367617,
+        "maximum_ns": 3726
+      },
+      {
+        "name": "glBindVertexArray",
+        "count": 5951,
+        "ns": 332527,
+        "maximum_ns": 1042
+      },
+      {
+        "name": "glBindBufferRange",
+        "count": 7451,
+        "ns": 313116,
+        "maximum_ns": 2542
+      },
+      {
+        "name": "memcpy",
+        "count": 415,
+        "ns": 267020,
+        "maximum_ns": 4792
+      },
+      {
+        "name": "glUseProgram",
+        "count": 3193,
+        "ns": 244093,
+        "maximum_ns": 2292
+      },
+      {
+        "name": "glFenceSync",
+        "count": 30,
+        "ns": 192111,
+        "maximum_ns": 8875
+      },
+      {
+        "name": "glActiveTexture",
+        "count": 6620,
+        "ns": 131679,
+        "maximum_ns": 1458
+      },
+      {
+        "name": "glBindFramebuffer",
+        "count": 1832,
+        "ns": 70588,
+        "maximum_ns": 666
+      },
+      {
+        "name": "glPolygonMode",
+        "count": 3193,
+        "ns": 65735,
+        "maximum_ns": 250
+      },
+      {
+        "name": "glDrawElementsInstancedBaseVertex",
+        "count": 540,
+        "ns": 53077,
+        "maximum_ns": 333
+      },
+      {
+        "name": "glBindVertexBuffer",
+        "count": 720,
+        "ns": 47978,
+        "maximum_ns": 375
+      },
+      {
+        "name": "glBindBuffer",
+        "count": 720,
+        "ns": 35176,
+        "maximum_ns": 292
+      },
+      {
+        "name": "glScissor",
+        "count": 796,
+        "ns": 24009,
+        "maximum_ns": 1517
+      },
+      {
+        "name": "glDrawBuffers",
+        "count": 338,
+        "ns": 16255,
+        "maximum_ns": 416
+      },
+      {
+        "name": "glNamedFramebufferTexture",
+        "count": 180,
+        "ns": 15976,
+        "maximum_ns": 333
+      },
+      {
+        "name": "glViewport",
+        "count": 368,
+        "ns": 15909,
+        "maximum_ns": 375
+      },
+      {
+        "name": "glCopyNamedBufferSubData",
+        "count": 120,
+        "ns": 12035,
+        "maximum_ns": 708
+      },
+      {
+        "name": "glDisable",
+        "count": 320,
+        "ns": 10572,
+        "maximum_ns": 167
+      },
+      {
+        "name": "glMultiDrawElementsIndirect",
+        "count": 90,
+        "ns": 9603,
+        "maximum_ns": 292
+      },
+      {
+        "name": "glEnable",
+        "count": 320,
+        "ns": 9158,
+        "maximum_ns": 291
+      },
+      {
+        "name": "glDepthMask",
+        "count": 220,
+        "ns": 6668,
+        "maximum_ns": 417
+      },
+      {
+        "name": "glBlendFuncSeparate",
+        "count": 120,
+        "ns": 5955,
+        "maximum_ns": 292
+      },
+      {
+        "name": "glClearDepth",
+        "count": 120,
+        "ns": 5142,
+        "maximum_ns": 166
+      },
+      {
+        "name": "glFramebufferTexture2D",
+        "count": 60,
+        "ns": 4379,
+        "maximum_ns": 292
+      },
+      {
+        "name": "glDisablei",
+        "count": 90,
+        "ns": 4202,
+        "maximum_ns": 167
+      },
+      {
+        "name": "glClear",
+        "count": 120,
+        "ns": 4003,
+        "maximum_ns": 166
+      },
+      {
+        "name": "glDrawBuffer",
+        "count": 120,
+        "ns": 3924,
+        "maximum_ns": 84
+      },
+      {
+        "name": "glEnablei",
+        "count": 90,
+        "ns": 3832,
+        "maximum_ns": 209
+      },
+      {
+        "name": "glClearColor",
+        "count": 60,
+        "ns": 3333,
+        "maximum_ns": 167
+      },
+      {
+        "name": "glBlitNamedFramebuffer",
+        "count": 30,
+        "ns": 2911,
+        "maximum_ns": 208
+      },
+      {
+        "name": "glTexBuffer",
+        "count": 30,
+        "ns": 2849,
+        "maximum_ns": 333
+      },
+      {
+        "name": "glDeleteSync",
+        "count": 30,
+        "ns": 2087,
+        "maximum_ns": 167
+      }
+    ],
+    "completed_frames": [
+      {
+        "call": 1395171,
+        "ns": 14152154,
+        "replay_ns": 2866495,
+        "wait_ns": 11285659
+      },
+      {
+        "call": 1397997,
+        "ns": 13623228,
+        "replay_ns": 2724922,
+        "wait_ns": 10898306
+      },
+      {
+        "call": 1401317,
+        "ns": 14009357,
+        "replay_ns": 2857285,
+        "wait_ns": 11152072
+      },
+      {
+        "call": 1401819,
+        "ns": 10267286,
+        "replay_ns": 2186147,
+        "wait_ns": 8081139
+      },
+      {
+        "call": 1404430,
+        "ns": 13385379,
+        "replay_ns": 2681346,
+        "wait_ns": 10704033
+      },
+      {
+        "call": 1407666,
+        "ns": 13909719,
+        "replay_ns": 2780315,
+        "wait_ns": 11129404
+      },
+      {
+        "call": 1410277,
+        "ns": 13590320,
+        "replay_ns": 2692680,
+        "wait_ns": 10897640
+      },
+      {
+        "call": 1413429,
+        "ns": 13755882,
+        "replay_ns": 2823102,
+        "wait_ns": 10932780
+      },
+      {
+        "call": 1413931,
+        "ns": 10272202,
+        "replay_ns": 2236432,
+        "wait_ns": 8035770
+      },
+      {
+        "call": 1416702,
+        "ns": 13583361,
+        "replay_ns": 2734298,
+        "wait_ns": 10849063
+      },
+      {
+        "call": 1419770,
+        "ns": 13943156,
+        "replay_ns": 2756774,
+        "wait_ns": 11186382
+      },
+      {
+        "call": 1422381,
+        "ns": 13583919,
+        "replay_ns": 2698279,
+        "wait_ns": 10885640
+      },
+      {
+        "call": 1425841,
+        "ns": 14106326,
+        "replay_ns": 2921404,
+        "wait_ns": 11184922
+      },
+      {
+        "call": 1428507,
+        "ns": 13607545,
+        "replay_ns": 2695364,
+        "wait_ns": 10912181
+      },
+      {
+        "call": 1429009,
+        "ns": 10297720,
+        "replay_ns": 2261181,
+        "wait_ns": 8036539
+      },
+      {
+        "call": 1432077,
+        "ns": 13904554,
+        "replay_ns": 2766816,
+        "wait_ns": 11137738
+      },
+      {
+        "call": 1434848,
+        "ns": 13563717,
+        "replay_ns": 2713322,
+        "wait_ns": 10850395
+      },
+      {
+        "call": 1437965,
+        "ns": 13567610,
+        "replay_ns": 2779457,
+        "wait_ns": 10788153
+      },
+      {
+        "call": 1440576,
+        "ns": 13544759,
+        "replay_ns": 2683221,
+        "wait_ns": 10861538
+      },
+      {
+        "call": 1441078,
+        "ns": 10245351,
+        "replay_ns": 2221206,
+        "wait_ns": 8024145
+      },
+      {
+        "call": 1444342,
+        "ns": 13904139,
+        "replay_ns": 2823643,
+        "wait_ns": 11080496
+      },
+      {
+        "call": 1446953,
+        "ns": 13515741,
+        "replay_ns": 2719447,
+        "wait_ns": 10796294
+      },
+      {
+        "call": 1450287,
+        "ns": 14021417,
+        "replay_ns": 2847310,
+        "wait_ns": 11174107
+      },
+      {
+        "call": 1453058,
+        "ns": 13599003,
+        "replay_ns": 2735590,
+        "wait_ns": 10863413
+      },
+      {
+        "call": 1456133,
+        "ns": 13528740,
+        "replay_ns": 2792732,
+        "wait_ns": 10736008
+      },
+      {
+        "call": 1456635,
+        "ns": 10252976,
+        "replay_ns": 2257432,
+        "wait_ns": 7995544
+      },
+      {
+        "call": 1459301,
+        "ns": 14421045,
+        "replay_ns": 2680370,
+        "wait_ns": 11740675
+      },
+      {
+        "call": 1462558,
+        "ns": 13999023,
+        "replay_ns": 2830227,
+        "wait_ns": 11168796
+      },
+      {
+        "call": 1465169,
+        "ns": 13572860,
+        "replay_ns": 2686388,
+        "wait_ns": 10886472
+      },
+      {
+        "call": 1468244,
+        "ns": 13940864,
+        "replay_ns": 2775483,
+        "wait_ns": 11165381
+      }
+    ],
+    "global_retirement_deltas": {
+      "render": {
+        "retirements": 140,
+        "commands": 374,
+        "nonzero_gpu_samples": 140,
+        "prepare_ns": 3934993,
+        "active_ns": 266861358,
+        "gpu_span_ns": 225839997,
+        "tiling_ns": 80127255,
+        "fragment_ns": 136628579,
+        "stage_gap_ns": 364428
+      },
+      "compute": {
+        "retirements": 137,
+        "commands": 168,
+        "nonzero_gpu_samples": 137,
+        "prepare_ns": 1145428,
+        "active_ns": 37677270,
+        "gpu_span_ns": 10975487,
+        "tiling_ns": 0,
+        "fragment_ns": 0,
+        "stage_gap_ns": 0
+      }
+    },
+    "shader_selections": [],
+    "compute_dispatches": [],
+    "descriptor_rejections": [],
+    "limits": "Summarize opt-in GL interval diagnostics; never produces a benchmark score.\n\nInput: a retained replay.log from the completed/predecoded interval profiler.\nCPU call times include waits, worker threads are excluded. Global native\nretirement spans include other clients and overlapping engines. Shader/dispatch\nrecord frequencies do not measure coverage or execution cost.\n"
+  }
+}

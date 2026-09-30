@@ -53,6 +53,28 @@ struct agx_workgroup {
    uint32_t x, y, z;
 };
 
+/* One subgroup generates one robust indexed draw. This command-buffer-owned
+ * table is completed while recording, before any GPU execution can begin.
+ * The arguments themselves are still read on the GPU at execution time.
+ */
+#define LIBAGX_ROBUST_INDEX_BATCH_SIZE 128
+
+struct libagx_robust_index_entry {
+   uint64_t vdm;
+   uint64_t cmd;
+};
+
+struct libagx_robust_index_batch {
+   uint32_t count;
+   uint32_t reserved;
+   struct libagx_robust_index_entry entries[LIBAGX_ROBUST_INDEX_BATCH_SIZE];
+};
+
+static_assert(sizeof(struct libagx_robust_index_entry) == 16,
+              "robust index entries must share the CPU/GPU ABI");
+static_assert(sizeof(struct libagx_robust_index_batch) == 8 + 16 * 128,
+              "robust index table must share the CPU/GPU ABI");
+
 static inline struct agx_workgroup
 agx_workgroup(uint32_t x, uint32_t y, uint32_t z)
 {
