@@ -84,6 +84,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_profile_each_draw, "HK_M4_PROFILE_EACH_DRAW", f
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_count_fragments, "HK_M4_COUNT_FRAGMENTS", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_batch_robust_index, "HK_BATCH_ROBUST_INDEX", true)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_multidraw_fs_program, "HK_M3_MULTIDRAW_FS_PROGRAM", true)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_multidraw_ubo_proof, "HK_M3_MULTIDRAW_UBO_PROOF", true)
 
 #define IS_DIRTY(bit) BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_##bit)
 
@@ -5040,8 +5041,8 @@ hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
 /* Descriptor contents are immutable for these bindings while pending. Sparse
  * and capture/replay shadow addresses must retain GPU-side alias resolution. */
 static bool
-hk_shader_can_use_direct_ubos(struct hk_cmd_buffer *cmd, mesa_shader_stage stage,
-                            unsigned variant)
+hk_shader_can_use_direct_ubos_uncached(struct hk_cmd_buffer *cmd,
+                                     mesa_shader_stage stage, unsigned variant)
 {
    struct hk_graphics_state *gfx = &cmd->state.gfx;
    struct hk_api_shader *api = gfx->shaders[stage];
@@ -5124,6 +5125,43 @@ hk_shader_can_use_direct_ubos(struct hk_cmd_buffer *cmd, mesa_shader_stage stage
       }
    }
    return true;
+}
+
+static bool
+hk_shader_can_use_direct_ubos(struct hk_cmd_buffer *cmd, mesa_shader_stage stage,
+                            unsigned variant)
+{
+   struct hk_multidraw_resource_cache *cache = cmd->multidraw_resources;
+   struct hk_graphics_state *gfx = &cmd->state.gfx;
+   assert(stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_FRAGMENT);
+   struct hk_api_shader *api = gfx->shaders[stage];
+   if (cache && cmd->in_meta)
+      cache->ubo[0].valid = cache->ubo[1].valid = false;
+   /* There is no metadata walk to save for an absent/direct-ineligible variant. */
+   if (!api || !api->variants[variant].info.ubo_prefetch_direct)
+      return false;
+   if (!cache || !cache->ubo_enabled || cmd->in_meta) {
+      /* Meta may temporarily replace descriptor state. Re-prove the restored
+       * application bindings afterwards rather than carrying a stale result. */
+      return hk_shader_can_use_direct_ubos_uncached(cmd, stage, variant);
+   }
+
+   const unsigned index = stage == MESA_SHADER_FRAGMENT;
+   if (cache->ubo[index].valid && cache->ubo[index].api == api &&
+       cache->ubo[index].variant == variant)
+      return cache->ubo[index].direct;
+
+   /* Only immutable descriptor metadata is inspected by this proof. API
+    * descriptor bindings and dynamic offsets cannot change inside one API
+    * multi-draw command. Internal meta operations invalidate both stage proofs
+    * at entry, and a changed shader or variant is re-proved above. No UBO
+    * values are cached: the resource program loads them at GPU execution. */
+   const bool direct = hk_shader_can_use_direct_ubos_uncached(cmd, stage, variant);
+   cache->ubo[index].api = api;
+   cache->ubo[index].variant = variant;
+   cache->ubo[index].valid = true;
+   cache->ubo[index].direct = direct;
+   return direct;
 }
 
 static struct hk_cs *
@@ -6117,14 +6155,16 @@ hk_draw_indexed_indirect_inner(VkCommandBuffer commandBuffer, uint64_t buffer,
    /* API bindings cannot change between draws inside this call. Keep this
     * separate from the index batch: each graphics CS and fragment root is
     * still checked before reuse, and vertex programs remain per-draw. */
-   struct hk_multidraw_fragment_cache fragment_cache = {0};
-   struct hk_multidraw_fragment_cache *previous_cache =
-      cmd->multidraw_fragment_cache;
-   cmd->multidraw_fragment_cache = NULL;
+   struct hk_multidraw_resource_cache resources = {0};
+   struct hk_multidraw_resource_cache *previous_cache = cmd->multidraw_resources;
+   cmd->multidraw_resources = NULL;
    if (drawCount > 1 && !cmd->state.conditional &&
-       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G15S &&
-       debug_get_option_hk_m3_multidraw_fs_program())
-      cmd->multidraw_fragment_cache = &fragment_cache;
+       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G15S) {
+      resources.fragment_enabled = debug_get_option_hk_m3_multidraw_fs_program();
+      resources.ubo_enabled = debug_get_option_hk_m3_multidraw_ubo_proof();
+      if (resources.fragment_enabled || resources.ubo_enabled)
+         cmd->multidraw_resources = &resources;
+   }
 
    for (unsigned draw_id = 0; draw_id < drawCount; ++draw_id) {
       uint64_t addr = buffer + stride * draw_id;
@@ -6135,7 +6175,7 @@ hk_draw_indexed_indirect_inner(VkCommandBuffer commandBuffer, uint64_t buffer,
          agx_draw_indexed_indirect(addr, buf.addr, buf.range, 0, 0),
          batch_enabled ? &batch : NULL);
    }
-   cmd->multidraw_fragment_cache = previous_cache;
+   cmd->multidraw_resources = previous_cache;
 }
 
 VKAPI_ATTR void VKAPI_CALL

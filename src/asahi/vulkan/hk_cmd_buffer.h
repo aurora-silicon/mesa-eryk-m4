@@ -177,12 +177,18 @@ hk_multidraw_fragment_root_equal(const struct hk_root_descriptor_table *a,
                   (const uint8_t *)b + vertex_end, sizeof(*a) - vertex_end);
 }
 
-struct hk_multidraw_fragment_cache {
+struct hk_multidraw_resource_cache {
+   bool fragment_enabled, ubo_enabled;
    struct hk_cs *cs;
    struct hk_shader *shader;
    struct hk_linked_shader *linked;
    uint64_t images, samplers, program;
    struct hk_root_descriptor_table root;
+   struct {
+      struct hk_api_shader *api;
+      unsigned variant;
+      bool valid, direct;
+   } ubo[2];
 };
 
 static inline bool
@@ -652,7 +658,7 @@ struct hk_cmd_buffer {
    struct vk_command_buffer vk;
    struct agx3_ioto_uniform_template *uniform_templates[2];
    /* Stack-owned only during one indexed indirect multi-draw API call. */
-   struct hk_multidraw_fragment_cache *multidraw_fragment_cache;
+   struct hk_multidraw_resource_cache *multidraw_resources;
 
    /* Immutable native heap/query pointer uploads. Small direct-mapped cache;
     * contents and size, never descriptor object identity, determine reuse. */

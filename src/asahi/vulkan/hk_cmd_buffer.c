@@ -136,7 +136,7 @@ static void
 hk_free_resettable_cmd_buffer(struct hk_cmd_buffer *cmd)
 {
    cmd->vdm_lookup_bo = NULL;
-   cmd->multidraw_fragment_cache = NULL;
+   cmd->multidraw_resources = NULL;
    memset(cmd->native_pointer_uploads, 0, sizeof(cmd->native_pointer_uploads));
    memset(cmd->native_prefetch_eligible, 0, sizeof(cmd->native_prefetch_eligible));
    struct hk_cmd_pool *pool = hk_cmd_buffer_pool(cmd);
@@ -1797,14 +1797,14 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
                     struct hk_linked_shader *linked)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
-   struct hk_multidraw_fragment_cache *cache = cmd->multidraw_fragment_cache;
+   struct hk_multidraw_resource_cache *cache = cmd->multidraw_resources;
    struct hk_graphics_state *gfx = &cmd->state.gfx;
    /* Reuse only inside one API call and one native graphics CS. No shader
     * memory writes, GS/tessellation, statistics or preamble execution: those
     * paths may need additional per-draw resources or visibility handling.
     * Buffer contents remain GPU reads; only the immutable resource program
     * and its fragment-equivalent root are shared. */
-   const bool reusable = cache && !cmd->in_meta &&
+   const bool reusable = cache && cache->fragment_enabled && !cmd->in_meta &&
       dev->dev.chip == AGX_CHIP_G15S &&
       s->info.stage == MESA_SHADER_FRAGMENT && !s->info.writes_memory &&
       !s->b.info.has_preamble && gfx->shaders[MESA_SHADER_VERTEX] &&
@@ -2017,11 +2017,13 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          return 0;
       }
       if (reusable) {
-         *cache = (struct hk_multidraw_fragment_cache){
-            .cs = cmd->current_cs.gfx, .shader = s, .linked = linked,
-            .images = images, .samplers = samplers, .program = upload.gpu,
-            .root = gfx->descriptors.root,
-         };
+         cache->cs = cmd->current_cs.gfx;
+         cache->shader = s;
+         cache->linked = linked;
+         cache->images = images;
+         cache->samplers = samplers;
+         cache->program = upload.gpu;
+         cache->root = gfx->descriptors.root;
       }
       return upload.gpu;
    }

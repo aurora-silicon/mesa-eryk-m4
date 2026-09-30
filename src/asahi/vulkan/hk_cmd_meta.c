@@ -109,6 +109,14 @@ hk_meta_begin(struct hk_cmd_buffer *cmd, struct hk_meta_save *save,
 {
    struct hk_descriptor_state *desc = hk_get_descriptors_state(cmd, bind_point);
 
+   /* A multi-draw proof covers application descriptor bindings only. Drop it
+    * before meta can temporarily replace descriptors, even if no meta draw
+    * reaches the direct-UBO selection helper. */
+   if (cmd->multidraw_resources) {
+      cmd->multidraw_resources->ubo[0].valid = false;
+      cmd->multidraw_resources->ubo[1].valid = false;
+   }
+
    if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
       save->dynamic = cmd->vk.dynamic_graphics_state;
       save->_dynamic_vi = cmd->state.gfx._dynamic_vi;
