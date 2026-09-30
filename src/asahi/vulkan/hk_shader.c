@@ -3021,7 +3021,14 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          NIR_PASS(_, nir, hk_nir_lower_sparse_access);
       NIR_PASS(_, nir, hk_nir_specialize_memory_window,
                dev->dev.main_heap_base, dev->dev.main_heap_size);
-      agx_preprocess_nir_g17p(nir);
+      /* Vertex inputs already went through stage preprocessing above. The
+       * backend optimizes the new address/select instructions normally. A
+       * second full preprocessing pass here changes floating-point expression
+       * shapes (visible at raster/texture edges), even in the general variant.
+       * Keep the early pass: resource lowering relies on its canonical image
+       * handles, which a constants-only substitute does not establish. */
+      if (!vertex_ubo_prefetch)
+         agx_preprocess_nir_g17p(nir);
       if (debug_get_bool_option("HK_M4_PREFETCH_AUDIT", false))
          fprintf(stderr, "M4 UBO prefetch: loads=%u reserved=%u\n",
                  shader->info.ubo_prefetch_count, reserved);

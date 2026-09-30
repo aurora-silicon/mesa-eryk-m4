@@ -23,3 +23,19 @@ variant switching and sparse/dynamic/robust paths with CTS, measure warmed
 completed replays, then consider defaults. Evidence retained under
 `/home/council/dev/gpu-replay-bench/diagnostics/m3-vertex-*` and
 `/home/council/dev/dirtyroom_m4/build/minecraft-auto-prefetch`.
+
+## Pass-order diagnosis
+
+Forcing the general vertex variant in the original experiment produces exactly
+the same changed pixels as direct UBO loading. Thus the discrepancy is not
+caused by the loaded values. Skipping the second full preprocessing pass for
+vertices restores exact first/middle/last Minecraft images while retaining
+9–10 ms ordinary frame intervals. The early full pass must remain: a reduced
+scalar/constants-only early pass rejects a dynamically indexed storage-image
+vertex shader in CTS. That test passes again with full early preprocessing
+and no redundant late preprocessing. An expanded 1,069-case indexed CTS
+selection is now being qualified; this path remains opt-in.
+
+Evidence: `cts-vertex-image-{control,cse,early-only}` and
+`vertex-early-only-stage` under `build/minecraft-auto-prefetch`; saved Minecraft
+check `20260930T030645822727Z`, exact against the original reference.
