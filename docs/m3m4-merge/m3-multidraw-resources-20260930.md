@@ -93,3 +93,11 @@ python3 tools/m3-multidraw-resource-probe.py \
 
 It compiles the small probe natively before guarded GPU execution, records
 source/binary/library hashes and stops after any failed oracle or guard.
+
+The staging helper also records new untracked build-source files under
+`src/`/`include/` (including headers and generator inputs) in its source patch
+and hash manifest. Previously, a new header could affect the built library
+while `git diff HEAD` omitted it. The initial unused vertex-layout staging
+was restaged with its complete header before hardware testing. A temporary
+Git fixture verifies the new patch applies and that staging leaves the Git
+index and non-source notes untouched.
