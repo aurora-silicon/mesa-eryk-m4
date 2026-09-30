@@ -714,5 +714,1520 @@
       }
     }
   },
-  "qualification_scope": "38 synthetic batched witnesses and exact Minecraft GL images; final CTS, single-helper and broader game follow-up in progress"
+  "qualification_scope": "975 selected CTS cases (469 Pass, 506 NotSupported), 38 batched and 38 single-helper synthetic witnesses, six game image checks; all guarded runs healthy. No full conformance or desktop deployment claim.",
+  "cts": {
+    "healthy": true,
+    "counts": {
+      "NotSupported": 506,
+      "Pass": 469
+    },
+    "selected": 975,
+    "completed_batches_end": 975,
+    "stopped_on_test_failure": false
+  },
+  "single_helper_witnesses": [
+    {
+      "case": {
+        "name": "last-valid-2",
+        "env": {
+          "AGX_BATCH_COUNT": "2",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/00-last-valid-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-2",
+        "env": {
+          "AGX_BATCH_COUNT": "2",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/01-last-partial-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-127",
+        "env": {
+          "AGX_BATCH_COUNT": "127",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/02-last-valid-127",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-127",
+        "env": {
+          "AGX_BATCH_COUNT": "127",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/03-last-partial-127",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-128",
+        "env": {
+          "AGX_BATCH_COUNT": "128",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/04-last-valid-128",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-128",
+        "env": {
+          "AGX_BATCH_COUNT": "128",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/05-last-partial-128",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-129",
+        "env": {
+          "AGX_BATCH_COUNT": "129",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/06-last-valid-129",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-129",
+        "env": {
+          "AGX_BATCH_COUNT": "129",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/07-last-partial-129",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-257",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/08-last-valid-257",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-257",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/09-last-partial-257",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-2048",
+        "env": {
+          "AGX_BATCH_COUNT": "2048",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/10-last-valid-2048",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-2048",
+        "env": {
+          "AGX_BATCH_COUNT": "2048",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/11-last-partial-2048",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-8-1",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/12-parallel-8-1",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-8-2",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "2",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/13-parallel-8-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-8-3",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "3",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/14-parallel-8-3",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-8-4",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "4",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/15-parallel-8-4",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-suffix-8",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8",
+          "AGX_BATCH_INDEX_COUNT": "64"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/16-long-suffix-8",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-copy-8",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8",
+          "AGX_BATCH_INDEX_COUNT": "256",
+          "AGX_BATCH_INPUT_INDICES": "67"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/17-long-copy-8",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-1",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/18-parallel-16-1",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-2",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "2",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/19-parallel-16-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-3",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "3",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/20-parallel-16-3",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-4",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "4",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/21-parallel-16-4",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-suffix-16",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16",
+          "AGX_BATCH_INDEX_COUNT": "64"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/22-long-suffix-16",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-copy-16",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16",
+          "AGX_BATCH_INDEX_COUNT": "256",
+          "AGX_BATCH_INPUT_INDICES": "67"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/23-long-copy-16",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-1",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/24-parallel-32-1",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-2",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "2",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/25-parallel-32-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-3",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "3",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/26-parallel-32-3",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-4",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "4",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/27-parallel-32-4",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-suffix-32",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32",
+          "AGX_BATCH_INDEX_COUNT": "64"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/28-long-suffix-32",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-copy-32",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32",
+          "AGX_BATCH_INDEX_COUNT": "256",
+          "AGX_BATCH_INPUT_INDICES": "67"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/29-long-copy-32",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-0",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "0",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/30-selected-0",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-127",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "127",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/31-selected-127",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-128",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "128",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/32-selected-128",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-255",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "255",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/33-selected-255",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-256",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "256",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/34-selected-256",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "count-last-partial",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_INDIRECT_COUNT": "1",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/35-count-last-partial",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "count-predicated-last",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_INDIRECT_COUNT": "1",
+          "AGX_BATCH_EXECUTED": "256",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/36-count-predicated-last",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "count-zero",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_INDIRECT_COUNT": "1",
+          "AGX_BATCH_EXECUTED": "0",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/single-helper-v4/37-count-zero",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    }
+  ],
+  "game_checks": [
+    {
+      "case": "minecraft-demo-zink",
+      "path": "/home/council/dev/gpu-replay-bench/results/minecraft-demo-zink/m3/20260930T170940810601Z-m3-minecraft-demo-zink-check/benchmark.json",
+      "success": true,
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/minecraft-demo-zink/m3/20260930T170940810601Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001392082.png": "6bc119e8685e0ed3b01c5c05c85ca85838e12bc068a23fbab55edd14db1e8322",
+          "results/minecraft-demo-zink/m3/20260930T170940810601Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001429009.png": "7103f76db7663554ab20864f451cac95fd28bbf398b4bfce4116be8a9558a1bb",
+          "results/minecraft-demo-zink/m3/20260930T170940810601Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001468244.png": "53749479a30ea1ae4f8208e9c6ab10709abab5e97f172040a16d39e18253ed3b"
+        },
+        "scope": "Regression against a visually inspected capture-source baseline; not independent API conformance",
+        "limitation": "M3 capture-source visual regression baseline; no independent software reference and no M4 run. F3 FPS is captured text, not replay timing.",
+        "origin": "results/minecraft-demo-zink/m3/20260929T211026425885Z-m3-minecraft-demo-zink-check/benchmark.json",
+        "reference_sha256": "8c7ad8776607b4ee78542c3d4cdad395c473e7265b96e4b6a8c379772ef97190",
+        "comparisons": [
+          {
+            "image": "results/minecraft-demo-zink/m3/20260930T170940810601Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001392082.png",
+            "reference_image": "results/minecraft-demo-zink/m3/20260929T211026425885Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001392082.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/minecraft-demo-zink/m3/20260930T170940810601Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001429009.png",
+            "reference_image": "results/minecraft-demo-zink/m3/20260929T211026425885Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001429009.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/minecraft-demo-zink/m3/20260930T170940810601Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001468244.png",
+            "reference_image": "results/minecraft-demo-zink/m3/20260929T211026425885Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001468244.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 0,
+        "edge_fraction": 0,
+        "tolerance_reason": "",
+        "channels": "RGB"
+      }
+    },
+    {
+      "case": "minecraft-demo-vulkan",
+      "path": "/home/council/dev/gpu-replay-bench/results/minecraft-demo-vulkan/m3/20260930T170959921536Z-m3-minecraft-demo-vulkan-check/benchmark.json",
+      "success": true,
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/minecraft-demo-vulkan/m3/20260930T170959921536Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_1.png": "d4bf1d33816eca674801d6e8ea7c8f397904fe29955480ed16b68b634a26489f",
+          "results/minecraft-demo-vulkan/m3/20260930T170959921536Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_16.png": "f6d66a12ac9109ad83769919dd6914bcb4c9ce504a4ed2dfa6bd8d2b8923a3f9",
+          "results/minecraft-demo-vulkan/m3/20260930T170959921536Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_31.png": "967f0390524932e521698dcb267cbab4ca35ba6a2973423d0688e7ffefd2480d"
+        },
+        "scope": "Regression against a visually inspected capture-source baseline; not independent API conformance",
+        "limitation": "M3 source-GPU visual regression baseline; no independent software reference and no M4 run. F3 FPS is captured text, not replay timing.",
+        "origin": "results/minecraft-demo-vulkan/m3/20260929T210825479107Z-m3-minecraft-demo-vulkan-check/benchmark.json",
+        "reference_sha256": "f8844bc604cee5af92e7451a180ba36c34170c7d33578f90c88614614151780c",
+        "comparisons": [
+          {
+            "image": "results/minecraft-demo-vulkan/m3/20260930T170959921536Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_1.png",
+            "reference_image": "results/minecraft-demo-vulkan/m3/20260929T210825479107Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_1.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/minecraft-demo-vulkan/m3/20260930T170959921536Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_16.png",
+            "reference_image": "results/minecraft-demo-vulkan/m3/20260929T210825479107Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_16.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/minecraft-demo-vulkan/m3/20260930T170959921536Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_31.png",
+            "reference_image": "results/minecraft-demo-vulkan/m3/20260929T210825479107Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_31.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 0,
+        "edge_max": 0,
+        "edge_fraction": 0,
+        "tolerance_reason": "",
+        "channels": "RGB"
+      }
+    },
+    {
+      "case": "satisfactory-vulkan-gameplay",
+      "path": "/home/council/dev/gpu-replay-bench/results/satisfactory-vulkan-gameplay/m3/20260930T171011415168Z-m3-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "success": true,
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/satisfactory-vulkan-gameplay/m3/20260930T171011415168Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png": "7f77c2693052e087ff617b3a09c7b82ba1ec60072e4d9fd0050bb395f11c8813",
+          "results/satisfactory-vulkan-gameplay/m3/20260930T171011415168Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png": "4ddb85f7c91db0b2760848e99ef1297ad7ec6fcc8e86ce4cd0192417143b86de",
+          "results/satisfactory-vulkan-gameplay/m3/20260930T171011415168Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png": "c82b8fe7cab8c3525f17ae1dc668a1e7d4eba52cd2cfa9807a19ceee616729a2"
+        },
+        "scope": "Regression against a visually inspected capture-source baseline; not independent API conformance",
+        "limitation": "Adapted native Vulkan capture disables depth-bounds AO and distance/height-field shadows; not unmodified game qualification. This explicitly supersedes the old buggy vertex-input reference, whose comparison is retained in provenance/satisfactory-image64-20260925/native-gameplay-old-reference-comparison.json.",
+        "origin": "results/satisfactory-vulkan-gameplay/m3/20260930T022503728944Z-m3-satisfactory-vulkan-gameplay-check/benchmark.json",
+        "reference_sha256": "a1e47f9ee3be1f59235da15a7286b8d4700af199a77790f84a90acee95e1dc4a",
+        "comparisons": [
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m3/20260930T171011415168Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m3/20260930T022503728944Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m3/20260930T171011415168Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m3/20260930T022503728944Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/satisfactory-vulkan-gameplay/m3/20260930T171011415168Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png",
+            "reference_image": "results/satisfactory-vulkan-gameplay/m3/20260930T022503728944Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 1,
+        "edge_max": 0,
+        "edge_fraction": 0.0,
+        "tolerance_reason": "User accepts one RGB quantization level",
+        "channels": "RGB"
+      }
+    },
+    {
+      "case": "factorio-linux-wayland",
+      "path": "/home/council/dev/gpu-replay-bench/results/factorio-linux-wayland/m3/20260930T171058318352Z-m3-factorio-linux-wayland-check/benchmark.json",
+      "success": true,
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/factorio-linux-wayland/m3/20260930T171058318352Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000130298.png": "ef3dafafe9948d3e44131c26e7e076a67c290ef664d4691623975a7e00ac08ac",
+          "results/factorio-linux-wayland/m3/20260930T171058318352Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000147903.png": "353aa4f9cba8f5839215a27297814a54ee4d2598840633f468fbfcb82ac40087",
+          "results/factorio-linux-wayland/m3/20260930T171058318352Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000165448.png": "610ec1c753cfcec51eff83a8c2ef927447b123e9b0649ee9ee2baeefbc8da297"
+        },
+        "scope": "Regression against a visually inspected capture-source baseline; not independent API conformance",
+        "limitation": "",
+        "origin": "results/factorio-linux-wayland/m3/20260930T022719179190Z-m3-factorio-linux-wayland-check/benchmark.json",
+        "reference_sha256": "30ad09bb3fd3ee9a8fc58368b96c96cf7cdbcee77037f4961dedf5975f89b8cf",
+        "comparisons": [
+          {
+            "image": "results/factorio-linux-wayland/m3/20260930T171058318352Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000130298.png",
+            "reference_image": "results/factorio-linux-wayland/m3/20260930T022719179190Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000130298.png",
+            "maximum_error": 1,
+            "mean_absolute_error": 8.254565329218107e-05,
+            "changed_pixels_fraction": 0.0002442611882716049,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/factorio-linux-wayland/m3/20260930T171058318352Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000147903.png",
+            "reference_image": "results/factorio-linux-wayland/m3/20260930T022719179190Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000147903.png",
+            "maximum_error": 1,
+            "mean_absolute_error": 9.078414351851852e-05,
+            "changed_pixels_fraction": 0.00026861496913580245,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/factorio-linux-wayland/m3/20260930T171058318352Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000165448.png",
+            "reference_image": "results/factorio-linux-wayland/m3/20260930T022719179190Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000165448.png",
+            "maximum_error": 1,
+            "mean_absolute_error": 8.58812371399177e-05,
+            "changed_pixels_fraction": 0.0002542679398148148,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 1,
+        "edge_max": 0,
+        "edge_fraction": 0.0,
+        "tolerance_reason": "User accepts one RGB quantization level",
+        "channels": "RGB"
+      }
+    },
+    {
+      "case": "0ad-vulkan",
+      "path": "/home/council/dev/gpu-replay-bench/results/0ad-vulkan/m3/20260930T171115900878Z-m3-0ad-vulkan-check/benchmark.json",
+      "success": true,
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/0ad-vulkan/m3/20260930T171115900878Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_1.png": "3fc4fd0fd8d9ce8c952ea6380b348a21603d73ab9903ec7b512875209f7c24a9",
+          "results/0ad-vulkan/m3/20260930T171115900878Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_16.png": "39289e5f90c1a9742d83474477adc90188681543679cec623ed07a9bc04c2fe9",
+          "results/0ad-vulkan/m3/20260930T171115900878Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_31.png": "e3f2c0a3f87efd5b9d5d26771933338bf6e382436c838bc49342e27c7f8762e1"
+        },
+        "scope": "Regression against a visually inspected capture-source baseline; not independent API conformance",
+        "limitation": "Exact return to the approved 20260923T151331 M3 images after address fallback. The initial newer-reference mismatch and both comparisons are retained in provenance/full-suite-20260926; no new tolerance.",
+        "origin": "results/0ad-vulkan/m3/20260930T022730552117Z-m3-0ad-vulkan-check/benchmark.json",
+        "reference_sha256": "c602d84dc9757b469c3ba0409d53d07a3f24d3f277892f7f4a396ce243cfb769",
+        "comparisons": [
+          {
+            "image": "results/0ad-vulkan/m3/20260930T171115900878Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_1.png",
+            "reference_image": "results/0ad-vulkan/m3/20260930T022730552117Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_1.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/0ad-vulkan/m3/20260930T171115900878Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_16.png",
+            "reference_image": "results/0ad-vulkan/m3/20260930T022730552117Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_16.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/0ad-vulkan/m3/20260930T171115900878Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_31.png",
+            "reference_image": "results/0ad-vulkan/m3/20260930T022730552117Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_31.png",
+            "maximum_error": 0,
+            "mean_absolute_error": 0.0,
+            "changed_pixels_fraction": 0.0,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 1,
+        "edge_max": 0,
+        "edge_fraction": 0.0,
+        "tolerance_reason": "User accepts one RGB quantization level",
+        "channels": "RGB"
+      }
+    },
+    {
+      "case": "supertuxkart-zink",
+      "path": "/home/council/dev/gpu-replay-bench/results/supertuxkart-zink/m3/20260930T171138149641Z-m3-supertuxkart-zink-check/benchmark.json",
+      "success": true,
+      "review": {
+        "static_menu": false,
+        "static_menu_reason": "",
+        "images_sha256": {
+          "results/supertuxkart-zink/m3/20260930T171138149641Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000325795.png": "6c317fe66fffb380d069d3332e443fc4fa892f0476f9069c358910fe70ec6c4d",
+          "results/supertuxkart-zink/m3/20260930T171138149641Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000352952.png": "ac862e83b7b6aba08eb25fd88e210fdf0ab603f7c0c8cc78988d8f8128e532ef",
+          "results/supertuxkart-zink/m3/20260930T171138149641Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000381101.png": "1d68c568b4d092c61ab971186cab988300afad1f7027c646af7a3662ae33187e"
+        },
+        "scope": "Regression against a visually inspected capture-source baseline; not independent API conformance",
+        "limitation": "",
+        "origin": "results/supertuxkart-zink/m3/20260930T022736900421Z-m3-supertuxkart-zink-check/benchmark.json",
+        "reference_sha256": "d0c7dedd612f1c1f562b1724796d7369ffd52f4616da8777a8c6acc7b4f62307",
+        "comparisons": [
+          {
+            "image": "results/supertuxkart-zink/m3/20260930T171138149641Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000325795.png",
+            "reference_image": "results/supertuxkart-zink/m3/20260930T022736900421Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000325795.png",
+            "maximum_error": 1,
+            "mean_absolute_error": 2.9337062757201647e-05,
+            "changed_pixels_fraction": 8.728780864197531e-05,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/supertuxkart-zink/m3/20260930T171138149641Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000352952.png",
+            "reference_image": "results/supertuxkart-zink/m3/20260930T022736900421Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000352952.png",
+            "maximum_error": 1,
+            "mean_absolute_error": 3.08641975308642e-05,
+            "changed_pixels_fraction": 9.223090277777778e-05,
+            "out_of_tolerance_fraction": 0.0
+          },
+          {
+            "image": "results/supertuxkart-zink/m3/20260930T171138149641Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000381101.png",
+            "reference_image": "results/supertuxkart-zink/m3/20260930T022736900421Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000381101.png",
+            "maximum_error": 1,
+            "mean_absolute_error": 3.616898148148148e-05,
+            "changed_pixels_fraction": 0.00010850694444444444,
+            "out_of_tolerance_fraction": 0.0
+          }
+        ],
+        "tolerance": 1,
+        "edge_max": 0,
+        "edge_fraction": 0.0,
+        "tolerance_reason": "User accepts one RGB quantization level",
+        "channels": "RGB"
+      }
+    }
+  ],
+  "diagnostic_profile": {
+    "diagnostic_only": true,
+    "log": "/home/council/dev/gpu-replay-bench/runs/20260930T171155368603Z-m3-minecraft-demo-zink-time/remote/replay.log",
+    "first": 1392082,
+    "last": 1468244,
+    "frames": 30,
+    "interval_ns": 395466872,
+    "monotonic_ns": [
+      11646538450491,
+      11646933954047
+    ],
+    "process_cpu_delta_us": {
+      "user_us": 89608,
+      "system_us": 9962
+    },
+    "cpu_calls": [
+      {
+        "name": "glXSwapBuffers",
+        "count": 30,
+        "ns": 313981973,
+        "maximum_ns": 11779603
+      },
+      {
+        "name": "glClientWaitSync",
+        "count": 180,
+        "ns": 69436013,
+        "maximum_ns": 2447496
+      },
+      {
+        "name": "glBindTexture",
+        "count": 8681,
+        "ns": 733097,
+        "maximum_ns": 11226
+      },
+      {
+        "name": "glNamedBufferSubData",
+        "count": 90,
+        "ns": 633163,
+        "maximum_ns": 52268
+      },
+      {
+        "name": "glDrawArraysInstanced",
+        "count": 5321,
+        "ns": 518549,
+        "maximum_ns": 11267
+      },
+      {
+        "name": "glBindSampler",
+        "count": 9191,
+        "ns": 368869,
+        "maximum_ns": 1583
+      },
+      {
+        "name": "glTexParameteri",
+        "count": 18382,
+        "ns": 366966,
+        "maximum_ns": 1208
+      },
+      {
+        "name": "glBindBufferRange",
+        "count": 7451,
+        "ns": 344392,
+        "maximum_ns": 3875
+      },
+      {
+        "name": "glBindVertexArray",
+        "count": 5951,
+        "ns": 328834,
+        "maximum_ns": 1666
+      },
+      {
+        "name": "memcpy",
+        "count": 415,
+        "ns": 274131,
+        "maximum_ns": 4708
+      },
+      {
+        "name": "glUseProgram",
+        "count": 3193,
+        "ns": 237125,
+        "maximum_ns": 1833
+      },
+      {
+        "name": "glFenceSync",
+        "count": 30,
+        "ns": 217296,
+        "maximum_ns": 19643
+      },
+      {
+        "name": "glActiveTexture",
+        "count": 6620,
+        "ns": 134472,
+        "maximum_ns": 1041
+      },
+      {
+        "name": "glBindFramebuffer",
+        "count": 1832,
+        "ns": 71006,
+        "maximum_ns": 1291
+      },
+      {
+        "name": "glPolygonMode",
+        "count": 3193,
+        "ns": 69617,
+        "maximum_ns": 292
+      },
+      {
+        "name": "glDrawElementsInstancedBaseVertex",
+        "count": 540,
+        "ns": 64216,
+        "maximum_ns": 11292
+      },
+      {
+        "name": "glBindVertexBuffer",
+        "count": 720,
+        "ns": 50519,
+        "maximum_ns": 667
+      },
+      {
+        "name": "glBindBuffer",
+        "count": 720,
+        "ns": 39990,
+        "maximum_ns": 2084
+      },
+      {
+        "name": "glScissor",
+        "count": 796,
+        "ns": 24222,
+        "maximum_ns": 1042
+      },
+      {
+        "name": "glViewport",
+        "count": 368,
+        "ns": 17786,
+        "maximum_ns": 1167
+      },
+      {
+        "name": "glDrawBuffers",
+        "count": 338,
+        "ns": 16401,
+        "maximum_ns": 959
+      },
+      {
+        "name": "glNamedFramebufferTexture",
+        "count": 180,
+        "ns": 15917,
+        "maximum_ns": 667
+      },
+      {
+        "name": "glCopyNamedBufferSubData",
+        "count": 120,
+        "ns": 11458,
+        "maximum_ns": 542
+      },
+      {
+        "name": "glDisable",
+        "count": 320,
+        "ns": 11259,
+        "maximum_ns": 166
+      },
+      {
+        "name": "glEnable",
+        "count": 320,
+        "ns": 11224,
+        "maximum_ns": 625
+      },
+      {
+        "name": "glMultiDrawElementsIndirect",
+        "count": 90,
+        "ns": 10252,
+        "maximum_ns": 666
+      },
+      {
+        "name": "glDepthMask",
+        "count": 220,
+        "ns": 6875,
+        "maximum_ns": 250
+      },
+      {
+        "name": "glBlendFuncSeparate",
+        "count": 120,
+        "ns": 6798,
+        "maximum_ns": 416
+      },
+      {
+        "name": "glClearDepth",
+        "count": 120,
+        "ns": 5421,
+        "maximum_ns": 291
+      },
+      {
+        "name": "glDisablei",
+        "count": 90,
+        "ns": 5220,
+        "maximum_ns": 834
+      },
+      {
+        "name": "glFramebufferTexture2D",
+        "count": 60,
+        "ns": 4964,
+        "maximum_ns": 458
+      },
+      {
+        "name": "glClear",
+        "count": 120,
+        "ns": 4549,
+        "maximum_ns": 250
+      },
+      {
+        "name": "glEnablei",
+        "count": 90,
+        "ns": 4131,
+        "maximum_ns": 208
+      },
+      {
+        "name": "glDrawBuffer",
+        "count": 120,
+        "ns": 3835,
+        "maximum_ns": 209
+      },
+      {
+        "name": "glBlitNamedFramebuffer",
+        "count": 30,
+        "ns": 3627,
+        "maximum_ns": 459
+      },
+      {
+        "name": "glClearColor",
+        "count": 60,
+        "ns": 3622,
+        "maximum_ns": 291
+      },
+      {
+        "name": "glTexBuffer",
+        "count": 30,
+        "ns": 2920,
+        "maximum_ns": 500
+      },
+      {
+        "name": "glDeleteSync",
+        "count": 30,
+        "ns": 2293,
+        "maximum_ns": 208
+      }
+    ],
+    "completed_frames": [
+      {
+        "call": 1395171,
+        "ns": 14138422,
+        "replay_ns": 2901260,
+        "wait_ns": 11237162
+      },
+      {
+        "call": 1397997,
+        "ns": 13774083,
+        "replay_ns": 2877366,
+        "wait_ns": 10896717
+      },
+      {
+        "call": 1401317,
+        "ns": 13937133,
+        "replay_ns": 2871368,
+        "wait_ns": 11065765
+      },
+      {
+        "call": 1401819,
+        "ns": 10323256,
+        "replay_ns": 2306074,
+        "wait_ns": 8017182
+      },
+      {
+        "call": 1404430,
+        "ns": 13330462,
+        "replay_ns": 2735338,
+        "wait_ns": 10595124
+      },
+      {
+        "call": 1407666,
+        "ns": 13869697,
+        "replay_ns": 2832434,
+        "wait_ns": 11037263
+      },
+      {
+        "call": 1410277,
+        "ns": 13565794,
+        "replay_ns": 2715696,
+        "wait_ns": 10850098
+      },
+      {
+        "call": 1413429,
+        "ns": 13689824,
+        "replay_ns": 2864433,
+        "wait_ns": 10825391
+      },
+      {
+        "call": 1413931,
+        "ns": 10267321,
+        "replay_ns": 2283115,
+        "wait_ns": 7984206
+      },
+      {
+        "call": 1416702,
+        "ns": 13640723,
+        "replay_ns": 2799125,
+        "wait_ns": 10841598
+      },
+      {
+        "call": 1419770,
+        "ns": 13855222,
+        "replay_ns": 2795898,
+        "wait_ns": 11059324
+      },
+      {
+        "call": 1422381,
+        "ns": 13519818,
+        "replay_ns": 2671035,
+        "wait_ns": 10848783
+      },
+      {
+        "call": 1425841,
+        "ns": 14003225,
+        "replay_ns": 2935652,
+        "wait_ns": 11067573
+      },
+      {
+        "call": 1428507,
+        "ns": 13584271,
+        "replay_ns": 2724255,
+        "wait_ns": 10860016
+      },
+      {
+        "call": 1429009,
+        "ns": 10293906,
+        "replay_ns": 2289366,
+        "wait_ns": 8004540
+      },
+      {
+        "call": 1432077,
+        "ns": 13857304,
+        "replay_ns": 2806957,
+        "wait_ns": 11050347
+      },
+      {
+        "call": 1434848,
+        "ns": 13751502,
+        "replay_ns": 2876094,
+        "wait_ns": 10875408
+      },
+      {
+        "call": 1437965,
+        "ns": 13580561,
+        "replay_ns": 2824724,
+        "wait_ns": 10755837
+      },
+      {
+        "call": 1440576,
+        "ns": 13543086,
+        "replay_ns": 2699155,
+        "wait_ns": 10843931
+      },
+      {
+        "call": 1441078,
+        "ns": 10307966,
+        "replay_ns": 2284449,
+        "wait_ns": 8023517
+      },
+      {
+        "call": 1444342,
+        "ns": 13878696,
+        "replay_ns": 2843784,
+        "wait_ns": 11034912
+      },
+      {
+        "call": 1446953,
+        "ns": 13320086,
+        "replay_ns": 2716653,
+        "wait_ns": 10603433
+      },
+      {
+        "call": 1450287,
+        "ns": 13983208,
+        "replay_ns": 2889135,
+        "wait_ns": 11094073
+      },
+      {
+        "call": 1453058,
+        "ns": 13623328,
+        "replay_ns": 2792355,
+        "wait_ns": 10830973
+      },
+      {
+        "call": 1456133,
+        "ns": 13472885,
+        "replay_ns": 2843017,
+        "wait_ns": 10629868
+      },
+      {
+        "call": 1456635,
+        "ns": 10275156,
+        "replay_ns": 2292531,
+        "wait_ns": 7982625
+      },
+      {
+        "call": 1459301,
+        "ns": 14480740,
+        "replay_ns": 2707778,
+        "wait_ns": 11772962
+      },
+      {
+        "call": 1462558,
+        "ns": 13911822,
+        "replay_ns": 2835875,
+        "wait_ns": 11075947
+      },
+      {
+        "call": 1465169,
+        "ns": 13544859,
+        "replay_ns": 2701261,
+        "wait_ns": 10843598
+      },
+      {
+        "call": 1468244,
+        "ns": 13918797,
+        "replay_ns": 2800856,
+        "wait_ns": 11117941
+      }
+    ],
+    "global_retirement_deltas": {
+      "render": {
+        "retirements": 140,
+        "commands": 374,
+        "nonzero_gpu_samples": 140,
+        "prepare_ns": 2515629,
+        "active_ns": 267454938,
+        "gpu_span_ns": 225925792,
+        "tiling_ns": 80059530,
+        "fragment_ns": 136711458,
+        "stage_gap_ns": 367937
+      },
+      "compute": {
+        "retirements": 137,
+        "commands": 168,
+        "nonzero_gpu_samples": 137,
+        "prepare_ns": 751760,
+        "active_ns": 37411443,
+        "gpu_span_ns": 10962943,
+        "tiling_ns": 0,
+        "fragment_ns": 0,
+        "stage_gap_ns": 0
+      }
+    },
+    "shader_selections": [],
+    "compute_dispatches": [
+      [
+        "5550 gprs=58 scratch=16 grid=4096,1,1 local=32,1,1 code=c5e695cf",
+        270
+      ],
+      [
+        "5550 gprs=58 scratch=16 grid=4096,1,1 local=32,1,1 code=11072945",
+        60
+      ],
+      [
+        "572 gprs=36 scratch=0 grid=64,1,1 local=64,1,1 code=bc3c277e",
+        55
+      ],
+      [
+        "82 gprs=32 scratch=0 grid=1425408,1,1 local=32,1,1 code=1b1b26b2",
+        51
+      ],
+      [
+        "2972 gprs=64 scratch=0 grid=6080,1,1 local=64,1,1 code=d6dc2c63",
+        30
+      ],
+      [
+        "2972 gprs=64 scratch=0 grid=128,1,1 local=64,1,1 code=d6dc2c63",
+        30
+      ],
+      [
+        "2972 gprs=64 scratch=0 grid=64,1,1 local=64,1,1 code=d6dc2c63",
+        30
+      ],
+      [
+        "2972 gprs=64 scratch=0 grid=4800,1,1 local=64,1,1 code=d6dc2c63",
+        30
+      ]
+    ],
+    "descriptor_rejections": [],
+    "limits": "Summarize opt-in GL interval diagnostics; never produces a benchmark score.\n\nInput: a retained replay.log from the completed/predecoded interval profiler.\nCPU call times include waits, worker threads are excluded. Global native\nretirement spans include other clients and overlapping engines. Shader/dispatch\nrecord frequencies do not measure coverage or execution cost.\n"
+  },
+  "source_commits": [
+    "cfeca7b4b6df7043b3fd1e2f5d55a15a1e5728d8",
+    "d2111e53708"
+  ],
+  "application_startup_check": {
+    "scope": "Bounded SuperTux startup/context check only, not gameplay, Minecraft timing or desktop image qualification",
+    "runs": [
+      {
+        "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/live-supertux/remote",
+        "phase": "failed-watchdog-retained",
+        "boot_id": "f614ebbd-0af0-44e2-a4bb-124202a3e22b",
+        "application": {
+          "scope": "Bounded SuperTux application smoke, not live Minecraft or benchmark",
+          "success": false,
+          "error": "AssertionError('SuperTux exited during smoke')"
+        },
+        "initial_temperatures": {
+          "te000m": 54000.0,
+          "te001m": 57000.0,
+          "tp000m": 59000.0,
+          "tp001m": 54250.0,
+          "tp002m": 59250.0
+        },
+        "final_temperatures": null,
+        "error": "RuntimeError('command exit 1')",
+        "firmware_fault_snapshots": []
+      },
+      {
+        "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/live-supertux/remote-r2",
+        "phase": "complete",
+        "boot_id": "4b361b98-fdd1-4b11-ae68-508522fecbd9",
+        "application": {
+          "scope": "Bounded SuperTux application smoke, not live Minecraft or benchmark",
+          "success": true,
+          "child_alive": true,
+          "selected_libraries_mapped": true,
+          "application_seconds": 12.137227229999993
+        },
+        "initial_temperatures": {
+          "te000m": 57750.0,
+          "te001m": 58500.0,
+          "tp000m": 58500.0,
+          "tp001m": 56250.0,
+          "tp002m": 64500.0
+        },
+        "final_temperatures": {
+          "te000m": 53500.0,
+          "te001m": 57500.0,
+          "tp000m": 53000.0,
+          "tp001m": 54750.0,
+          "tp002m": 59250.0
+        },
+        "error": null,
+        "firmware_fault_snapshots": []
+      },
+      {
+        "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/live-supertux/remote-r3",
+        "phase": "complete",
+        "boot_id": "4b361b98-fdd1-4b11-ae68-508522fecbd9",
+        "application": {
+          "scope": "Bounded SuperTux application smoke, not live Minecraft or benchmark",
+          "success": true,
+          "child_alive": true,
+          "selected_libraries_mapped": true,
+          "application_seconds": 12.088735633999988
+        },
+        "initial_temperatures": {
+          "te000m": 53500.0,
+          "te001m": 56750.0,
+          "tp000m": 60500.0,
+          "tp001m": 54500.0,
+          "tp002m": 60000.0
+        },
+        "final_temperatures": {
+          "te000m": 53000.0,
+          "te001m": 57000.0,
+          "tp000m": 53000.0,
+          "tp001m": 54000.0,
+          "tp002m": 58250.0
+        },
+        "error": null,
+        "firmware_fault_snapshots": []
+      },
+      {
+        "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/live-supertux/remote-r4",
+        "phase": "complete",
+        "boot_id": "4b361b98-fdd1-4b11-ae68-508522fecbd9",
+        "application": {
+          "scope": "Bounded SuperTux application smoke, not live Minecraft or benchmark",
+          "success": true,
+          "child_alive": true,
+          "selected_libraries_mapped": true,
+          "application_seconds": 12.088601487000005
+        },
+        "initial_temperatures": {
+          "te000m": 54250.0,
+          "te001m": 57250.0,
+          "tp000m": 57500.0,
+          "tp001m": 55000.0,
+          "tp002m": 64250.0
+        },
+        "final_temperatures": {
+          "te000m": 53500.0,
+          "te001m": 57500.0,
+          "tp000m": 53750.0,
+          "tp001m": 54500.0,
+          "tp002m": 58750.0
+        },
+        "error": null,
+        "firmware_fault_snapshots": []
+      },
+      {
+        "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/live-supertux/remote-r5",
+        "phase": "complete",
+        "boot_id": "4b361b98-fdd1-4b11-ae68-508522fecbd9",
+        "application": {
+          "scope": "Bounded SuperTux application smoke, not live Minecraft or benchmark",
+          "success": true,
+          "child_alive": true,
+          "selected_libraries_mapped": true,
+          "application_seconds": 12.086382336999975
+        },
+        "initial_temperatures": {
+          "te000m": 53750.0,
+          "te001m": 57000.0,
+          "tp000m": 61000.0,
+          "tp001m": 54500.0,
+          "tp002m": 60000.0
+        },
+        "final_temperatures": {
+          "te000m": 53000.0,
+          "te001m": 57000.0,
+          "tp000m": 53500.0,
+          "tp001m": 54500.0,
+          "tp002m": 58250.0
+        },
+        "error": null,
+        "firmware_fault_snapshots": []
+      }
+    ],
+    "review": "First attempt requested unsupported GLX and exited before a GPU context; empty kernel delta and no firmware fault snapshot. Mandatory guard retained watchdog and rebooted. Recovered desktop active with healthy idle GPU. Subsequent forced-EGL/null-audio attempts complete healthy using exact candidate libraries. Xvfb screenshot black; direct GL readback confirms rendered level-intro text and sprite at frame 360, but later black frames mean this is not a gameplay image pass.",
+    "source_sha256": {
+      "smoke.py": "91c2be367da0464bad9246417cfa2b0199be220ff6e84f5cf932284c6d2cfdbb",
+      "readback.c": "32fefd0320e0ae2b428fe428ee09754030afea2de8e4820f4e37bd0f01932035",
+      "readback.so": "4530f6bf3fe966c4eb0560ae67568aa4ffba93e81a6b59194ffa9817320d733c"
+    },
+    "readback_images": [
+      {
+        "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/live-supertux/remote-r5/frame-120.ppm",
+        "sha256": "b09eb4f5d3f110a652cd0320ebf92929c2d54f56146676cec2f6ef9cfc9a94ae"
+      },
+      {
+        "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/live-supertux/remote-r5/frame-360.ppm",
+        "sha256": "3340e02ff4772c5a0d2c73ca6f3a429974ea8bbd8683cbd049f562c39f9855a7"
+      },
+      {
+        "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/live-supertux/remote-r5/frame-665.ppm",
+        "sha256": "3340e02ff4772c5a0d2c73ca6f3a429974ea8bbd8683cbd049f562c39f9855a7"
+      },
+      {
+        "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/live-supertux/remote-r5/frame-720.ppm",
+        "sha256": "65954ed9a0fbec62604ab5e6ec91458607fbd5aa0cf66a72361a9574c0f6adff"
+      }
+    ],
+    "final_boot_id": "4b361b98-fdd1-4b11-ae68-508522fecbd9",
+    "final_activity": "version=1 generation_ns=17917660410 epoch=7814 pending=0 healthy=1",
+    "display_manager": "plasmalogin.service active",
+    "leftover_workloads": false
+  }
 }
