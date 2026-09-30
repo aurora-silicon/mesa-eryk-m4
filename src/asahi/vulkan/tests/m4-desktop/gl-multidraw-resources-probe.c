@@ -4,6 +4,7 @@
  * Switches ordinary/sparse UBOs, ranges, contents and edge/border samplers
  * between API calls. Both vertex and fragment shaders consume uniform data.
  */
+#define _GNU_SOURCE
 #define GL_GLEXT_PROTOTYPES
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -13,6 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
+#include <sched.h>
+#include <unistd.h>
 
 #define CHECK(x) do { if (!(x)) { \
    fprintf(stderr, "FAIL line %d: %s GL=%x\n", __LINE__, #x, glGetError()); \
@@ -46,9 +50,70 @@ shader(GLenum type, const char *text)
    return s;
 }
 
+/* Optional Linux scheduling oracle. Observe the actual driver workers after
+ * completed rendering, including when the caller permits only little cores. */
+static void
+check_worker_affinity(const cpu_set_t *caller)
+{
+   if (!getenv("M3_PROBE_CHECK_WORKER_AFFINITY"))
+      return;
+   cpu_set_t expected = *caller, current;
+   const char *option = getenv("ZINK_PREFER_HIGH_CAPACITY_CPUS");
+   CHECK(option && (!strcmp(option, "true") || !strcmp(option, "false")));
+   if (!strcmp(option, "true")) {
+      unsigned capacities[CPU_SETSIZE] = {0}, maximum = 0, minimum = ~0u;
+      long count = sysconf(_SC_NPROCESSORS_CONF);
+      CHECK(count > 0 && count <= CPU_SETSIZE);
+      for (long cpu = 0; cpu < count; ++cpu) {
+         char path[128];
+         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%ld/cpu_capacity", cpu);
+         FILE *f = fopen(path, "r");
+         CHECK(f && fscanf(f, "%u", &capacities[cpu]) == 1 && capacities[cpu]);
+         fclose(f);
+         if (capacities[cpu] > maximum) maximum = capacities[cpu];
+         if (capacities[cpu] < minimum) minimum = capacities[cpu];
+      }
+      cpu_set_t selected;
+      CPU_ZERO(&selected);
+      if (minimum != maximum) {
+         for (long cpu = 0; cpu < count; ++cpu)
+            if (CPU_ISSET(cpu, caller) && capacities[cpu] == maximum)
+               CPU_SET(cpu, &selected);
+         if (CPU_COUNT(&selected)) expected = selected;
+      }
+   }
+   CHECK(sched_getaffinity(0, sizeof(current), &current) == 0 &&
+         CPU_EQUAL(caller, &current));
+   DIR *tasks = opendir("/proc/self/task");
+   CHECK(tasks);
+   unsigned recording = 0, submitting = 0;
+   struct dirent *entry;
+   while ((entry = readdir(tasks))) {
+      char *end;
+      long tid = strtol(entry->d_name, &end, 10);
+      if (*end || tid <= 0) continue;
+      char path[128], name[32];
+      snprintf(path, sizeof(path), "/proc/self/task/%ld/comm", tid);
+      FILE *f = fopen(path, "r");
+      CHECK(f && fgets(name, sizeof(name), f));
+      fclose(f);
+      if (!strstr(name, "gdrv") && !strstr(name, "zfq")) continue;
+      CHECK(sched_getaffinity(tid, sizeof(current), &current) == 0 &&
+            CPU_EQUAL(&expected, &current));
+      recording += strstr(name, "gdrv") != NULL;
+      submitting += strstr(name, "zfq") != NULL;
+   }
+   closedir(tasks);
+   CHECK(recording && submitting);
+   printf("PASS: worker affinity option=%s recording=%u submitting=%u caller_cpus=%d worker_cpus=%d\n",
+          option, recording, submitting, CPU_COUNT(caller), CPU_COUNT(&expected));
+}
+
 int
 main(void)
 {
+   cpu_set_t caller;
+   CHECK(sched_getaffinity(0, sizeof(caller), &caller) == 0);
    EGLDisplay d = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, NULL, NULL);
    CHECK(eglInitialize(d, NULL, NULL) && eglBindAPI(EGL_OPENGL_API));
    EGLint attr[] = {EGL_CONTEXT_MAJOR_VERSION, 3, EGL_CONTEXT_MINOR_VERSION, 3,
@@ -201,6 +266,7 @@ main(void)
       fflush(stdout);
    }
    CHECK(!bad);
+   check_worker_affinity(&caller);
    puts("PASS: 48 indexed multi-draw buffer/sampler/content/range switches");
    return 0;
 }

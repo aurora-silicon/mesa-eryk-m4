@@ -12,18 +12,22 @@ import json
 from pathlib import Path
 import shlex
 import subprocess
+import re
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--source', required=True, type=Path)
 p.add_argument('--prefix', required=True)
 p.add_argument('--sha256', required=True)
 p.add_argument('--gallium-sha256', help='Also verify an isolated Gallium candidate')
+p.add_argument('--cpu-affinity', help='Restrict only the workload to this taskset CPU list')
 p.add_argument('--output', required=True, type=Path)
 p.add_argument('--option', default='HK_M3_MULTIDRAW_UBO_PROOF',
                help='Boolean diagnostic option compared false/true')
 a = p.parse_args()
 assert ((a.option.startswith('HK_') and a.option.replace('_', '').isalnum()) or
         a.option == 'ZINK_PREFER_HIGH_CAPACITY_CPUS')
+if a.cpu_affinity:
+    assert re.fullmatch(r'[0-9]+(?:-[0-9]+)?(?:,[0-9]+(?:-[0-9]+)?)*', a.cpu_affinity)
 a.output = a.output.resolve()
 a.output.mkdir(parents=True, exist_ok=False)
 ssh = ['ssh', '-oConnectTimeout=10', 'root@fedora-m3']
@@ -51,6 +55,7 @@ manifest = json.loads(subprocess.check_output(ssh + [shlex.join(
 manifest.update(remote=remote, compile_command=command, option=a.option,
     source_sha256=hashlib.sha256(a.source.read_bytes()).hexdigest(),
     mesa_prefix=a.prefix, mesa_sha256=a.sha256,
+    cpu_affinity=a.cpu_affinity,
     scope='Synthetic multi-draw resource pixel oracles, not CTS or benchmark')
 (a.output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 results = []
@@ -65,9 +70,13 @@ for label, option in [('baseline', 'false'), ('candidate', 'true')]:
         HK_DEBUG_LOG='0', AGX_MESA_DEBUG='nopromote',
         EGL_PLATFORM='surfaceless', MESA_SHADER_CACHE_DIR=remote + '/cache',
         HK_M4_PROGRAM_PROFILE='true', **{a.option: option})
+    if a.option == 'ZINK_PREFER_HIGH_CAPACITY_CPUS':
+        env['M3_PROBE_CHECK_WORKER_AFFINITY'] = '1'
+    workload = ['env', '-i', *[k + '=' + v for k, v in env.items()], remote + '/probe']
+    if a.cpu_affinity:
+        workload = ['taskset', '--cpu-list', a.cpu_affinity, *workload]
     cmd = ['python3', '/root/m3-gpu-tools/gpu/guard.py', '--seconds', '40',
-        '--keep-cpu-clocks', remote + '/' + label, '--', 'env', '-i',
-        *[k + '=' + v for k, v in env.items()], remote + '/probe']
+        '--keep-cpu-clocks', remote + '/' + label, '--', *workload]
     (a.output / (label + '-command.json')).write_text(
         json.dumps(cmd, indent=2) + '\n')
     with (a.output / (label + '-host.log')).open('w') as f:
