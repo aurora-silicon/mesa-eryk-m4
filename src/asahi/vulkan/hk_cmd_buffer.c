@@ -1632,12 +1632,21 @@ hk_g17p_graphics_uniform_ranges(
    static_assert(HK_MAX_SETS == 8, "descriptor prefetch range budget");
    static_assert(HK_DESCRIPTOR_PREFETCH_MAX == 32, "compact descriptor range budget");
    static_assert(HK_UBO_PREFETCH_MAX == 128, "uniform prefetch range capacity");
+   const struct hk_ubo_prefetch *previous_descriptor = NULL;
+   struct hk_buffer_address address;
    for (unsigned i = 0; i < s->info.ubo_prefetch_count; ++i) {
       const struct hk_ubo_prefetch *load = &s->info.ubo_prefetch[i];
       const struct hk_descriptor_state *state = &cmd->state.gfx.descriptors;
-      struct hk_buffer_address address;
-      if (!hk_prefetch_buffer_address(state, load, &address))
-         return false;
+      /* Several promoted words usually share one immutable descriptor. The
+       * descriptor BO may be write-combined: repeatedly reading it on the CPU
+       * is expensive. Reuse only this invocation's decoded metadata, never
+       * UBO contents or state from another draw. Per-word bounds stay below. */
+      if (!previous_descriptor || previous_descriptor->set != load->set ||
+          previous_descriptor->descriptor_offset_B != load->descriptor_offset_B) {
+         if (!hk_prefetch_buffer_address(state, load, &address))
+            return false;
+         previous_descriptor = load;
+      }
       const bool valid = load->offset_B <= address.size &&
                          load->size_B <= address.size - load->offset_B;
       /* UBO contents are loaded by the GPU at execution. The CPU only reads

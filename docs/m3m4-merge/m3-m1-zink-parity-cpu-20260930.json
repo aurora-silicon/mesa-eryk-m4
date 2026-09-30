@@ -1,0 +1,49 @@
+{
+  "m3_control": {
+    "path": "/home/council/dev/gpu-replay-bench/runs/20260930T151955467275Z-m3-minecraft-demo-zink-time/remote",
+    "user_us": 207503,
+    "system_us": 709,
+    "total_cpu_us": 208212,
+    "diagnostic_only": true,
+    "gpu_state_samples": {
+      "8": 22,
+      "0": 10
+    },
+    "cpu_cur_khz": {
+      "policy0": [
+        4056000
+      ],
+      "policy1": [
+        2748000
+      ]
+    }
+  },
+  "m3_decode_once": {
+    "path": "/home/council/dev/gpu-replay-bench/runs/20260930T152029431785Z-m3-minecraft-demo-zink-time/remote",
+    "user_us": 171092,
+    "system_us": 11421,
+    "total_cpu_us": 182513,
+    "diagnostic_only": true,
+    "gpu_state_samples": {
+      "8": 22,
+      "0": 7
+    },
+    "cpu_cur_khz": {
+      "policy0": [
+        4056000
+      ],
+      "policy1": [
+        2748000
+      ]
+    }
+  },
+  "m1": {
+    "path": "build/m3-m1-parity/m1-cpu-total",
+    "user_us": 37529,
+    "system_us": 9330,
+    "total_cpu_us": 46859,
+    "diagnostic_only": true
+  },
+  "ratio_control_m3_to_m1": 4.443372671205105,
+  "limits": "Process CPU time sums all replay threads. Diagnostic workloads use completion fences, per-call timers and predecoded frames. It is not GPU utilization or benchmark FPS."
+}

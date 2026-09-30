@@ -1,0 +1,124 @@
+{
+  "candidate": "/opt/asahi-m3-descriptor-decode-once-ba83c8b99ff9",
+  "mesa_sha256": "ba83c8b99ff9b121cd673b8bb321a399890170da44958c20a435685e70237e91",
+  "paired_timings": {
+    "false": {
+      "samples_fps": [
+        46.75931249271607,
+        52.817559210235665,
+        51.77042256325236
+      ],
+      "median_fps": 51.77042256325236
+    },
+    "true": {
+      "samples_fps": [
+        52.94020333622703,
+        52.43669740948084,
+        47.2215465343597
+      ],
+      "median_fps": 52.43669740948084
+    },
+    "fps_improvement_percent": 1.2869797332916155,
+    "comparison": "mesa-build",
+    "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+  },
+  "images": [
+    {
+      "image": "frame-0001392082.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001429009.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001468244.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    }
+  ],
+  "games": [
+    {
+      "case": "factorio-linux-wayland",
+      "correctness": "pass",
+      "record": "/home/council/dev/gpu-replay-bench/results/factorio-linux-wayland/m3/20260930T151523210534Z-m3-factorio-linux-wayland-check/benchmark.json",
+      "images": [
+        "results/factorio-linux-wayland/m3/20260930T151523210534Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000130298.png",
+        "results/factorio-linux-wayland/m3/20260930T151523210534Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000147903.png",
+        "results/factorio-linux-wayland/m3/20260930T151523210534Z-m3-factorio-linux-wayland-check/evidence/remote/frame-0000165448.png"
+      ]
+    },
+    {
+      "case": "supertuxkart-zink",
+      "correctness": "pass",
+      "record": "/home/council/dev/gpu-replay-bench/results/supertuxkart-zink/m3/20260930T151547571453Z-m3-supertuxkart-zink-check/benchmark.json",
+      "images": [
+        "results/supertuxkart-zink/m3/20260930T151547571453Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000325795.png",
+        "results/supertuxkart-zink/m3/20260930T151547571453Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000352952.png",
+        "results/supertuxkart-zink/m3/20260930T151547571453Z-m3-supertuxkart-zink-check/evidence/remote/frame-0000381101.png"
+      ]
+    },
+    {
+      "case": "0ad-vulkan",
+      "correctness": "pass",
+      "record": "/home/council/dev/gpu-replay-bench/results/0ad-vulkan/m3/20260930T151537617204Z-m3-0ad-vulkan-check/benchmark.json",
+      "images": [
+        "results/0ad-vulkan/m3/20260930T151537617204Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_1.png",
+        "results/0ad-vulkan/m3/20260930T151537617204Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_16.png",
+        "results/0ad-vulkan/m3/20260930T151537617204Z-m3-0ad-vulkan-check/evidence/remote/screenshot_frame_31.png"
+      ]
+    },
+    {
+      "case": "satisfactory-vulkan-gameplay",
+      "correctness": "pass",
+      "record": "/home/council/dev/gpu-replay-bench/results/satisfactory-vulkan-gameplay/m3/20260930T151439530133Z-m3-satisfactory-vulkan-gameplay-check/benchmark.json",
+      "images": [
+        "results/satisfactory-vulkan-gameplay/m3/20260930T151439530133Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_1.png",
+        "results/satisfactory-vulkan-gameplay/m3/20260930T151439530133Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_16.png",
+        "results/satisfactory-vulkan-gameplay/m3/20260930T151439530133Z-m3-satisfactory-vulkan-gameplay-check/evidence/remote/screenshot_frame_31.png"
+      ]
+    },
+    {
+      "case": "minecraft-demo-vulkan",
+      "correctness": "pass",
+      "record": "/home/council/dev/gpu-replay-bench/results/minecraft-demo-vulkan/m3/20260930T151429979609Z-m3-minecraft-demo-vulkan-check/benchmark.json",
+      "images": [
+        "results/minecraft-demo-vulkan/m3/20260930T151429979609Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_1.png",
+        "results/minecraft-demo-vulkan/m3/20260930T151429979609Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_16.png",
+        "results/minecraft-demo-vulkan/m3/20260930T151429979609Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_31.png"
+      ]
+    },
+    {
+      "case": "minecraft-demo-zink",
+      "correctness": "pass",
+      "record": "/home/council/dev/gpu-replay-bench/results/minecraft-demo-zink/m3/20260930T151412729259Z-m3-minecraft-demo-zink-check/benchmark.json",
+      "images": [
+        "results/minecraft-demo-zink/m3/20260930T151412729259Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001392082.png",
+        "results/minecraft-demo-zink/m3/20260930T151412729259Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001429009.png",
+        "results/minecraft-demo-zink/m3/20260930T151412729259Z-m3-minecraft-demo-zink-check/evidence/remote/frame-0001468244.png"
+      ]
+    }
+  ],
+  "cts": {
+    "healthy": true,
+    "counts": {
+      "NotSupported": 464,
+      "Pass": 965
+    },
+    "selected": 1429,
+    "completed_batches_end": 1429,
+    "stopped_on_test_failure": false
+  },
+  "limits": "Isolated M3 candidate; six retained game checks and targeted CTS, not full conformance or desktop validation. No M4 test. FPS spread overlaps control and M1."
+}
