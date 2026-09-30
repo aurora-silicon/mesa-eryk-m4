@@ -122,7 +122,7 @@ allow_dynamic_ubo(void *data, unsigned set, unsigned offset)
 
 static void
 test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
-                 bool allow, unsigned bound_shape, mesa_shader_stage stage, bool late)
+                 bool allow, unsigned bound_shape, mesa_shader_stage stage, bool direct)
 {
    nir_builder b = nir_builder_init_simple_shader(stage, NULL,
                                                  "dynamic and vector UBO");
@@ -177,19 +177,19 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
    struct dynamic_ubo_test test = {root, allow};
    bool eligible = allow && !indexed && !volatile_load && bound_shape < 4;
    assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
-                              allow_dynamic_ubo, &test, late) == eligible);
+                              allow_dynamic_ubo, &test, direct) == eligible);
    assert(count == (eligible ? bounded ? 1 : 4 : 0));
    assert(!nir_alu_instr_no_reassoc(contractible));
    assert(!nir_alu_instr_no_contract(contractible));
    assert(nir_alu_instr_no_contract(noncontractible));
    assert(!nir_alu_instr_no_reassoc(independent));
-   if (eligible && late && bound_shape && stage == MESA_SHADER_VERTEX) {
+   if (eligible && direct && bound_shape && stage == MESA_SHADER_VERTEX) {
       nir_intrinsic_instr *deferred = nir_def_as_intrinsic(contractible->src[0].src.ssa);
       assert(deferred->intrinsic == nir_intrinsic_load_prefetched_agx);
       assert(nir_intrinsic_base(deferred) == loads[0].uniform_half);
       assert(deferred->src[0].ssa == value);
    }
-   if (eligible && !late && bound_shape)
+   if (eligible && !direct && bound_shape)
       assert(contractible->src[0].src.ssa == value);
    for (unsigned i = 0; i < count; ++i) {
       assert(loads[i].set == (root ? HK_UBO_PREFETCH_ROOT_SET : 0));

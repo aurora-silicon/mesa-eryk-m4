@@ -173,3 +173,12 @@ newly matched general/fallback reads still remain unchanged. All six game
 image checks (both Minecraft renderers plus the five-game selection above,
 counting native Minecraft once) pass exactly. Paired timings and the final
 CTS selection follow; no desktop installation has changed.
+
+The narrower candidate's median is 46.2599 FPS versus its paired baseline's
+27.0803 FPS (+70.82%). This does **not** establish an improvement over the
+all-stage late checkpoint. Samples were 41.4661, 46.5669, 46.2599 FPS; all
+three images remain exact. Retained program diagnostics show small promoted
+vertex programs but also selected fallback fragment programs with roughly
+6335–6357 instructions and 32 bytes of scratch. The bounded address sample
+covers the replay as a whole, not specifically the timed interval; it does
+not yet attribute frame time to those fallback programs.
