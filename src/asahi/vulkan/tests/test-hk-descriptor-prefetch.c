@@ -51,12 +51,12 @@ static void test_ubo(bool early, bool direct, unsigned access, bool eligible)
    unsigned end = 28, count = 0;
    bool allowed = false;
    assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
-                               allow_ubo, &allowed));
+                               allow_ubo, &allowed, false));
    assert(count == 0 && end == 28);
    allowed = true;
    if (!eligible) {
       assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
-                                   allow_ubo, &allowed));
+                                   allow_ubo, &allowed, false));
       assert(count == 0 && end == 28);
       nir_validate_shader(b.shader, "non-speculatable UBO unchanged");
       ralloc_free(b.shader);
@@ -66,12 +66,12 @@ static void test_ubo(bool early, bool direct, unsigned access, bool eligible)
     * original loads, rather than admitting inputs beyond the shifted file. */
    end = 494;
    assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 496, loads, &count,
-                               allow_ubo, &allowed));
+                               allow_ubo, &allowed, false));
    assert(count == 0 && end == 494);
    nir_validate_shader(b.shader, "reserved uniform prefix fallback");
    end = 28;
    assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
-                              allow_ubo, &allowed));
+                              allow_ubo, &allowed, false));
    assert(count == 2 && end == 34 && loads[0].set == 0);
    assert(loads[1].direct_half == loads[0].direct_half);
    assert(loads[1].offset_B == 44 && loads[1].uniform_half == 32);
@@ -122,7 +122,7 @@ allow_dynamic_ubo(void *data, unsigned set, unsigned offset)
 
 static void
 test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
-                 bool allow, unsigned bound_shape, mesa_shader_stage stage)
+                 bool allow, unsigned bound_shape, mesa_shader_stage stage, bool late)
 {
    nir_builder b = nir_builder_init_simple_shader(stage, NULL,
                                                  "dynamic and vector UBO");
@@ -177,13 +177,18 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
    struct dynamic_ubo_test test = {root, allow};
    bool eligible = allow && !indexed && !volatile_load && bound_shape < 4;
    assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
-                              allow_dynamic_ubo, &test) == eligible);
+                              allow_dynamic_ubo, &test, late) == eligible);
    assert(count == (eligible ? bounded ? 1 : 4 : 0));
-   assert(nir_alu_instr_no_reassoc(contractible) ==
-          (eligible && bound_shape != 0 && stage == MESA_SHADER_VERTEX));
+   assert(!nir_alu_instr_no_reassoc(contractible));
    assert(!nir_alu_instr_no_contract(contractible));
    assert(nir_alu_instr_no_contract(noncontractible));
    assert(!nir_alu_instr_no_reassoc(independent));
+   if (eligible && late && bound_shape) {
+      nir_intrinsic_instr *deferred = nir_def_as_intrinsic(contractible->src[0].src.ssa);
+      assert(deferred->intrinsic == nir_intrinsic_load_prefetched_agx);
+      assert(nir_intrinsic_base(deferred) == loads[0].uniform_half);
+      assert(deferred->src[0].ssa == value);
+   }
    for (unsigned i = 0; i < count; ++i) {
       assert(loads[i].set == (root ? HK_UBO_PREFETCH_ROOT_SET : 0));
       assert(loads[i].descriptor_offset_B == 128);
@@ -373,11 +378,13 @@ int main(void)
    for (unsigned root = 0; root < 2; ++root)
       for (unsigned bounded = 0; bounded < 2; ++bounded) {
          for (unsigned shape = 0; shape < (bounded ? 8 : 1); ++shape) {
-            test_dynamic_ubo(root, bounded, false, false, true, shape, MESA_SHADER_FRAGMENT);
-            test_dynamic_ubo(root, bounded, false, false, true, shape, MESA_SHADER_VERTEX);
-            test_dynamic_ubo(root, bounded, true, false, true, shape, MESA_SHADER_FRAGMENT);
-            test_dynamic_ubo(root, bounded, false, true, true, shape, MESA_SHADER_FRAGMENT);
-            test_dynamic_ubo(root, bounded, false, false, false, shape, MESA_SHADER_FRAGMENT);
+            test_dynamic_ubo(root, bounded, false, false, true, shape, MESA_SHADER_FRAGMENT, false);
+            test_dynamic_ubo(root, bounded, false, false, true, shape, MESA_SHADER_VERTEX, false);
+            test_dynamic_ubo(root, bounded, false, false, true, shape, MESA_SHADER_FRAGMENT, true);
+            test_dynamic_ubo(root, bounded, false, false, true, shape, MESA_SHADER_VERTEX, true);
+            test_dynamic_ubo(root, bounded, true, false, true, shape, MESA_SHADER_FRAGMENT, false);
+            test_dynamic_ubo(root, bounded, false, true, true, shape, MESA_SHADER_FRAGMENT, false);
+            test_dynamic_ubo(root, bounded, false, false, false, shape, MESA_SHADER_FRAGMENT, false);
          }
       }
 

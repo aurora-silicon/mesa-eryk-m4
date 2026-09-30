@@ -110,4 +110,4 @@ bool hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count
                          unsigned *uniform_end, unsigned uniform_limit,
                          struct hk_ubo_prefetch *loads,
                          unsigned *load_count, hk_ubo_prefetch_allowed allowed,
-                         void *data);
+                         void *data, bool direct);

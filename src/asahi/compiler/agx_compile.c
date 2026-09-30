@@ -6901,6 +6901,18 @@ agx_nir_export_at_exit(nir_shader *nir)
 }
 
 static bool
+lower_prefetched_uniform(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_prefetched_agx)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def_replace(&intr->def, nir_load_preamble(b, 1, 32,
+                                               .base = nir_intrinsic_base(intr)));
+   return true;
+}
+
+static bool
 agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)
 {
@@ -7058,6 +7070,22 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                                               : NULL,
       (form_preamble && key->promote_textures) ? &info->sampler_state_count
                                               : NULL);
+
+   /* Preserve the original read's convergence and arithmetic decisions until
+    * optimization is complete. The driver has already qualified these words
+    * for its GPU input loader. Only dead address work is cleaned up after the
+    * replacement; do not reassociate the now-uniform floating-point values. */
+   bool prefetched = false;
+   NIR_PASS(prefetched, nir, nir_shader_intrinsics_pass, lower_prefetched_uniform,
+            nir_metadata_control_flow, NULL);
+   if (prefetched) {
+      bool cleanup;
+      do {
+         cleanup = false;
+         NIR_PASS(cleanup, nir, nir_opt_dce);
+         NIR_PASS(cleanup, nir, nir_opt_dead_cf);
+      } while (cleanup);
+   }
 
    if (is_g17p)
       NIR_PASS(_, nir, nir_shader_intrinsics_pass,

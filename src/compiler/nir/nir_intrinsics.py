@@ -2470,6 +2470,14 @@ image("store_block_agx", [1, -1], extra_indices=[EXPLICIT_COORD])
 load("agx", [1, 1], [ACCESS, BASE, FORMAT, SIGN_EXTEND], [CAN_ELIMINATE])
 load("constant_agx", [1, 1], [ACCESS, BASE, FORMAT, SIGN_EXTEND],
      [CAN_ELIMINATE, CAN_REORDER])
+# A driver-qualified prefetched UBO word. Source 0 is the original read,
+# retained as an opaque dependency until arithmetic optimization finishes.
+# AGX lowers this to load_preamble(BASE) late; the driver guarantees that the
+# input loader reads exactly the same word (or the same bounded zero value).
+# This conservatively retains source divergence until the late replacement.
+intrinsic("load_prefetched_agx", src_comp=[1], dest_comp=1, indices=[BASE],
+          flags=[CAN_ELIMINATE, CAN_REORDER], bit_sizes=[32])
+
 # src[] = { value, address, index }.
 store("agx", [1, 1], [ACCESS, BASE, FORMAT, SIGN_EXTEND])
 

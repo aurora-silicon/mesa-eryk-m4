@@ -7,7 +7,6 @@
 #include "asahi/lib/agx_abi.h"
 #include "util/format/u_format.h"
 #include "util/u_dynarray.h"
-#include "util/set.h"
 #include "util/u_debug.h"
 
 static bool
@@ -413,46 +412,12 @@ ubo_load(nir_intrinsic_instr *intr, unsigned set_base, unsigned set_count,
    return true;
 }
 
-/* Promotion changes convergence and hence reassociation ranks. Preserve the
- * arithmetic fed by newly promoted values, without constraining independent
- * calculations (notably the already-lowered texture filtering arithmetic).
- * Follow ALU/phi dataflow, including vector moves and loop-carried values, but
- * do not propagate through memory or texture operations. */
-static void
-preserve_promoted_math(nir_def *value, struct set *visited)
-{
-   struct util_dynarray pending = UTIL_DYNARRAY_INIT;
-   util_dynarray_append(&pending, value);
-   while (util_dynarray_num_elements(&pending, nir_def *)) {
-      nir_def *def = util_dynarray_pop(&pending, nir_def *);
-      if (_mesa_set_search(visited, def))
-         continue;
-      _mesa_set_add(visited, def);
-      nir_foreach_use(src, def) {
-         nir_instr *instr = nir_src_parent_instr(src);
-         nir_def *next;
-         if (instr->type == nir_instr_type_alu) {
-            nir_alu_instr *alu = nir_instr_as_alu(instr);
-            alu->fp_math_ctrl |= nir_op_valid_fp_math_ctrl(
-               alu->op, nir_fp_no_reassoc | nir_fp_no_transform);
-            next = &alu->def;
-         } else if (instr->type == nir_instr_type_phi) {
-            next = &nir_instr_as_phi(instr)->def;
-         } else {
-            continue;
-         }
-         util_dynarray_append(&pending, next);
-      }
-   }
-   util_dynarray_fini(&pending);
-}
-
 bool
 hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                     unsigned *uniform_end, unsigned uniform_limit,
                     struct hk_ubo_prefetch *loads,
                     unsigned *load_count, hk_ubo_prefetch_allowed allowed,
-                    void *data)
+                    void *data, bool direct)
 {
    bool progress = false;
    const bool saturated = nir->info.stage == MESA_SHADER_FRAGMENT ||
@@ -491,8 +456,7 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
    }
    nir_foreach_function_impl(impl, nir) {
       bool changed = false;
-      struct set *preserved = _mesa_pointer_set_create(NULL);
-      struct candidate { nir_intrinsic_instr *intr; unsigned entry; };
+      struct candidate { nir_intrinsic_instr *intr; unsigned entry; bool late; };
       struct util_dynarray candidates;
       util_dynarray_init(&candidates, NULL);
       nir_foreach_block(block, impl) {
@@ -537,10 +501,8 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                *uniform_end = start + (load.direct_half == start + 2 ? 4 : 2);
                ++*load_count;
             }
-            if (expanded && nir->info.stage == MESA_SHADER_VERTEX)
-               preserve_promoted_math(&intr->def, preserved);
             util_dynarray_append(&candidates,
-                                 ((struct candidate){intr, entry}));
+                                 ((struct candidate){intr, entry, expanded && direct}));
          }
       }
       /* All accepted addresses are immutable descriptors plus a constant,
@@ -592,11 +554,17 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
          }
       }
       util_dynarray_foreach(&candidates, struct candidate, c) {
-         nir_def_replace(&c->intr->def, replacement[c->entry]);
+         if (c->late) {
+            nir_builder late = nir_builder_at(nir_after_instr(&c->intr->instr));
+            nir_def *value = nir_load_prefetched_agx(&late, &c->intr->def,
+               .base = loads[c->entry].uniform_half);
+            nir_def_rewrite_uses_after(&c->intr->def, value);
+         } else {
+            nir_def_replace(&c->intr->def, replacement[c->entry]);
+         }
          changed = true;
       }
       util_dynarray_fini(&candidates);
-      _mesa_set_destroy(preserved, NULL);
       nir_progress(changed, impl, nir_metadata_none);
       progress |= changed;
    }

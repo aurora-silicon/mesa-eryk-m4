@@ -210,6 +210,10 @@ visit_intrinsic(nir_intrinsic_instr *instr, struct divergence_state *state)
                      (state->options & nir_divergence_across_subgroups);
       break;
 
+   case nir_intrinsic_load_prefetched_agx:
+      is_divergent = src_divergent(instr->src[0], state);
+      break;
+
    /* Intrinsics which are always uniform */
    case nir_intrinsic_load_preamble:
    case nir_intrinsic_load_push_constant:

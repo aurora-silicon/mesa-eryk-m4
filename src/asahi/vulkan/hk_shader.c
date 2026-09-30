@@ -2993,7 +2993,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          NIR_PASS(_, nir, hk_nir_prefetch_ubos, root + 4, set_count, &reserved,
                   AGX_NUM_UNIFORMS - (vertex_ubo_prefetch ? AGX_ABI_VUNI_NATIVE_PREFIX : 0),
                   shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
-                  hk_ubo_prefetch_binding_allowed, (void *)&prefetch_layouts);
+                  hk_ubo_prefetch_binding_allowed, (void *)&prefetch_layouts,
+                  shader->info.ubo_prefetch_direct);
       }
       if (shader->info.ubo_prefetch_direct) {
          if (hk_plain_samplers_enabled(dev->dev.chip) &&

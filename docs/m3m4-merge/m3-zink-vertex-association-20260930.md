@@ -86,3 +86,24 @@ The current experimental checkpoint retains the vertex improvement and adds
 selection and disables shader caching. The existing guarded
 `tools/shader-bisect-m3.py` narrows the first-frame Satisfactory discrepancy.
 No tolerance was relaxed; no rejected score or image replaced results.html.
+
+## Late-promotion experiment (not qualified)
+
+The Satisfactory bisection isolated source
+`c2004198eb9517e41ac0802487230ec7f0cff85517b773d58d755aea88f0e6b7`.
+Restricting reassociation of its adds, multiplies, or FMAs separately, and
+skipping the second preprocessing pass, did not remove the first-frame
+four-pixel discrepancy above one level. Its exact mechanism remains open.
+
+This experimental branch now retains the original UBO read as the source of
+`load_prefetched_agx`, then replaces the marker with its qualified uniform
+only after arithmetic optimization. Original read divergence is retained
+until then; native uniform-prefix relocation includes the marker. Host
+prefetch/relocation tests pass, including a full synthetic compiler run.
+
+The first isolated ARM candidate `3a1517732ad4` failed in the replay process
+with SIGSEGV before producing images, in 5.07 seconds. Evidence is under
+benchmark run `20260930T134701421451Z-m3-satisfactory-vulkan-gameplay-check`.
+The guard retained the watchdog and recovered the machine. This checkpoint
+is diagnostic work, not a qualified driver; the desktop remains on its
+previous installation. No benchmark score/reference was replaced.
