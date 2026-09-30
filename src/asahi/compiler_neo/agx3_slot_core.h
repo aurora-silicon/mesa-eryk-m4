@@ -1,0 +1,126 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * AGX3 scoreboard slot assignment.
+ *
+ * AGX3 has no standalone wait instruction and no AGX2-style two-slot scoreboard.
+ * Instead every async result (device/threadgroup load, texture sample, atomic,
+ * stack fill) is tagged with a scoreboard slot, and every later instruction that
+ * consumes such a result carries a wait-bit mask naming the slots it must first
+ * synchronise. A slot waited once is satisfied for all later instructions until
+ * it is reallocated ("waited once = satisfied globally"). ALU-to-ALU
+ * dependencies are hardware-interlocked and need no wait.
+ *
+ * This is the encoding-independent algorithm -- which async op gets which slot,
+ * and which slots each instruction waits -- expressed over a normalized
+ * instruction list so it is testable on its own. The wait-bit field ids per
+ * mnemonic (agx3_wait_field_map) and the actual deposit are the caller's.
+ * Evidence: research/gpu/GPU_AGX3_LOCAL_STACK_WAIT_2026-08-24.md S6.3.
+ */
+
+#pragma once
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Normal register dependencies occupy tokens 0..255. The next eight tokens
+ * represent native sample staging groups (eight halves per group), distinct
+ * from GPR allocation and from the older implicit-coordinate transaction.
+ * Static Mesa stack
+ * offsets are 16-bit byte immediates; their 32768 addressable half-registers
+ * occupy a separate token range so async copy/rld ordering is exact. The final
+ * token holds the one bounded implicit-coordinate staging transaction selected
+ * by the pre-RA fragment sink. */
+#define AGX3_SLOT_GPR_TOKENS 256u
+#define AGX3_SLOT_STAGING_TOKEN_BASE AGX3_SLOT_GPR_TOKENS
+#define AGX3_SLOT_STAGING_GROUPS 8u
+#define AGX3_SLOT_CPROG_INPUT_TOKEN \
+   (AGX3_SLOT_STAGING_TOKEN_BASE + AGX3_SLOT_STAGING_GROUPS)
+#define AGX3_SLOT_TPS_TOKEN_BASE \
+   (AGX3_SLOT_CPROG_INPUT_TOKEN + 1u)
+#define AGX3_SLOT_TPS_HALF_TOKENS 32768u
+#define AGX3_SLOT_TEX_COORD_TOKEN                                        \
+   (AGX3_SLOT_TPS_TOKEN_BASE + AGX3_SLOT_TPS_HALF_TOKENS)
+#define AGX3_SLOT_DYNAMIC_TPS_TOKEN (AGX3_SLOT_TEX_COORD_TOKEN + 1u)
+#define AGX3_SLOT_NUM_TOKENS (AGX3_SLOT_DYNAMIC_TPS_TOKEN + 1u)
+
+/* A 3D gradient+minimum sample reads six coordinate halves, fourteen LOD
+ * halves, and two four-half descriptor operands. Keep the full dependency
+ * list; truncating it can drop a late descriptor load's RAW wait. */
+#define AGX3_SLOT_MAX_REGS 32u
+
+struct agx3_slot_instr {
+   bool is_async;   /* produces a scoreboard-tracked result */
+   bool drain;      /* retire preceding async operations before a fence */
+   /* This asynchronous instruction reads its sources when it retires rather
+    * than when it issues, so redefining one of them first changes what it
+    * transfers. Set it for device stores, whose payload nothing else tracks:
+    * a store has no destination, so the ordinary result bookkeeping below
+    * never sees those registers. Loads latch their address at issue and keep
+    * this clear, which the native corpus requires. */
+   bool latches_srcs;
+   /* Selected sources read through completion, independently of ordinary
+    * issue-time GPR inputs. Native SMP uses this for its staging group while
+    * its descriptor operands retain the existing issue-time contract. */
+   uint32_t late_src_mask;
+   uint8_t preferred_slot; /* 0=round-robin, otherwise required slot */
+   /* The round-robin slot may be reissued while an earlier generation of the
+    * same kind is still live there, since the instruction cannot wait for it:
+    * Apple reissues fragment coefficient-load slots without any wait. */
+   bool reissues_live_slot;
+   /* Slots used and fully consumed by this instruction's multi-op encoding.
+    * A live prior generation is waited before the internal producer reuses
+    * the slot; its register aliases are then synchronously complete. */
+   uint16_t transient_slots;
+   uint8_t nr_dsts; /* dependency tokens this instruction writes */
+   uint8_t nr_srcs; /* dependency tokens this instruction reads */
+   uint16_t dst[AGX3_SLOT_MAX_REGS];
+   uint16_t src[AGX3_SLOT_MAX_REGS];
+};
+
+struct agx3_slot_result {
+   uint8_t slot;       /* 1..nslots for async instructions, 0 otherwise */
+   uint16_t wait_mask; /* bit (s-1) set => wait scoreboard slot s */
+};
+
+/* An asynchronous producer outside this instruction region. For example,
+ * the native loader publishes constant-program imports on slot 6. Reads,
+ * overwrites, drains and reuse of that slot must retire the entry generation
+ * by the same rules as a producer within the region. */
+struct agx3_slot_entry {
+   uint16_t token;
+   uint8_t slot;
+};
+
+bool agx3_slot_assign_with_entry(const struct agx3_slot_instr *instrs, unsigned n,
+                                 unsigned nslots,
+                                 const struct agx3_slot_entry *entry,
+                                 unsigned entry_count,
+                                 struct agx3_slot_result *out);
+
+/*
+ * Assign slots and waits for one straight-line instruction region, which may
+ * span fallthrough basic blocks. `n` is the instruction count; `nslots` is 6
+ * (agx3b) or 8 (agx3c). Writes one result per instruction. Returns false on a
+ * malformed input (too many regs, nslots out of range, null pointers).
+ *
+ * GPR tokens are half-register indices; static TPS tokens use the disjoint
+ * range above. A value that is not currently the live result of an async op
+ * contributes no wait. The default slot policy is round-robin. A caller may
+ * request a corpus-witnessed slot for one async instruction with
+ * preferred_slot; dependencies then follow that actual slot normally.
+ * transient_slots models a compound encoding which publishes an internal
+ * staging value on a slot and consumes it before the logical instruction
+ * ends. It may not overlap the instruction's result slot.
+ */
+bool agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
+                      unsigned nslots, struct agx3_slot_result *out);
+
+#ifdef __cplusplus
+}
+#endif

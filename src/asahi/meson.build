@@ -19,6 +19,9 @@ if with_asahi_common
    subdir('genxml')
    subdir('libagx')
    subdir('compiler')
+   if with_asahi_vk
+      subdir('compiler_neo')
+   endif
    subdir('clc')
 endif
 

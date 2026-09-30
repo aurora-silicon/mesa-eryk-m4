@@ -80,6 +80,7 @@ hk_files = files(
   'hk_sampler.c',
   'hk_sampler.h',
   'hk_shader.c',
+  'hk_neo_compiler.c',
   'hk_nir_lower_minmax.c',
   'hk_nir_preserve_sample_loops.c',
   'hk_nir_version_samples.c',
@@ -337,7 +338,7 @@ if with_tests
     files('tests/test-hk-vbo-raw.c'),
     include_directories : [include_directories('.'), inc_include, inc_src, inc_asahi],
     dependencies : [idep_nir, idep_mesautil],
-    link_with : [libasahi_lib, libasahi_layout, libasahi_compiler],
+    link_with : [libasahi_lib, libasahi_layout, libasahi_compiler, neo_compiler_archive],
     c_args : [c_msvc_compat_args],
     gnu_symbol_visibility : 'hidden'), suite : ['asahi'])
 
@@ -1102,7 +1103,7 @@ libhk = static_library(
     inc_virtio_gpu,
     inc_virtio_vdrm,
   ],
-  link_with : [libasahi_lib, libasahi_layout, libasahi_compiler],
+  link_with : [libasahi_lib, libasahi_layout, libasahi_compiler, neo_compiler_archive],
   c_args : ['-Wno-c2x-extensions'],
   dependencies : [hk_deps],
   gnu_symbol_visibility : 'hidden',

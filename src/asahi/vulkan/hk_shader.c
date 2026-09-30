@@ -405,7 +405,10 @@ hk_populate_fs_key(struct hk_fs_key *key,
       key->force_sample_shading = true;
 }
 
+bool hk_compile_neo_fragment(nir_shader *, const struct agx_shader_key *, struct agx_shader_part *);
+
 enum hk_feature_key {
+   HK_FEAT_NEO_COMPILER = BITFIELD_BIT(6),
    HK_FEAT_CUSTOM_BORDER = BITFIELD_BIT(0),
    HK_FEAT_IMAGE_VIEW_MIN_LOD = BITFIELD_BIT(1),
    HK_FEAT_SAMPLER_MINMAX = BITFIELD_BIT(2),
@@ -418,7 +421,8 @@ static enum hk_feature_key
 hk_make_feature_key(const struct vk_physical_device *pdev,
                     const struct vk_features *feats)
 {
-   return ((pdev->supported_features.depthClipControl &&
+   return (debug_get_bool_option("HK_M3_NEO_FRAGMENT_COMPILER", false) ? HK_FEAT_NEO_COMPILER : 0) |
+          ((pdev->supported_features.depthClipControl &&
             (!feats || feats->depthClipControl)) ? HK_FEAT_DEPTH_CLIP_CONTROL : 0) |
           ((!feats || feats->customBorderColors) ? HK_FEAT_CUSTOM_BORDER : 0) |
           ((!feats || feats->minLod) ? HK_FEAT_IMAGE_VIEW_MIN_LOD : 0) |
@@ -3159,7 +3163,11 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       simple_mtx_lock(lock);
 
    assert(nir->info.io_lowered);
-   bool compiled = agx_compile_shader_nir(nir, &backend_key, &shader->b);
+   const bool use_neo = dev->dev.chip == AGX_CHIP_G15S &&
+      nir->info.stage == MESA_SHADER_FRAGMENT && !backend_key.secondary &&
+      debug_get_bool_option("HK_M3_NEO_FRAGMENT_COMPILER", false);
+   bool compiled = use_neo ? hk_compile_neo_fragment(nir, &backend_key, &shader->b) :
+                            agx_compile_shader_nir(nir, &backend_key, &shader->b);
    if (compiled && native_preamble && shader->b.info.preamble_scratch_size) {
       mesa_logw("Native %s preamble needs %u bytes of scratch; recompiling without it",
                 _mesa_shader_stage_to_string(nir->info.stage),

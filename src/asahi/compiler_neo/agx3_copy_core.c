@@ -1,0 +1,231 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx3_copy_core.h"
+
+#include "agx3_binder.h"
+
+#define KV(f, v) {(uint16_t)(f), (uint64_t)(v)}
+#define AGX3_COPY_ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+/*
+ * Baselines decoded from Apple's corpus vectors:
+ *
+ *   agx3b  copy.ep0  f9=2 f10=2 f23=3 f24=2, f2=dest, f17=uniform  (4 B)
+ *   agx3c  copy.ep0  the same plus the encoding's f28=3 f29=35 pair (4 B)
+ *
+ * f9/f10 are the destination's kind (2 = register) and width (2 = 32-bit);
+ * f23/f24 are source slot A's kind (3 = uniform) and width.
+ */
+static const struct agx3_field_kv agx3b_copy_baseline[] = {
+   KV(9, 2),
+   KV(10, 2),
+   KV(23, 3),
+   KV(24, 2),
+};
+
+static const struct agx3_field_kv agx3c_copy_baseline[] = {
+   KV(9, 2),
+   KV(10, 2),
+   KV(23, 3),
+   KV(24, 2),
+   KV(28, 3),
+   KV(29, 35),
+};
+
+/* Native half copies use the same independent destination cache, source
+ * cache/discard and scoreboard fields as other copy operands. In particular,
+ * a zero wait mask is not evidence that its source dies at this instruction. */
+bool
+agx3_copy_encode_reg16(enum agx_isa_encoding encoding, uint16_t dest_half,
+                       uint16_t src_half, bool dest_cache, bool src_cache,
+                       bool src_discard, uint16_t wait_mask,
+                       uint8_t out[AGX3_COPY_MAX_LENGTH], uint8_t *len)
+{
+   if (out == NULL || len == NULL || encoding != AGX_ISA_ENCODING_AGX3B ||
+       dest_half >= AGX3_COPY_REG16_DEST_HALVES || src_half >= 256 ||
+       wait_mask >= (1u << 6) || (src_cache && src_discard))
+      return false;
+
+   const struct agx3_field_kv baseline[] = {
+      KV(9, 2), KV(10, 1), KV(23, 2), KV(24, 1),
+   };
+   struct agx3_field_kv overrides[11] = {
+      KV(2, dest_half), KV(16, src_half), KV(11, dest_cache),
+      KV(25, src_cache), KV(27, src_discard),
+   };
+   unsigned n = 5;
+   for (unsigned i = 0; i < 6; ++i) {
+      if (wait_mask & (1u << i))
+         overrides[n++] = (struct agx3_field_kv)KV(30 + i, 1);
+   }
+   return agx3_bind_compose(encoding, "copy", 0, baseline,
+                            AGX3_COPY_ARRAY_SIZE(baseline), overrides, n,
+                            out, len);
+}
+
+bool
+agx3_copy_encode_reg_to_uniform(enum agx_isa_encoding encoding,
+                                uint16_t uniform_half, uint16_t src_half,
+                                bool kill, uint8_t out[AGX3_COPY_MAX_LENGTH],
+                                uint8_t *len)
+{
+   if (out == NULL || len == NULL)
+      return false;
+
+   /* Only AGX3b is witnessed. */
+   if (encoding != AGX_ISA_ENCODING_AGX3B)
+      return false;
+
+   if ((uniform_half & 1) || uniform_half + 2 > 512 || (src_half & 1) ||
+       src_half + 2 > 256)
+      return false;
+
+   const struct agx3_field_kv baseline[] = {
+      KV(9, 3), KV(10, 2), KV(23, 2), KV(24, 2),
+   };
+   const struct agx3_field_kv overrides[] = {
+      KV(3, uniform_half),
+      KV(16, src_half),
+      KV(27, kill ? 1 : 0),
+   };
+
+   if (uniform_half < 128) {
+      /* Grounded COPY ep0 field deposits. This is the same compact form used
+       * by the Ioto load packer, except f27 is the caller's kill bit instead
+       * of being forced. Avoid the table-driven composer in per-draw PBE
+       * programs, where this exact instruction is emitted thousands of times.
+       */
+      out[0] = 0x0b | ((uniform_half & 0x1e) << 3);
+      out[1] = src_half & 0x7f;
+      out[2] = 0x01 | ((uniform_half & 0x60) << 1) | (kill ? 0x08 : 0);
+      out[3] = 0x04 | (uniform_half & 1) | ((src_half & 0x80) >> 3);
+      *len = 4;
+      return true;
+   }
+
+   /* f39=1 is present in Apple's extended constant-program COPY record.  The
+    * deposits below are the complete aligned f3/f16 domain of that ten-byte
+    * ep1 and are exhaustively compared with the table composer by the copy
+    * core test.  This form is used twice by every compact graphics launcher;
+    * rescanning the generic 160-field table there dominated draw recording. */
+   out[0] = 0x0b | ((uniform_half & 0x1e) << 3);
+   out[1] = 0x01 | (src_half & 0x7e);
+   out[2] = 0x07 | ((uniform_half & 0x60) << 1) | (kill ? 0x08 : 0);
+   out[3] = 0x00;
+   out[4] = 0x40 | ((uniform_half & 0x01) << 2) |
+            ((src_half & 0x01) << 3) |
+            ((uniform_half & 0x180) ? 0x02 : 0x00);
+   out[5] = ((uniform_half & 0x80) >> 3) | ((src_half & 0x80) >> 7);
+   out[6] = (uniform_half & 0x100) >> 6;
+   out[7] = 0x00;
+   out[8] = 0x60;
+   out[9] = 0x00;
+   *len = 10;
+   return true;
+}
+
+bool
+agx3_copy_encode_uniform_to_reg16(enum agx_isa_encoding encoding,
+                                  uint16_t dest_half, uint16_t uniform_half,
+                                  bool dest_cache,
+                                  uint8_t out[AGX3_COPY_MAX_LENGTH],
+                                  uint8_t *len)
+{
+   /* Only AGX3b is witnessed; the AGX3c corpus has no 16-bit uniform copy. */
+   if (out == NULL || len == NULL || encoding != AGX_ISA_ENCODING_AGX3B ||
+       dest_half >= 128 || uniform_half >= 512)
+      return false;
+
+   /* The 16-bit widths of agx3_copy_encode_reg16() with the uniform source
+    * selector of agx3_copy_encode_uniform_to_reg32(). A 16-bit value is one
+    * half in either file, so neither index is aligned.
+    */
+   const struct agx3_field_kv baseline[] = {
+      KV(9, 2), KV(10, 1), KV(23, 3), KV(24, 1),
+   };
+   const struct agx3_field_kv overrides[] = {
+      KV(2, dest_half), KV(17, uniform_half), KV(11, dest_cache),
+   };
+
+   return agx3_bind_compose(encoding, "copy", 0, baseline,
+                            AGX3_COPY_ARRAY_SIZE(baseline), overrides,
+                            AGX3_COPY_ARRAY_SIZE(overrides), out, len);
+}
+
+bool
+agx3_copy_encode_uniform_to_reg32(enum agx_isa_encoding encoding,
+                                  uint16_t dest_half, uint16_t uniform_half,
+                                  uint8_t out[AGX3_COPY_MAX_LENGTH],
+                                  uint8_t *len)
+{
+   const struct agx3_field_kv *baseline;
+   unsigned nbaseline;
+
+   if (out == NULL || len == NULL)
+      return false;
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      baseline = agx3b_copy_baseline;
+      nbaseline = AGX3_COPY_ARRAY_SIZE(agx3b_copy_baseline);
+   } else if (encoding == AGX_ISA_ENCODING_AGX3C) {
+      baseline = agx3c_copy_baseline;
+      nbaseline = AGX3_COPY_ARRAY_SIZE(agx3c_copy_baseline);
+   } else {
+      return false;
+   }
+
+   /* A 32-bit value occupies two halves in either file, so both indices are
+    * 2-aligned; the GPR file is 256 halves and the uniform file 512. */
+   if ((dest_half & 1) || dest_half + 2 > 256)
+      return false;
+   if ((uniform_half & 1) || uniform_half + 2 > 512)
+      return false;
+
+   const struct agx3_field_kv overrides[] = {
+      KV(2, dest_half),
+      KV(17, uniform_half),
+   };
+
+   if (dest_half < AGX3_COPY_REG16_DEST_HALVES ||
+       encoding != AGX_ISA_ENCODING_AGX3B)
+      return agx3_bind_compose(encoding, "copy", 0, baseline, nbaseline,
+                               overrides,
+                               AGX3_COPY_ARRAY_SIZE(overrides), out, len);
+
+   /* The compact four-byte copy carries its destination in a seven-bit f2 and
+    * truncates at half 127; only the destination is narrow there, as the
+    * source witnesses below show. Apple's answer is the ten-byte ep1, which
+    * deposits f2's eighth bit -- the same widening agx3_copy_encode_reg_to_
+    * uniform() already uses for f3, and NOT the f39 suffix that form needs
+    * (these carry f39 = 0).
+    *
+    * Witnessed with metal-nt -arch applegpu_g17p on MSL written for this,
+    * a 100-value loop-carried register rotation (`rotate_pressure`) and a
+    * uniform-chain readback under the same pressure (`uni_readback`). Both
+    * split at exactly half 128, and neither ever widens for a high source:
+    *
+    *   ep0 (4 B)   destinations  18..126, sources up to 148
+    *   ep1 (10 B)  destinations 128..190, sources 18..178
+    *
+    *   copy r66, r9.kill   2b 13 0f 00 02 10 00 00 00 00   f2=132 f16=18
+    *   copy r67, r10.kill  3b 15 0f 00 02 10 00 00 00 00   f2=134 f16=20
+    *   copy r95, r59.kill  fb 77 4f 00 02 10 00 00 00 00   f2=190 f16=118
+    *
+    * Byte 0 and byte 5 bit 4 carry the destination identically under the
+    * uniform source selector, which is why only the encoding point moves
+    * here. Ray-query shaders reach this: agx_lower_uniform_sources()
+    * materializes every generic-ALU uniform source, and under their register
+    * pressure register allocation placed those destinations at halves
+    * 134-154, refusing the whole shader.
+    *
+    * AGX3c has a copy.ep1 too (eight bytes) and its tables accept the same
+    * wide destinations, but no G17S witness establishes it, so that encoding
+    * still fails closed rather than being assumed from the AGX3b result.
+    */
+   return agx3_bind_compose(encoding, "copy", 1, baseline, nbaseline,
+                            overrides,
+                            AGX3_COPY_ARRAY_SIZE(overrides), out, len);
+}

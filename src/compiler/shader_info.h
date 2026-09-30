@@ -290,6 +290,9 @@ typedef struct shader_info {
     */
    bool zero_initialize_shared_memory:1;
 
+   /* Neo AGX3 compiler shared-index lowering ownership. */
+   bool shared_element_index_agx:1;
+
    /**
     * Used for ARB_compute_variable_group_size.
     */

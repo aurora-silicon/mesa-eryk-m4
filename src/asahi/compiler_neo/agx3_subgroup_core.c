@@ -1,0 +1,626 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx3_subgroup_core.h"
+
+#include "agx3_binder.h"
+
+#define ADD_FIELD(F, V)                                                        \
+   do {                                                                        \
+      base[nb++] = (struct agx3_field_kv){(F), (V)};                           \
+   } while (0)
+
+static bool
+is_c(enum agx_isa_encoding enc)
+{
+   return enc == AGX_ISA_ENCODING_AGX3C;
+}
+
+static bool
+valid_reg(enum agx_isa_encoding enc, uint16_t reg)
+{
+   const uint16_t limit = enc == AGX_ISA_ENCODING_AGX3B   ? 192
+                          : enc == AGX_ISA_ENCODING_AGX3C ? 256
+                                                          : 0;
+   return limit != 0 && (reg & 1) == 0 && reg < limit;
+}
+
+static const char *
+shuffle_mnemonic(bool quad, enum agx3_subgroup_shuffle_op op)
+{
+   static const char *const simd[] = {
+      "simdbcast",
+      "simdbfly",
+      "simdshftup",
+      "simdshftdn",
+   };
+   static const char *const q[] = {
+      "quadshfl",
+      "quadbfly",
+      "quadshftup",
+      "quadshftdn",
+   };
+   return (unsigned)op < AGX3_SUBGROUP_SHUFFLE_NUM
+             ? (quad ? q[op] : simd[op])
+             : NULL;
+}
+
+bool
+agx3_subgroup_encode_shuffle(enum agx_isa_encoding enc,
+                             const struct agx3_subgroup_shuffle_desc *d,
+                             uint8_t out[AGX3_SUBGROUP_MAX_LENGTH],
+                             uint8_t *length)
+{
+   if (d == NULL || out == NULL || length == NULL)
+      return false;
+   /*
+    * 16-bit data narrows the width pair, and the quad selector is a different
+    * field of the same immediate-lane encoding point, so the two compose.
+    * metal-nt -arch applegpu_g17p, one kernel per operation on `ushort`
+    * (src/asahi/compiler/test/probes/g17p-vertex-quad.metal), lane immediate,
+    * same registers, nothing else moving:
+    *
+    *   quad_broadcast(a, 3)      47005602020406200400   quadshfl
+    *   simd_broadcast(a, 3)      47045602020406200400   simdbcast
+    *   quad_shuffle_xor(a, 1)    c7005602020402200400   quadbfly
+    *   simd_shuffle_xor(a, 1)    c7045602020402200400   simdbfly
+    *
+    * Only byte 1 moves between a quad word and its SIMD control, which is the
+    * same selector the 32-bit words in the immediate-lane block below carry.
+    * The shifts are NOT admitted here: Apple's 16-bit simd_shuffle_up is
+    * 47055603030402200200, whose f9/f10 pair is 3/3 rather than the 2/1 this
+    * composition would deposit, so that form needs its own mapping.
+    */
+   const bool half_shuffle_op = d->op == AGX3_SUBGROUP_SHUFFLE_BROADCAST ||
+                                d->op == AGX3_SUBGROUP_SHUFFLE_XOR;
+   if (d->half ? enc != AGX_ISA_ENCODING_AGX3B ||
+                    (d->lane_kind != AGX3_SUBGROUP_LANE_REGISTER &&
+                     !half_shuffle_op) ||
+                    (d->quad && d->lane_kind != AGX3_SUBGROUP_LANE_IMMEDIATE) ||
+                    d->dest >= 192 || d->src >= 192
+               : !valid_reg(enc, d->dest) || !valid_reg(enc, d->src))
+      return false;
+
+   const char *mnemonic = shuffle_mnemonic(d->quad, d->op);
+   if (mnemonic == NULL)
+      return false;
+
+   /*
+    * The SIMD shuffles from a register lane on G17P. metal-nt -arch
+    * applegpu_g17p, `simd_broadcast(ushort d, ushort lane)` with d and lane
+    * each either read again later or not:
+    *
+    *   d dead, lane dead    47145402020604201c00   f27 f41
+    *   d live, lane live    4714540702100c201000
+    *   d dead, lane live    47145405020008201400   f27
+    *   d live, lane dead    47145405020800201800   f41
+    *
+    * simd_shuffle(), whose broadcasts reuse both soon, adds f25 (source) and
+    * f39 (lane) next to f11 (destination). So f25/f27 are the source's
+    * cache/discard hints and f39/f41 the lane's, with the lane in f30 and the
+    * source wait in the f44 bank. The same topology holds for 32-bit data
+    * (f10 = f24 = 2; a broadcast reading its lane twice is 471454040204142e1400
+    * then 472454000200142c1c00) and for simd_shuffle_xor/_up/_down at both
+    * widths, so the lifetime bits follow the operands rather than being
+    * pinned: a pinned f41 claimed the lane was dead even when the vote and
+    * shuffle lowerings read it again for the next component.
+    */
+   if (enc == AGX_ISA_ENCODING_AGX3B && !d->quad &&
+       d->lane_kind == AGX3_SUBGROUP_LANE_REGISTER) {
+      const unsigned slots = 6;
+      if (d->lane >= 192 || (d->wait_mask >> slots) != 0 ||
+          (d->src_cache && d->src_discard) ||
+          (d->lane_cache && d->lane_discard))
+         return false;
+
+      const unsigned width = d->half ? 1 : 2;
+      struct agx3_field_kv hbase[6];
+      unsigned hnb = 0;
+      hbase[hnb++] = (struct agx3_field_kv){9, 2};
+      hbase[hnb++] = (struct agx3_field_kv){10, width};
+      hbase[hnb++] = (struct agx3_field_kv){23, 2};
+      hbase[hnb++] = (struct agx3_field_kv){24, width};
+      hbase[hnb++] = (struct agx3_field_kv){37, 2};
+      hbase[hnb++] = (struct agx3_field_kv){38, 1};
+
+      struct agx3_field_kv hov[16];
+      unsigned hnv = 0;
+      hov[hnv++] = (struct agx3_field_kv){2, d->dest};
+      hov[hnv++] = (struct agx3_field_kv){11, d->dest_hint ? 1u : 0u};
+      hov[hnv++] = (struct agx3_field_kv){16, d->src};
+      hov[hnv++] = (struct agx3_field_kv){25, d->src_cache ? 1u : 0u};
+      hov[hnv++] = (struct agx3_field_kv){27, d->src_discard ? 1u : 0u};
+      hov[hnv++] = (struct agx3_field_kv){30, d->lane};
+      hov[hnv++] = (struct agx3_field_kv){39, d->lane_cache ? 1u : 0u};
+      hov[hnv++] = (struct agx3_field_kv){41, d->lane_discard ? 1u : 0u};
+      for (unsigned i = 0; i < slots; ++i)
+         if (d->wait_mask & (1u << i))
+            hov[hnv++] = (struct agx3_field_kv){(uint16_t)(44 + i), 1};
+
+      return agx3_bind_compose(enc, mnemonic, 0, hbase, hnb, hov, hnv, out,
+                               length);
+   }
+
+   /*
+    * The immediate-lane form: f37 = 1 selects it and the lane index sits in
+    * f29; f39 and f41, which the register form carries, are absent. The
+    * per-slot wait bits are f44 + (slot - 1), so a source arriving on slot 6
+    * sets f49 and nothing else.
+    */
+   if (d->lane_kind == AGX3_SUBGROUP_LANE_IMMEDIATE) {
+      const unsigned slots = 6;
+      /*
+       * f29 IS the lane, for every immediate-lane shuffle and for every lane
+       * the seven-bit field holds.  This used to admit three SIMD broadcast
+       * lanes (0, 3, 5) and the quad family only, so `subgroupBroadcast(v,
+       * 31)` -- the last-lane read that every subgroup scan ends with, Mesa's
+       * own radix sort included -- had no encoding at all and the shader had
+       * to pay a materialising `mov` to reach the register-lane form instead.
+       *
+       * Apple's applegpu_g17p output, one kernel per lane
+       * (`.tmp/g17p-rtgaps-evidence/bcast.metal`, `shuf.metal`), is a single
+       * field sweep with nothing else moving:
+       *
+       *   simd_broadcast(a, 0)      470456000200002c0400   f29 = 0
+       *   simd_broadcast(a, 1)      470456000200022c0400   f29 = 1
+       *   simd_broadcast(a, 5)      4704560002000a2c0400   f29 = 5
+       *   simd_broadcast(a, 31)     4704560002003e2c0400   f29 = 31
+       *   simd_broadcast(a, 32)     470456000200402c0400   f29 = 32
+       *   simd_broadcast(a, 63)     4704560002007e2c0400   f29 = 63
+       *   simd_shuffle_xor(a, 63)   c704560002007e2c0400   simdbfly, same f29
+       *   simd_shuffle_up(a, 31)    4705560403003e2c0200   simdshftup
+       *   simd_shuffle_down(a, 31)  c705560403003e2c0200   simdshftdn
+       *   quad_broadcast(a, 3)      470056000200062c0400   quadshfl
+       *   quad_shuffle_xor(a, 3)    c70056000200062c0400   quadbfly
+       *
+       * Every one of those also sets f49, the slot-6 wait for the device load
+       * that feeds it -- including the quad butterfly, which this encoder
+       * previously refused to give a wait at all.
+       *
+       * The field is seven bits (half 0xff spills the eighth into f16, the
+       * source register), so lanes 0..127 encode and 128 up do not.
+       */
+      if (enc != AGX_ISA_ENCODING_AGX3B)
+         return false;
+      if (d->lane > 0x7f || (d->wait_mask >> slots) != 0)
+         return false;
+
+      struct agx3_field_kv ibase[8];
+      unsigned inb = 0;
+      /* 16-bit data only narrows the width pair: simd_broadcast(ushort, 5)
+       * is 4704560202040a200400 next to the 32-bit words above. */
+      ibase[inb++] = (struct agx3_field_kv){9, 2};
+      ibase[inb++] = (struct agx3_field_kv){10, d->half ? 1u : 2u};
+      ibase[inb++] = (struct agx3_field_kv){23, 2};
+      ibase[inb++] = (struct agx3_field_kv){24, d->half ? 1u : 2u};
+      /* One liveness selector for the whole family: f25 while the source
+       * stays live, f27 on its final read.  Apple's simd shift witnesses
+       * carry f25 (the shifted result lands in a different register and the
+       * source is read again); its broadcasts carry f27. */
+      ibase[inb++] = (struct agx3_field_kv){d->src_live ? 25 : 27, 1};
+      ibase[inb++] = (struct agx3_field_kv){37, 1};
+      ibase[inb++] = (struct agx3_field_kv){38, 1};
+
+      struct agx3_field_kv iov[14];
+      unsigned inv = 0;
+      iov[inv++] = (struct agx3_field_kv){2, d->dest};
+      iov[inv++] = (struct agx3_field_kv){11, d->dest_hint ? 1u : 0u};
+      iov[inv++] = (struct agx3_field_kv){16, d->src};
+      iov[inv++] = (struct agx3_field_kv){29, d->lane};
+      for (unsigned i = 0; i < slots; ++i)
+         if (d->wait_mask & (1u << i))
+            iov[inv++] = (struct agx3_field_kv){(uint16_t)(44 + i), 1};
+
+      return agx3_bind_compose(enc, mnemonic, 0, ibase, inb, iov, inv, out,
+                               length);
+   }
+
+   if (d->half || d->wait_mask != 0 ||
+       (d->lane_kind != AGX3_SUBGROUP_LANE_REGISTER &&
+        d->lane_kind != AGX3_SUBGROUP_LANE_UNIFORM) ||
+       (d->lane & 1) != 0 ||
+       (d->lane_kind == AGX3_SUBGROUP_LANE_REGISTER ? !valid_reg(enc, d->lane)
+                                                    : d->lane >= 512))
+      return false;
+
+   struct agx3_field_kv base[16];
+   unsigned nb = 0;
+   ADD_FIELD(9, 2);
+   ADD_FIELD(10, 2);
+   ADD_FIELD(23, 2);
+   ADD_FIELD(24, 2);
+   ADD_FIELD(37, d->lane_kind);
+   ADD_FIELD(38, 1);
+
+   if (!is_c(enc)) {
+      if (d->lane_kind == AGX3_SUBGROUP_LANE_REGISTER) {
+         if (d->op == AGX3_SUBGROUP_SHUFFLE_BROADCAST) {
+            ADD_FIELD(11, d->dest_hint);
+            ADD_FIELD(d->src_live ? 25 : 27, 1);
+            ADD_FIELD(d->lane_live ? 39 : 41, 1);
+         } else if (d->op == AGX3_SUBGROUP_SHUFFLE_UP ||
+                    d->op == AGX3_SUBGROUP_SHUFFLE_DOWN) {
+            ADD_FIELD(11, 1);
+            ADD_FIELD(25, 1);
+            ADD_FIELD(39, 1);
+         } else {
+            ADD_FIELD(27, 1);
+            ADD_FIELD(41, 1);
+         }
+      } else if (d->op == AGX3_SUBGROUP_SHUFFLE_UP ||
+                 d->op == AGX3_SUBGROUP_SHUFFLE_DOWN) {
+         ADD_FIELD(11, 1);
+         ADD_FIELD(25, 1);
+      } else {
+         ADD_FIELD(27, 1);
+      }
+   } else {
+      if (d->lane_kind == AGX3_SUBGROUP_LANE_REGISTER && !d->quad &&
+          d->op == AGX3_SUBGROUP_SHUFFLE_BROADCAST) {
+         ADD_FIELD(11, 1);
+         ADD_FIELD(25, 1);
+      } else {
+         ADD_FIELD(27, 1);
+      }
+      if (d->lane_kind == AGX3_SUBGROUP_LANE_REGISTER)
+         ADD_FIELD(41, 1);
+      static const uint8_t ids[2][AGX3_SUBGROUP_SHUFFLE_NUM] = {
+         {154, 155, 161, 160},
+         {140, 137, 142, 141},
+      };
+      ADD_FIELD(42, 3);
+      ADD_FIELD(43, ids[d->quad][d->op]);
+   }
+
+   struct agx3_field_kv ov[] = {
+      {2, d->dest},
+      {16, d->src},
+      {d->lane_kind == AGX3_SUBGROUP_LANE_REGISTER ? 30 : 31, d->lane},
+   };
+   return agx3_bind_compose(enc, mnemonic, 0, base, nb, ov, 3, out, length);
+}
+
+bool
+agx3_subgroup_encode_ballot(enum agx_isa_encoding enc,
+                            const struct agx3_subgroup_ballot_desc *d,
+                            uint8_t out[AGX3_SUBGROUP_MAX_LENGTH],
+                            uint8_t *length)
+{
+   if (d == NULL || out == NULL || length == NULL)
+      return false;
+
+   /*
+    * The 16-bit quad ballot of a register against zero. metal-nt -arch
+    * applegpu_g17p, quad_any(x != 0) and quad_all(x == 0) of a buffer-loaded
+    * ushort, with the result fed on to dfdx():
+    *
+    *   x != 0, x dead   17025600030000402212
+    *   x == 0, x dead   17025601030200402202
+    *   x != 0, x live   17025600030202002212
+    *
+    * f25/f27 carry the source's liveness, f11 the destination hint and f46
+    * the source wait. Apple adds f64 when the result goes nowhere but the
+    * colour output; like f62 on the quad reductions, that stays clear.
+    */
+   if (d->quad && d->dest_half) {
+      const unsigned slots = 6;
+      if (enc != AGX_ISA_ENCODING_AGX3B ||
+          d->type != AGX3_SUBGROUP_BALLOT_INTEGER || d->compare_immediate ||
+          d->condition != 4 || d->dest >= 192 ||
+          (d->src_half ? d->src >= 192 : !valid_reg(enc, d->src)) ||
+          (d->wait_mask >> slots) != 0)
+         return false;
+
+      /* A uint source only widens f24: quad_any(x != 0) of a uint is
+       * 17025600030000502212. */
+      struct agx3_field_kv qbase[16];
+      unsigned qnb = 0;
+      qbase[qnb++] = (struct agx3_field_kv){9, 2};
+      qbase[qnb++] = (struct agx3_field_kv){10, 1};
+      qbase[qnb++] = (struct agx3_field_kv){23, 2};
+      qbase[qnb++] = (struct agx3_field_kv){24, d->src_half ? 1u : 2u};
+      qbase[qnb++] = (struct agx3_field_kv){d->src_live ? 25 : 27, 1};
+      qbase[qnb++] = (struct agx3_field_kv){38, 1};
+      qbase[qnb++] = (struct agx3_field_kv){39, 1};
+      for (unsigned i = 0; i < slots; ++i)
+         if (d->wait_mask & (1u << i))
+            qbase[qnb++] = (struct agx3_field_kv){(uint16_t)(46 + i), 1};
+
+      const struct agx3_field_kv qov[] = {
+         {2, d->dest},
+         {11, d->dest_cache ? 1u : 0u},
+         {16, d->src},
+         {54, d->condition},
+         {55, d->invert},
+      };
+      return agx3_bind_compose(enc, "quadiballot", 0, qbase, qnb, qov,
+                               sizeof(qov) / sizeof(qov[0]), out, length);
+   }
+
+   if (d->wait_mask != 0 || d->dest_half || !valid_reg(enc, d->dest) ||
+       (unsigned)d->type > AGX3_SUBGROUP_BALLOT_FLOAT)
+      return false;
+
+   /* Only the witnessed 16-bit source shape: equal to zero. */
+   if (d->src_half ? !d->compare_immediate || d->condition != 4 ||
+                        d->compare_value != 0 || d->src >= 192
+                   : !valid_reg(enc, d->src))
+      return false;
+
+   if (d->compare_immediate) {
+      /* Fresh applegpu-nt G17P witnesses use this exact form for unsigned
+       * equality/less-than/greater-than against immediates.  The latter is
+       * how Apple canonicalizes >= N (as > N - 1). */
+      if (enc != AGX_ISA_ENCODING_AGX3B || d->quad ||
+          d->type != AGX3_SUBGROUP_BALLOT_INTEGER ||
+          (d->condition != 1 && d->condition != 2 && d->condition != 4) ||
+          d->invert)
+         return false;
+   } else if (d->type == AGX3_SUBGROUP_BALLOT_INTEGER) {
+      if (d->condition != 4 && d->condition != 5 && d->condition != 6)
+         return false;
+   } else if (d->condition != 0 && d->condition != 1 && d->condition != 2 &&
+              d->condition != 5 && d->condition != 6) {
+      return false;
+   }
+
+   struct agx3_field_kv base[16];
+   unsigned nb = 0;
+   ADD_FIELD(9, 2);
+   ADD_FIELD(10, 2);
+   if (d->quad || d->dest_cache)
+      ADD_FIELD(11, 1);
+   ADD_FIELD(23, 2);
+   ADD_FIELD(24, d->src_half ? 1 : 2);
+   /* G17P simd_ballot(x != 0), metal-nt 32023.917:
+    *   dead x: 17075600020000582212
+    *   live x: 17075600020400182212
+    * The live witness reads half 2 instead of half 0 and clears f27.
+    * This source discard bit also applies to our register-zero comparison.
+    * In restart unrolling, its input is a shared ballot mask that is still
+    * needed by the broadcast selecting the first nonempty subgroup.
+    */
+   const bool live_integer_ballot =
+      enc == AGX_ISA_ENCODING_AGX3B && !d->quad &&
+      d->type == AGX3_SUBGROUP_BALLOT_INTEGER && d->src_live;
+   if ((!d->compare_immediate && !live_integer_ballot) || !d->src_live)
+      ADD_FIELD(27, 1);
+
+   const char *mnemonic;
+   uint16_t cond_field, invert_field;
+   if (d->type == AGX3_SUBGROUP_BALLOT_INTEGER) {
+      mnemonic = d->quad ? "quadiballot" : "simdiballot";
+      if (d->compare_immediate) {
+         ADD_FIELD(38, 1);
+         ADD_FIELD(39, 1);
+         ADD_FIELD(46, 1);
+      } else if (d->condition == 4) {
+         ADD_FIELD(38, 2);
+         ADD_FIELD(39, 2);
+         ADD_FIELD(42, 1);
+      } else {
+         ADD_FIELD(38, 1);
+         ADD_FIELD(39, 1);
+      }
+      cond_field = 54;
+      invert_field = 55;
+      if (is_c(enc)) {
+         ADD_FIELD(44, 3);
+         ADD_FIELD(45, d->quad ? 139 : 157);
+      }
+   } else {
+      mnemonic = d->quad ? "quadfballot" : "simdfballot";
+      ADD_FIELD(40, 1);
+      ADD_FIELD(41, 2);
+      cond_field = 58;
+      invert_field = 59;
+      if (is_c(enc)) {
+         ADD_FIELD(48, 3);
+         ADD_FIELD(49, d->quad ? 138 : 156);
+      }
+   }
+
+   struct agx3_field_kv ov[5] = {
+      {2, d->dest},
+      {16, d->src},
+      {cond_field, d->condition},
+      {invert_field, d->invert},
+   };
+   unsigned no = 4;
+   if (d->compare_immediate)
+      ov[no++] = (struct agx3_field_kv){30, d->compare_value};
+   return agx3_bind_compose(enc, mnemonic, 0, base, nb, ov, no, out, length);
+}
+
+struct reduce_form {
+   const char *simd;
+   const char *quad;
+   uint8_t c_simd;
+   uint8_t c_quad;
+   bool is_float;
+   uint8_t integer_class;
+};
+
+static const struct reduce_form reduce_forms[AGX3_SUBGROUP_REDUCE_NUM] = {
+   [AGX3_SUBGROUP_REDUCE_AND] = {"sRedAND", "qRedAND", 169, 0, false, 2},
+   [AGX3_SUBGROUP_REDUCE_FADD] = {"sRedf32add", "qRedf32add", 172, 126, true,
+                                  0},
+   [AGX3_SUBGROUP_REDUCE_OR] = {"sRedOR", "qRedOR", 177, 0, false, 2},
+   [AGX3_SUBGROUP_REDUCE_FMUL] = {"sRedf32mul", "qRedf32mul", 173, 127, true,
+                                  0},
+   [AGX3_SUBGROUP_REDUCE_XOR] = {"sRedXOR", "qRedXOR", 182, 0, false, 2},
+   [AGX3_SUBGROUP_REDUCE_FMIN] = {"sRedfmin", "qRedfmin", 175, 129, true, 0},
+   [AGX3_SUBGROUP_REDUCE_FMAX] = {"sRedfmax", "qRedfmax", 174, 128, true, 0},
+   [AGX3_SUBGROUP_REDUCE_IADD] = {"sRediadd", "qRediadd", 176, 130, false, 0},
+   [AGX3_SUBGROUP_REDUCE_SMIN] = {"sRedsmin", "qRedsmin", 179, 0, false, 1},
+   [AGX3_SUBGROUP_REDUCE_SMAX] = {"sRedsmax", "qRedsmax", 178, 0, false, 1},
+   [AGX3_SUBGROUP_REDUCE_UMIN] = {"sRedumin", "qRedumin", 181, 0, false, 2},
+   [AGX3_SUBGROUP_REDUCE_UMAX] = {"sRedumax", "qRedumax", 180, 0, false, 2},
+};
+
+bool
+agx3_subgroup_encode_reduce(enum agx_isa_encoding enc,
+                            const struct agx3_subgroup_reduce_desc *d,
+                            uint8_t out[AGX3_SUBGROUP_MAX_LENGTH],
+                            uint8_t *length)
+{
+   if (d == NULL || out == NULL || length == NULL ||
+       (unsigned)d->op >= AGX3_SUBGROUP_REDUCE_NUM)
+      return false;
+   if (d->half ? is_c(enc) || d->dest >= 192 || d->src >= 192
+               : !valid_reg(enc, d->dest) || !valid_reg(enc, d->src))
+      return false;
+
+   const struct reduce_form *f = &reduce_forms[d->op];
+   /*
+    * Half-precision add and multiply are their own instructions, laid out
+    * like the f32 forms with every field from the source on shifted down by
+    * one. metal-nt -arch applegpu_g17p:
+    *
+    *   quad_sum(half), result reduced again  3704560003008808  qRedf16add
+    *   simd_prefix_exclusive_product(half)   bf04560202048818  sRedf16mul
+    *   simd_prefix_inclusive_product(half)   bf04560303048a10  sRedf16mul
+    */
+   const bool f16_arith = d->half && (d->op == AGX3_SUBGROUP_REDUCE_FADD ||
+                                      d->op == AGX3_SUBGROUP_REDUCE_FMUL);
+   const char *mnemonic;
+   if (f16_arith) {
+      const bool add = d->op == AGX3_SUBGROUP_REDUCE_FADD;
+      mnemonic = d->quad ? (add ? "qRedf16add" : "qRedf16mul")
+                         : (add ? "sRedf16add" : "sRedf16mul");
+   } else {
+      mnemonic = d->quad ? f->quad : f->simd;
+   }
+   if (mnemonic == NULL || mnemonic[0] == '\0')
+      return false;
+   /* The newly recovered integer min/max and bitwise quad words are
+    * G17P/AGX3b witnesses. Preserve the existing AGX3c boundary until
+    * independently captured on that encoding. */
+   if (d->quad && is_c(enc) &&
+       (d->op == AGX3_SUBGROUP_REDUCE_AND ||
+        d->op == AGX3_SUBGROUP_REDUCE_OR ||
+        d->op == AGX3_SUBGROUP_REDUCE_XOR ||
+        d->op >= AGX3_SUBGROUP_REDUCE_SMIN))
+      return false;
+   /*
+    * Metal has scans for sums and products only, so those are the witnessed
+    * prefix forms: f53 on the integer add, f57 on the f32 and f56 on the f16
+    * instructions. The bitwise and min/max instructions carry the same
+    * operand in Apple's encoder tables -- f53 on signed min/max, whose fields
+    * are numbered like the integer add, and f52 on the bitwise and unsigned
+    * forms, which lack the signedness field f28 and number everything above
+    * it one lower -- exactly as the AGX2 SIMD instructions take every
+    * reduction as a scan. Apple's compiler has no source-level scan to emit
+    * them from (it reports air.simd_prefix_*_min and friends as unlowered on
+    * every applegpu target), so those follow the tables.
+    */
+   if (d->prefix && d->quad)
+      return false;
+   if (d->prefix && is_c(enc) && d->op != AGX3_SUBGROUP_REDUCE_FADD &&
+       d->op != AGX3_SUBGROUP_REDUCE_FMUL && d->op != AGX3_SUBGROUP_REDUCE_IADD)
+      return false;
+   if (d->prefix && f->is_float && d->op != AGX3_SUBGROUP_REDUCE_FADD &&
+       d->op != AGX3_SUBGROUP_REDUCE_FMUL)
+      return false;
+
+   struct agx3_field_kv base[16];
+   unsigned nb = 0;
+   ADD_FIELD(9, 2);
+   ADD_FIELD(10, d->half ? 1 : 2);
+   uint16_t src_field, prefix_field, wait_base;
+   if (f16_arith) {
+      ADD_FIELD(24, 2);
+      ADD_FIELD(25, 1);
+      ADD_FIELD(d->src_live ? 26 : 28, 1);
+      ADD_FIELD(33, 1);
+      ADD_FIELD(41, 1);
+      ADD_FIELD(42, 1);
+      src_field = 17;
+      prefix_field = 56;
+      wait_base = 48;
+   } else if (f->is_float) {
+      ADD_FIELD(25, 2);
+      ADD_FIELD(26, d->half ? 1 : 2);
+      if (!d->src_live)
+         ADD_FIELD(29, 1);
+      if (is_c(enc)) {
+         ADD_FIELD(47, 3);
+         ADD_FIELD(48, d->quad ? f->c_quad : f->c_simd);
+      } else {
+         ADD_FIELD(34, 1);
+         ADD_FIELD(42, 1);
+         ADD_FIELD(43, 1);
+      }
+      src_field = 18;
+      prefix_field = 57;
+      wait_base = 49;
+   } else {
+      ADD_FIELD(23, 2);
+      ADD_FIELD(24, d->half ? 1 : 2);
+      /* G17P picks f25 while the source stays live and f27 on its final
+       * read, for SIMD and quad forms alike: simd_prefix_inclusive_sum(),
+       * which adds the source back afterwards, is bf01560403001609 (f25)
+       * next to the exclusive bf0156020204100b (f27). */
+      ADD_FIELD(!is_c(enc) && d->src_live ? 25 : 27, 1);
+      if (f->integer_class == 1)
+         ADD_FIELD(28, 1);
+      if (is_c(enc)) {
+         if (f->integer_class == 2) {
+            ADD_FIELD(42, 3);
+            ADD_FIELD(43, d->quad ? f->c_quad : f->c_simd);
+         } else {
+            ADD_FIELD(43, 3);
+            ADD_FIELD(44, d->quad ? f->c_quad : f->c_simd);
+         }
+      } else if (f->integer_class == 2) {
+         ADD_FIELD(29, 1);
+         ADD_FIELD(37, 1);
+         ADD_FIELD(38, 1);
+      } else {
+         ADD_FIELD(30, 1);
+         ADD_FIELD(38, 1);
+         ADD_FIELD(39, 1);
+      }
+      src_field = 16;
+      prefix_field = f->integer_class == 2 ? 52 : 53;
+      wait_base = f->integer_class == 2 ? 44 : 45;
+   }
+
+   if (d->prefix)
+      ADD_FIELD(prefix_field, 1);
+
+   /*
+    * Per-slot wait bits. Their base differs by operand family, each pinned by
+    * a g17p probe whose source arrives on scoreboard slot 6:
+    *   float reductions            f49 + (slot - 1)   (sRedf32add, sRedfmax)
+    *   half add / multiply         f48 + (slot - 1)   (qRedf16add, sRedf16mul)
+    *   integer add / signed min-max
+    *                               f45 + (slot - 1)   (sRediadd, sRedimin,
+    *                                                   sRedimax; also catomic
+    *                                                   at slot 1)
+    *   bitwise / unsigned min-max  f44 + (slot - 1)   (sRedAND, sRedumax)
+    * Own-shader A18 Pro captures pin slot-6 signed min/max to this family:
+    *   sRedimin 3f02560002001407, sRedimax bf02560002001407.
+    */
+   const unsigned slots = is_c(enc) ? 8 : 6;
+   if (d->wait_mask != 0) {
+      if (is_c(enc) || (d->wait_mask >> slots) != 0)
+         return false;
+      for (unsigned i = 0; i < slots; ++i)
+         if (d->wait_mask & (1u << i))
+            ADD_FIELD((uint16_t)(wait_base + i), 1);
+   }
+
+   struct agx3_field_kv ov[4];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv){2, d->dest};
+   ov[n++] = (struct agx3_field_kv){src_field, d->src};
+   ov[n++] = (struct agx3_field_kv){11, d->dest_hint ? 1u : 0u};
+   if (f->is_float && !f16_arith && d->src_live)
+      ov[n++] = (struct agx3_field_kv){27, 1};
+   return agx3_bind_compose(enc, mnemonic, 0, base, nb, ov, n, out, length);
+}
+
+#undef ADD_FIELD
