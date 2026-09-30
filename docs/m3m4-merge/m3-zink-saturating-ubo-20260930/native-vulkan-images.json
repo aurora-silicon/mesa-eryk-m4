@@ -1,0 +1,26 @@
+[
+  {
+    "image": "screenshot_frame_1.png",
+    "reference": "/home/council/dev/gpu-replay-bench/results/minecraft-demo-vulkan/m3/20260929T210825479107Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_1.png",
+    "candidate": "/home/council/dev/gpu-replay-bench/runs/20260930T123733695811Z-m3-minecraft-demo-vulkan-check/remote/screenshot_frame_1.png",
+    "maximum_channel_error": 0,
+    "pixels_over_one_level": 0,
+    "different_pixels": 0
+  },
+  {
+    "image": "screenshot_frame_16.png",
+    "reference": "/home/council/dev/gpu-replay-bench/results/minecraft-demo-vulkan/m3/20260929T210825479107Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_16.png",
+    "candidate": "/home/council/dev/gpu-replay-bench/runs/20260930T123733695811Z-m3-minecraft-demo-vulkan-check/remote/screenshot_frame_16.png",
+    "maximum_channel_error": 0,
+    "pixels_over_one_level": 0,
+    "different_pixels": 0
+  },
+  {
+    "image": "screenshot_frame_31.png",
+    "reference": "/home/council/dev/gpu-replay-bench/results/minecraft-demo-vulkan/m3/20260929T210825479107Z-m3-minecraft-demo-vulkan-check/evidence/remote/screenshot_frame_31.png",
+    "candidate": "/home/council/dev/gpu-replay-bench/runs/20260930T123733695811Z-m3-minecraft-demo-vulkan-check/remote/screenshot_frame_31.png",
+    "maximum_channel_error": 0,
+    "pixels_over_one_level": 0,
+    "different_pixels": 0
+  }
+]

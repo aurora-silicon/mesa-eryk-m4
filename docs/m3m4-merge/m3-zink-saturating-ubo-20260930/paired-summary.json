@@ -1,0 +1,21 @@
+{
+  "false": {
+    "samples_fps": [
+      25.958690883005602,
+      27.06064802940243,
+      26.19265440487701
+    ],
+    "median_fps": 26.19265440487701
+  },
+  "true": {
+    "samples_fps": [
+      29.81524503389303,
+      31.298408661832095,
+      31.01714748880056
+    ],
+    "median_fps": 31.01714748880056
+  },
+  "fps_improvement_percent": 18.419259878545336,
+  "comparison": "mesa-build",
+  "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+}

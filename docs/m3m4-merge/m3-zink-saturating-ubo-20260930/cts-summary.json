@@ -1,0 +1,10 @@
+{
+  "healthy": true,
+  "counts": {
+    "NotSupported": 464,
+    "Pass": 965
+  },
+  "selected": 1429,
+  "completed_batches_end": 1429,
+  "stopped_on_test_failure": false
+}

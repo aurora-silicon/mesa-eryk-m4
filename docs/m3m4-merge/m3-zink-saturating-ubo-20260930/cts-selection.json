@@ -1,0 +1,7 @@
+{
+  "cases_sha256": "a354ee046d54e808e53ebca07d4872e957303e5e8324a180cac57209d8b962df",
+  "catalog_sha256": "72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf",
+  "case_count": 1429,
+  "selection_path": "build/minecraft-vertex-cse/production-cases.txt",
+  "vulkan_sha256": "5da3da4d27cc7bba311b79a244b323e955d65815d2c45c71bf3ab775f1cbdab7"
+}
