@@ -19,11 +19,12 @@ int main(int argc, char **argv)
                                   !strcmp(argv[2], "--gcm") ||
                                   !strcmp(argv[2], "--licm") ||
                                   !strcmp(argv[2], "--gcm-no-vn") ||
+                                  !strcmp(argv[2], "--no-reassoc") ||
                                   !strcmp(argv[2], "--print-nir") ||
                                   !strcmp(argv[2], "--lower-texture-gen9") ||
                                   !strncmp(argv[2], "--binary-output=", 16) ||
                                   !strncmp(argv[2], "--uniform-one=", 14)))) {
-      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--native-preamble|--gcm|--licm|--gcm-no-vn|--uniform-one=HALF|--binary-output=FILE]\n       %s FRONTEND.nirbin [--print-nir|--lower-texture-gen9]\n", argv[0], argv[0]);
+      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--native-preamble|--gcm|--licm|--gcm-no-vn|--no-reassoc|--uniform-one=HALF|--binary-output=FILE]\n       %s FRONTEND.nirbin [--print-nir|--lower-texture-gen9]\n", argv[0], argv[0]);
       return 2;
    }
    FILE *f = fopen(argv[1], "rb");
@@ -80,8 +81,23 @@ int main(int argc, char **argv)
     * pass rather than applying it twice. */
    if (argc == 3 && strncmp(argv[2], "--uniform-one=", 14) &&
        strncmp(argv[2], "--binary-output=", 16) &&
-       strcmp(argv[2], "--native-preamble"))
+       strcmp(argv[2], "--native-preamble") &&
+       strcmp(argv[2], "--no-reassoc"))
       setenv("AGX_CODE_MOTION", "none", 1);
+   if (argc == 3 && !strcmp(argv[2], "--no-reassoc")) {
+      nir_foreach_function_impl(impl, nir) {
+         nir_foreach_block(block, impl) {
+            nir_foreach_instr(instr, block) {
+               if (instr->type == nir_instr_type_alu) {
+                  nir_alu_instr *alu = nir_instr_as_alu(instr);
+                  alu->fp_math_ctrl |= nir_op_valid_fp_math_ctrl(
+                     alu->op, nir_fp_no_reassoc | nir_fp_no_transform);
+               }
+            }
+         }
+      }
+      fprintf(stderr, "Diagnostic: preserve floating-point association\n");
+   }
    if (argc == 3 && (!strcmp(argv[2], "--gcm") || !strcmp(argv[2], "--gcm-no-vn"))) {
       bool progress = nir_opt_gcm(nir, !strcmp(argv[2], "--gcm"));
       fprintf(stderr, "Global code motion: %s\n", progress ? "changed" : "unchanged");
