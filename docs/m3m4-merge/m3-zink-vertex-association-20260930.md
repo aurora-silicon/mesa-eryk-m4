@@ -189,3 +189,20 @@ The final `28e498ebc274` CTS rerun also completed healthy with 965 Pass,
 six passing game comparisons, all paired timing samples and final CTS summary.
 This qualifies the retained M3 replay selection, not full Vulkan conformance,
 M4 execution, a live Minecraft FPS claim or a desktop deployment.
+
+### Partial prefetch with deferred replacement
+
+The follow-up marker carries both the original read and its qualified
+replacement. The latter is a uniform in the direct variant, or the original
+eligibility-controlled uniform/residency phi in the general variant. Only
+the original read determines divergence during arithmetic optimization;
+afterwards the compiler substitutes the replacement and removes dead reads.
+This retains per-descriptor partial prefetch without changing the arithmetic
+association of the general program. No alias or bounds predicate is removed.
+
+Candidate `74f101b7406a` passes the same six image checks: both Minecraft
+renderers, Satisfactory and 0 A.D. are exact; Factorio and SuperTuxKart remain
+within one level. Full compiler tests check that direct replacement removes
+the old memory read, whereas conditional replacement retains a runtime
+memory fallback. Paired timings and targeted CTS are pending. This follow-up
+is experimental; the shared branch remains at its validated checkpoint.

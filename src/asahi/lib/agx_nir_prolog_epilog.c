@@ -175,8 +175,7 @@ reserve_native_uniform_prefix(nir_shader *nir, unsigned prefix)
             if (instr->type != nir_instr_type_intrinsic)
                continue;
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            if (intr->intrinsic == nir_intrinsic_load_preamble ||
-                intr->intrinsic == nir_intrinsic_load_prefetched_agx)
+            if (intr->intrinsic == nir_intrinsic_load_preamble)
                nir_intrinsic_set_base(intr, nir_intrinsic_base(intr) + prefix);
             else if (intr->intrinsic == nir_intrinsic_bindless_image_agx ||
                      intr->intrinsic == nir_intrinsic_bindless_sampler_agx) {

@@ -555,18 +555,14 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
       }
       util_dynarray_foreach(&candidates, struct candidate, c) {
          changed = true;
-         /* Keep the original read in the general executable. Its descriptor
-          * may require alias/residency resolution. The separately qualified
-          * direct executable alone substitutes these newly admitted words. */
-         if (c->expanded && !direct)
-            continue;
          /* Keep vertex position arithmetic's original convergence until
-          * reassociation is finished. Qualified fragment inputs can enter
-          * the ordinary uniform optimizations immediately. */
-         if (c->expanded && nir->info.stage == MESA_SHADER_VERTEX) {
+          * reassociation is finished. The general executable retains its
+          * original read dependency too, while its replacement preserves
+          * the runtime eligibility decision and full residency fallback. */
+         if (c->expanded && (!direct || nir->info.stage == MESA_SHADER_VERTEX)) {
             nir_builder late = nir_builder_at(nir_after_instr(&c->intr->instr));
             nir_def *value = nir_load_prefetched_agx(&late, &c->intr->def,
-               .base = loads[c->entry].uniform_half);
+                                                    replacement[c->entry]);
             nir_def_rewrite_uses_after(&c->intr->def, value);
          } else {
             nir_def_replace(&c->intr->def, replacement[c->entry]);

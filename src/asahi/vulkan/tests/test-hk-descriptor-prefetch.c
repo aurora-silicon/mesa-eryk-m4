@@ -183,14 +183,12 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
    assert(!nir_alu_instr_no_contract(contractible));
    assert(nir_alu_instr_no_contract(noncontractible));
    assert(!nir_alu_instr_no_reassoc(independent));
-   if (eligible && direct && bound_shape && stage == MESA_SHADER_VERTEX) {
+   if (eligible && bound_shape && (!direct || stage == MESA_SHADER_VERTEX)) {
       nir_intrinsic_instr *deferred = nir_def_as_intrinsic(contractible->src[0].src.ssa);
       assert(deferred->intrinsic == nir_intrinsic_load_prefetched_agx);
-      assert(nir_intrinsic_base(deferred) == loads[0].uniform_half);
       assert(deferred->src[0].ssa == value);
+      assert(nir_def_instr(deferred->src[1].ssa)->type == nir_instr_type_phi);
    }
-   if (eligible && !direct && bound_shape)
-      assert(contractible->src[0].src.ssa == value);
    for (unsigned i = 0; i < count; ++i) {
       assert(loads[i].set == (root ? HK_UBO_PREFETCH_ROOT_SET : 0));
       assert(loads[i].descriptor_offset_B == 128);
