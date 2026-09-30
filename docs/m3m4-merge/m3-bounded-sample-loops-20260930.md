@@ -39,3 +39,53 @@ pass. The broad `agx3_graphics_compile` fixture has pre-existing binary/rejectio
 expectation failures: rebuilding unchanged HEAD produced byte-identical error
 output. This is not a claim that every host test passes. Logs are retained under
 `build/minecraft-vertex-cse`.
+
+## Final package and paired results
+
+Committed package `01d77ea1a25`, installed at `/opt/asahi-m3m4-01d77ea1a25`,
+has Vulkan SHA256
+`ad776c1048240037dd5cde21ebdff52c38b66dcd5cff7eb37fae26616eaf63c8`.
+The complete ARM64 package builds and all seven deployed library hashes match.
+Six alternating warmed measurements per build in
+`gpu-replay-bench/diagnostics/m3-bounded-loops-final-paired` give:
+
+| Build | Median replay FPS |
+|---|---:|
+| Previous `3966e1fcc80` | 96.8542 |
+| New `01d77ea1a25` | 104.7968 |
+
+This is an 8.20% matched gain with the original 3024x1837 capture, 30 completed
+frames, identical kernel/replayer and exact first/middle/last images. The older
+M1 diagnostic is 93.5593 FPS: the new M3 result is 12.01% ahead, not 20%.
+M1 was not rerun; its retained thermal-qualification limitation still applies.
+The separate OpenGL/Zink capture measures 26.2459 median FPS across three warm
+samples and matches exactly; there is no matched GL control for this change.
+
+Six image regressions (Minecraft Vulkan and OpenGL, Satisfactory Vulkan,
+Factorio Wayland, 0 A.D. Vulkan and SuperTuxKart Zink) match the previous M3
+references exactly. The initial automatic Satisfactory comparison selected M4
+and showed the existing one-level cross-device differences; its failed receipt
+is retained. Final comparison uses the previously pinned M3 reference, without
+changing tolerance. Targeted CTS used the precommit, M3-equivalent candidate;
+final package timings and Minecraft image checks use the committed package.
+This is not a fresh full-suite qualification or an M4 qualification.
+
+## Deployment and recovery
+
+Persistent and runtime graphics environments select the new prefix. The guarded
+Plasma handover completed and KWin loaded the new Vulkan library. An optional
+subsequent desktop-contention diagnostic aborted because it checked for KWin
+exit immediately after asynchronous `loginctl terminate-user`. Its guard
+retained the watchdog; logs were saved and a reboot was explicitly requested.
+There were no firmware fault snapshots in that failed experiment. No result
+from these contention probes is scored or establishes a desktop bottleneck.
+Evidence is under `build/minecraft-vertex-cse/deployment`, including
+`contention-failed` and `contention-failed-guard`.
+
+Recovery boot `f1458389-c5d1-4679-ac31-1881506b69a5` has active plasmalogin,
+KWin and plasmashell as eryk, and KWin maps the new package. GPU progress is
+healthy and advancing; no replay workload remains. Boot logs do contain AOP
+firmware/probe errors, two UAT firmware-exclusion timeouts and CMA allocation
+warnings before successful desktop startup; this is not a claim of an error-free
+boot. M4 was not touched. The public-facing local results page selects the new
+Minecraft Vulkan and GL sessions; benchmark changes remain local-only.
