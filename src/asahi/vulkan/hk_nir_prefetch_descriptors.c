@@ -7,6 +7,8 @@
 #include "asahi/lib/agx_abi.h"
 #include "util/format/u_format.h"
 #include "util/u_dynarray.h"
+#include "util/set.h"
+#include "util/u_debug.h"
 
 static bool
 descriptor_load(nir_intrinsic_instr *intr, unsigned set_base,
@@ -411,6 +413,40 @@ ubo_load(nir_intrinsic_instr *intr, unsigned set_base, unsigned set_count,
    return true;
 }
 
+/* Promotion changes convergence and hence reassociation ranks. Preserve the
+ * arithmetic fed by newly promoted values, without constraining independent
+ * calculations (notably the already-lowered texture filtering arithmetic).
+ * Follow ALU/phi dataflow, including vector moves and loop-carried values, but
+ * do not propagate through memory or texture operations. */
+static void
+preserve_promoted_math(nir_def *value, struct set *visited)
+{
+   struct util_dynarray pending = UTIL_DYNARRAY_INIT;
+   util_dynarray_append(&pending, value);
+   while (util_dynarray_num_elements(&pending, nir_def *)) {
+      nir_def *def = util_dynarray_pop(&pending, nir_def *);
+      if (_mesa_set_search(visited, def))
+         continue;
+      _mesa_set_add(visited, def);
+      nir_foreach_use(src, def) {
+         nir_instr *instr = nir_src_parent_instr(src);
+         nir_def *next;
+         if (instr->type == nir_instr_type_alu) {
+            nir_alu_instr *alu = nir_instr_as_alu(instr);
+            alu->fp_math_ctrl |= nir_op_valid_fp_math_ctrl(
+               alu->op, nir_fp_no_reassoc | nir_fp_no_transform);
+            next = &alu->def;
+         } else if (instr->type == nir_instr_type_phi) {
+            next = &nir_instr_as_phi(instr)->def;
+         } else {
+            continue;
+         }
+         util_dynarray_append(&pending, next);
+      }
+   }
+   util_dynarray_fini(&pending);
+}
+
 bool
 hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                     unsigned *uniform_end, unsigned uniform_limit,
@@ -419,10 +455,10 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                     void *data)
 {
    bool progress = false;
-   /* Saturating vertex-input promotion changes retained foliage-edge pixels.
-    * Keep its existing matcher until that output difference is resolved;
-    * fragment promotion is independently qualified against the saved images. */
-   const bool saturated = nir->info.stage == MESA_SHADER_FRAGMENT;
+   const bool saturated = nir->info.stage == MESA_SHADER_FRAGMENT ||
+                          nir->info.stage == MESA_SHADER_VERTEX;
+   const bool bisect = nir->info.stage == MESA_SHADER_FRAGMENT &&
+      debug_get_bool_option("HK_SATURATING_UBO_BISECT", false);
    /* Ordinary UBO loads can remain vectors when robustness is disabled.
     * Scalarize only eligible, constant-offset UBO reads so each word retains
     * an independent range check in the loader and sparse fallback. */
@@ -455,6 +491,7 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
    }
    nir_foreach_function_impl(impl, nir) {
       bool changed = false;
+      struct set *preserved = _mesa_pointer_set_create(NULL);
       struct candidate { nir_intrinsic_instr *intr; unsigned entry; };
       struct util_dynarray candidates;
       util_dynarray_init(&candidates, NULL);
@@ -466,6 +503,11 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
             struct hk_ubo_prefetch load;
             if (!ubo_load(intr, set_base, set_count, &load, saturated) ||
                 !allowed(data, load.set, load.descriptor_offset_B))
+               continue;
+            struct hk_ubo_prefetch existing;
+            const bool expanded =
+               !ubo_load(intr, set_base, set_count, &existing, false);
+            if (expanded && bisect && !nir_shader_bisect_select(nir))
                continue;
             unsigned entry = 0;
             for (; entry < *load_count; ++entry) {
@@ -495,6 +537,8 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                *uniform_end = start + (load.direct_half == start + 2 ? 4 : 2);
                ++*load_count;
             }
+            if (expanded && nir->info.stage == MESA_SHADER_VERTEX)
+               preserve_promoted_math(&intr->def, preserved);
             util_dynarray_append(&candidates,
                                  ((struct candidate){intr, entry}));
          }
@@ -552,6 +596,7 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
          changed = true;
       }
       util_dynarray_fini(&candidates);
+      _mesa_set_destroy(preserved, NULL);
       nir_progress(changed, impl, nir_metadata_none);
       progress |= changed;
    }

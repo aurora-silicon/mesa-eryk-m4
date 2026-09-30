@@ -161,14 +161,29 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
                                        .align_mul = 4, .access = access);
    }
    nir_store_global(&b, value, nir_imm_int64(&b, 0x1000), .align_mul = 4);
+   nir_def *math = nir_fadd(&b, value, nir_imm_float(&b, 0.5));
+   nir_alu_instr *contractible = nir_def_as_alu(math);
+   b.fp_math_ctrl = nir_fp_no_contract | nir_fp_no_transform;
+   nir_def *strict = nir_fmul(&b, math, nir_imm_float(&b, 2.0));
+   nir_alu_instr *noncontractible = nir_def_as_alu(strict);
+   b.fp_math_ctrl = 0;
+   nir_store_global(&b, strict, nir_imm_int64(&b, 0x2000), .align_mul = 4);
+   nir_def *unrelated = nir_fadd(&b, nir_load_preamble(&b, 1, 32, .base = 8),
+                                 nir_imm_float(&b, 0.25));
+   nir_alu_instr *independent = nir_def_as_alu(unrelated);
+   nir_store_global(&b, unrelated, nir_imm_int64(&b, 0x3000), .align_mul = 4);
    struct hk_ubo_prefetch loads[HK_UBO_PREFETCH_MAX] = {0};
    unsigned end = 28, count = 0;
    struct dynamic_ubo_test test = {root, allow};
-   bool eligible = allow && !indexed && !volatile_load && bound_shape < 4 &&
-      (!bound_shape || stage == MESA_SHADER_FRAGMENT);
+   bool eligible = allow && !indexed && !volatile_load && bound_shape < 4;
    assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
                               allow_dynamic_ubo, &test) == eligible);
    assert(count == (eligible ? bounded ? 1 : 4 : 0));
+   assert(nir_alu_instr_no_reassoc(contractible) ==
+          (eligible && bound_shape != 0 && stage == MESA_SHADER_VERTEX));
+   assert(!nir_alu_instr_no_contract(contractible));
+   assert(nir_alu_instr_no_contract(noncontractible));
+   assert(!nir_alu_instr_no_reassoc(independent));
    for (unsigned i = 0; i < count; ++i) {
       assert(loads[i].set == (root ? HK_UBO_PREFETCH_ROOT_SET : 0));
       assert(loads[i].descriptor_offset_B == 128);
