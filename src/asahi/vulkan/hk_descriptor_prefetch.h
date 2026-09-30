@@ -26,6 +26,13 @@ hk_plain_samplers_enabled(enum agx_chip chip)
    return debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", chip == AGX_CHIP_G15S);
 }
 
+static inline bool
+hk_vertex_ubo_prefetch_enabled(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S &&
+          debug_get_bool_option("HK_M3_VERTEX_PREFETCH_UBOS", false);
+}
+
 /* One contiguous, immutable-at-execution descriptor span per Vulkan set.
  * A zero size means ordinary shader loads remain in use. */
 struct hk_descriptor_prefetch {
@@ -68,6 +75,7 @@ struct hk_ubo_prefetch {
 };
 typedef bool (*hk_ubo_prefetch_allowed)(void *data, unsigned set, unsigned offset);
 bool hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
-                         unsigned *uniform_end, struct hk_ubo_prefetch *loads,
+                         unsigned *uniform_end, unsigned uniform_limit,
+                         struct hk_ubo_prefetch *loads,
                          unsigned *load_count, hk_ubo_prefetch_allowed allowed,
                          void *data);

@@ -280,6 +280,7 @@ struct hk_graphics_state {
    uint64_t draw_id_ptr;
 
    bool fs_ubo_direct;
+   bool vs_ubo_direct;
    uint32_t shaders_dirty;
    struct hk_api_shader *shaders[MESA_SHADER_MESH + 1];
 
@@ -728,7 +729,9 @@ hk_bound_hw_vs(struct hk_graphics_state *gfx)
    else if (tes)
       return &tes->variants[HK_VS_VARIANT_HW];
    else
-      return &vs->variants[HK_VS_VARIANT_HW];
+      return &vs->variants[gfx->vs_ubo_direct &&
+                          vs->variants[HK_VS_VARIANTS].info.ubo_prefetch_direct
+                             ? HK_VS_VARIANTS : HK_VS_VARIANT_HW];
 }
 
 static inline struct hk_shader *
@@ -737,7 +740,8 @@ hk_bound_sw_vs(struct hk_graphics_state *gfx)
    struct hk_api_shader *vs = gfx->shaders[MESA_SHADER_VERTEX];
    struct hk_shader *hw_vs = hk_bound_hw_vs(gfx);
 
-   if (hw_vs == &vs->variants[HK_VS_VARIANT_HW])
+   if (hw_vs == &vs->variants[HK_VS_VARIANT_HW] ||
+       hw_vs == &vs->variants[HK_VS_VARIANTS])
       return hw_vs;
    else
       return &vs->variants[HK_VS_VARIANT_SW];
