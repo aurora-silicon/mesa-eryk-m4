@@ -29,3 +29,15 @@ reads return zero. Restricting fusion to literal in-bounds extracts fixes the
 CPU-checked sampler/UBO readback (16 draws, ordinary and custom-border samplers).
 The original imported compiler failed that same probe; constant colour passed.
 No cache-hint or scoreboard diagnostic changes are needed for this correction.
+
+Hardware replay result (2026-09-30): all three retained Minecraft gameplay
+images are pixel-identical to the original backend. Same-binary alternating
+30-frame timings at 3024x1837: original 22.3887/22.5901/23.7507 FPS, Neo fragment
+23.1442/22.1272/22.1677 FPS. Medians 22.5901 versus 22.1677 (-1.87%); sample ranges
+overlap, so this demonstrates no performance win. Both arms disable Zink sampler
+min/max. This is an isolated fragment-backend experiment, not full Neo Mesa,
+application startup testing or broad compiler conformance.
+
+A focused GL wrapped-shift shader (explicit count mask to keep GLSL defined)
+also fails with the imported optimizer and passes with the correction. Evidence
+and retained tooling are in gpu-replay-bench/diagnostics/neo-hybrid-m3-20260930.
