@@ -405,7 +405,6 @@ hk_populate_fs_key(struct hk_fs_key *key,
       key->force_sample_shading = true;
 }
 
-bool hk_compile_neo_fragment(nir_shader *, const struct agx_shader_key *, struct agx_shader_part *);
 
 enum hk_feature_key {
    HK_FEAT_NEO_COMPILER = BITFIELD_BIT(6),

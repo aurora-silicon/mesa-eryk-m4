@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-#include "agx_compile.h"
+#include "hk_shader.h"
 #include "../compiler_neo/neo_bridge.h"
 #include <string.h>
 bool hk_compile_neo_fragment(nir_shader *nir, const struct agx_shader_key *key,

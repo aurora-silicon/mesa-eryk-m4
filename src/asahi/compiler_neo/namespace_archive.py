@@ -19,4 +19,9 @@ assert 'agx_compile_shader_nir' in symbols
 with tempfile.TemporaryDirectory() as temp:
     mapping = Path(temp)/'symbols.txt'
     mapping.write_text(''.join(f'{s} neo_{s}\n' for s in sorted(symbols)))
-    subprocess.run(['llvm-objcopy', '--redefine-syms='+str(mapping), source, output], check=True)
+    # Meson uses thin archives whose member paths are relative to the archive.
+    # Materialize a regular archive before objcopy rewrites every member.
+    regular = Path(temp)/'regular.a'
+    subprocess.run(['llvm-ar', '-M'], input=f'CREATE {regular}\nADDLIB {Path(source).resolve()}\nSAVE\nEND\n',
+                   text=True, check=True)
+    subprocess.run(['llvm-objcopy', '--redefine-syms='+str(mapping), str(regular), output], check=True)

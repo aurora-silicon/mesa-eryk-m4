@@ -1284,6 +1284,9 @@ enum gl_access_qualifier
     * one-time accesses or if the data is larger than what the memory can store.
     */
    ACCESS_ESTREAM_PAN = (1 << 22),
+
+   /* Neo compiler: imageBuffer lowered to 2D while retaining its descriptor ABI. */
+   ACCESS_BUFFER_AGX = (1 << 23),
 };
 
 enum gl_tess_spacing

@@ -81,11 +81,34 @@ static const struct drm_asahi_params_global params_g16g = {
    .gpu_hal_generation = DRM_ASAHI_GPU_HAL_200,
 };
 
+/* Offline M3 Pro compiler exercise only: no GPU work is executed. */
+static const struct drm_asahi_params_global params_g15s = {
+   .gpu_generation = 15,
+   .gpu_variant = 'S',
+   .gpu_revision = 0x11, /* B1, UABI enum (not firmware enum). */
+   .chip_id = 0x6030,
+   .num_dies = 1,
+   .num_clusters_total = 2,
+   .num_cores_per_cluster = 9,
+   .core_masks = {0x1ff, 0x1ff},
+   .vm_start = 0x4000,
+   .vm_end = (1ull << 42) - 0x8000ull,
+   .vm_kernel_min_size = 0x20000000,
+   .max_commands_per_submission = 64,
+   .max_attachments = 16,
+   .max_frequency_khz = 1470000,
+   .command_timestamp_frequency_hz = 1000000000,
+   .usc_generation = 3,
+   .gpu_hal_generation = 0,
+};
+
 static const struct drm_asahi_params_global *
 shim_params(void)
 {
    const char *chip = getenv("ASAHI_SHIM_CHIP");
 
+   if (chip && !strcmp(chip, "g15s"))
+      return &params_g15s;
    if (chip && !strcmp(chip, "g17p"))
       return &params_g17p;
    if (chip && !strcmp(chip, "g16g"))
@@ -296,10 +319,15 @@ drm_shim_driver_init(void)
    shim_device.driver_ioctl_count = ARRAY_SIZE(driver_ioctls);
 
    const char *chip = getenv("ASAHI_SHIM_CHIP");
+   const bool g15s = chip && !strcmp(chip, "g15s");
    const bool g17p = chip && !strcmp(chip, "g17p");
    const bool g16g = chip && !strcmp(chip, "g16g");
 
-   drm_shim_override_file(g16g ? "DRIVER=asahi\n"
+   drm_shim_override_file(g15s ? "DRIVER=asahi\n"
+                                 "OF_FULLNAME=/soc/agx\n"
+                                 "OF_COMPATIBLE_0=apple,gpu-g15s\n"
+                                 "OF_COMPATIBLE_N=1\n"
+                          : g16g ? "DRIVER=asahi\n"
                                  "OF_FULLNAME=/soc/agx\n"
                                  "OF_COMPATIBLE_0=apple,gpu-g16g\n"
                                  "OF_COMPATIBLE_N=1\n"

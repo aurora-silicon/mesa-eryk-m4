@@ -472,3 +472,6 @@ bool hk_nir_lower_sparse_access(nir_shader *nir);
 bool hk_nir_lower_memory_aliases(nir_shader *nir);
 bool hk_nir_specialize_memory_window(nir_shader *nir, uint64_t base, uint64_t size);
 bool hk_nir_lower_atomic64(nir_shader *nir);
+
+bool hk_compile_neo_fragment(nir_shader *, const struct agx_shader_key *,
+                             struct agx_shader_part *);

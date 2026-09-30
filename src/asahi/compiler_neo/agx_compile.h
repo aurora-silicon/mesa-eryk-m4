@@ -15,6 +15,9 @@
 #include "util/u_tristate.h"
 #include "shader_enums.h"
 
+/* Imported compiler key capacity; does not advertise an M3 tile limit. */
+#define AGX_G17P_MAX_BYTES_PER_SAMPLE (128)
+
 struct agx_cf_binding {
    /* Base coefficient register */
    uint8_t cf_base;
