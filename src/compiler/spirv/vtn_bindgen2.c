@@ -349,6 +349,29 @@ main(int argc, char **argv)
       fprintf(fp, "#include \"compiler/nir/nir_builder.h\"\n\n");
       fprintf(fp, "#include \"util/u_printf.h\"\n\n");
 
+      /* Cross builds may use a separately built host generator. Its blobs
+       * contain numeric NIR opcodes, so reject stale numbering at build time
+       * instead of interpreting another intrinsic's operand layout at run
+       * time. This checks numbering, not every part of the serialization ABI.
+       */
+      if (fp == fp_c) {
+         fprintf(fp, "static_assert(nir_num_intrinsics == %u, "
+                     "\"Rebuild vtn_bindgen2: NIR intrinsic table changed\");\n",
+                 nir_num_intrinsics);
+         fprintf(fp, "static_assert(nir_num_opcodes == %u, "
+                     "\"Rebuild vtn_bindgen2: NIR opcode table changed\");\n",
+                 nir_num_opcodes);
+         for (unsigned op = 0; op < nir_num_intrinsics; ++op)
+            fprintf(fp, "static_assert(nir_intrinsic_%s == %u, "
+                        "\"Rebuild vtn_bindgen2: NIR intrinsic numbering changed\");\n",
+                    nir_intrinsic_infos[op].name, op);
+         for (unsigned op = 0; op < nir_num_opcodes; ++op)
+            fprintf(fp, "static_assert(nir_op_%s == %u, "
+                        "\"Rebuild vtn_bindgen2: NIR opcode numbering changed\");\n",
+                    nir_op_infos[op].name, op);
+         fprintf(fp, "\n");
+      }
+
       fprintf(fp, "#ifdef __cplusplus\n");
       fprintf(fp, "extern \"C\" {\n");
       fprintf(fp, "#endif\n");

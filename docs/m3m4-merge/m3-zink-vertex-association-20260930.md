@@ -147,3 +147,12 @@ The first Satisfactory frame now matches the original reference exactly
 (`20260930T140535920125Z-m3-satisfactory-vulkan-gameplay-check`). A unit check
 requires the general variant to retain the original arithmetic source. Full
 retained frames, other games, targeted CTS and paired timings are pending.
+
+The generator now emits compile-time checks for intrinsic/opcode counts and
+numbering in each generated C++ helper library. Future mismatched numbering
+fails compilation with a request to rebuild `vtn_bindgen2`, rather than
+reaching the NIR reader. This is deliberately a numbering check, not a claim
+that every possible NIR serialization change is detected. The matching
+helper builds; negative probes with a stale count and with changed numbering
+at unchanged count both fail at the generated assertion. Probe receipts:
+`build/m3-zink-bottleneck/vertex-rounding/opcode-guard-test/`.
