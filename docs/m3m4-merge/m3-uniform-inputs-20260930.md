@@ -42,3 +42,26 @@ does not select them for the desktop or run GPU work. Example from workspace
 root: `python3 tools/m3-stage-vulkan-candidate.py --label test --output build/test-stage`.
 The copy alongside this document is for provenance; the workspace-root tool
 is the reusable development entry point.
+
+## Production package and desktop
+
+Clean revision `04e9c374579` was rebuilt and staged in full at
+`/opt/asahi-m3m4-04e9c374579` (Vulkan SHA256
+`350e092ed7a24aa1c1fe849b14961090daa781924088cad62c7d4613933fa916`).
+The full package passes exact first/middle/last image checks for both saved
+Minecraft captures. Three completed warmed timings give 79.3046 FPS native
+Vulkan and 25.4046 FPS OpenGL/Zink. These are different captures; the paired
+same-capture measurement above establishes the optimization's improvement.
+M1's prior diagnostic median remains ahead at 93.5593 FPS.
+
+The persistent and runtime graphics environments now select this prefix.
+The first deployment check rejected a stale compositor: restarting
+`plasmalogin` did not stop user-managed KWin. The script restored the previous
+configuration and retained failure evidence; watchdog recovery rebooted the
+machine. There was no recorded firmware GPU fault. The second deployment
+stopped the manager, terminated the old user session and started autologin.
+It passed the 45-second guarded check in 4.5 seconds, with KWin and Plasma
+running and KWin mapping the new Vulkan library. Backup, journal, library maps
+and guarded telemetry are in
+`build/minecraft-auto-prefetch/deployment/m3-uniform-production-deployment-v2*`.
+No experimental vertex changes are selected for the desktop.
