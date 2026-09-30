@@ -107,3 +107,27 @@ benchmark run `20260930T134701421451Z-m3-satisfactory-vulkan-gameplay-check`.
 The guard retained the watchdog and recovered the machine. This checkpoint
 is diagnostic work, not a qualified driver; the desktop remains on its
 previous installation. No benchmark score/reference was replaced.
+
+### Crash diagnosis: stale cross-build generator
+
+A guarded GDB replay (`20260930-late-ubo-gdb-noshell`) stops in
+`nir_serialize.c:read_intrinsic`, reached through `poly_pre_gs` and
+`poly_nir_lower_gs`. The separate host `vtn_bindgen2` executable had not
+been rebuilt after adding a NIR intrinsic, so the ARM build embedded helpers
+serialized with the old intrinsic table. This is a build mismatch, before
+executing the affected shader. Rebuild `mesa_clc`, `vtn_bindgen2`, and
+`asahi_clc` in the matching host tree, then rebuild the ARM library.
+
+`tools/m3-stage-vulkan-candidate.py` now performs that ordered incremental
+build for its default tree before hashing/staging the library. A source copy
+is retained in this document's `tools/` directory. Explicit custom libraries
+remain the caller's responsibility.
+
+GDB must use `set startup-with-shell off` here: the SSH shell startup files
+otherwise overwrite the requested Vulkan environment with the desktop's
+previous driver. The initial GDB probes therefore exercised that previous
+build; their captured ABI exposed this mistake. Normal guarded replays use
+direct `exec` through Python and were not affected. One such diagnostic hit
+its time bound and recovered through the watchdog; neither is a candidate
+performance or correctness result. The corrected stack capture completed
+within the guard, retaining its userspace fault as diagnosis only.

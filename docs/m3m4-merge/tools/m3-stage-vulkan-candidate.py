@@ -20,6 +20,16 @@ p.add_argument('--library', type=Path, default=Path('build/mesa-m3m4-arm64/src/a
 p.add_argument('--source', type=Path, default=Path('mesa/m3m4-merged'))
 a = p.parse_args()
 assert a.label and all(c.islower() or c.isdigit() or c == '-' for c in a.label)
+# The cross Ninja graph cannot rebuild executables in its separate host graph.
+# A stale vtn_bindgen2 serializes old intrinsic numbers into libpoly/libagx,
+# which can crash NIR deserialization after an intrinsic-table change.
+if a.library == Path('build/mesa-m3m4-arm64/src/asahi/vulkan/libvulkan_asahi.so'):
+    for build, targets in (
+        ('build/mesa-m3m4-host', ['src/compiler/clc/mesa_clc',
+          'src/compiler/spirv/vtn_bindgen2', 'src/asahi/clc/asahi_clc']),
+        ('build/mesa-m3m4-arm64', ['src/asahi/vulkan/libvulkan_asahi.so']),
+    ):
+        subprocess.run(['ninja', '-j12', '-C', build, *targets], check=True)
 a.output.mkdir(parents=True, exist_ok=False)
 digest = hashlib.file_digest(a.library.open('rb'), 'sha256').hexdigest()
 prefix = '/opt/asahi-m3-' + a.label + '-' + digest[:12]
