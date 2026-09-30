@@ -1,0 +1,180 @@
+{
+  "schema": 1,
+  "scope": "Rejected CPU metadata-only vertex uniform-layout caches; no default implementation",
+  "local_checkpoint": "experiment/m3-multidraw-vertex-ranges-20260930 e91ed594ee0",
+  "experiments": [
+    {
+      "path": "/home/council/dev/gpu-replay-bench/diagnostics/m3-multidraw-vertex-ranges-toggle-20260930",
+      "summary": {
+        "false": {
+          "samples_fps": [
+            75.94485481063911,
+            81.03641008854575,
+            79.85623365133274,
+            75.32150059842054,
+            80.71912322479376,
+            74.1242307381157,
+            73.78952653744764,
+            80.76495721577348,
+            80.67431269297447
+          ],
+          "median_fps": 79.85623365133274
+        },
+        "true": {
+          "samples_fps": [
+            71.82640712366836,
+            77.06032749164763,
+            81.21950523995896,
+            76.93670892425662,
+            77.3816774503408,
+            81.76944611326041,
+            82.2460458616508,
+            81.16772806953979,
+            71.37251256831286
+          ],
+          "median_fps": 77.3816774503408
+        },
+        "fps_improvement_percent": -3.0987639760175933,
+        "comparison": "mesa-build",
+        "pairs": 9,
+        "variant_options": {
+          "baseline": {
+            "HK_M3_MULTIDRAW_VERTEX_RANGES": "false"
+          },
+          "candidate": {
+            "HK_M3_MULTIDRAW_VERTEX_RANGES": "true"
+          }
+        },
+        "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+      },
+      "images": [
+        {
+          "image": "frame-0001392082.png",
+          "width": 3024,
+          "height": 1837,
+          "maximum_channel_error": 0,
+          "mean_channel_error": 0.0,
+          "pixels_over_one_level": 0
+        },
+        {
+          "image": "frame-0001429009.png",
+          "width": 3024,
+          "height": 1837,
+          "maximum_channel_error": 0,
+          "mean_channel_error": 0.0,
+          "pixels_over_one_level": 0
+        },
+        {
+          "image": "frame-0001468244.png",
+          "width": 3024,
+          "height": 1837,
+          "maximum_channel_error": 0,
+          "mean_channel_error": 0.0,
+          "pixels_over_one_level": 0
+        }
+      ],
+      "build": {
+        "prefix": "/opt/asahi-m3-multidraw-vertex-ranges-complete-eb2f3983f849",
+        "sha256": "eb2f3983f849eee5e8d3a22b2db6141cd32e833a7feb078311312f2d29779fc2",
+        "revision": "b178f1395df444c67a69c7d645a86a62611cf884",
+        "base": "/opt/asahi-m3-multidraw-drawid-bae133dad83f",
+        "patch_sha256": "c3b68073825f56a23e44cd37fdeb0d147eebe086729ff0e67400123ad2fbedf9",
+        "libraries": {
+          "lib/libEGL_mesa.so.0.0.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+          "lib/libGLX_mesa.so.0.0.0": "e11d8506382a3d6de989a74d6c49982eeadc613d72a5bbd97774fdb7ea37e32a",
+          "lib/libgallium-26.1.4.so": "4f58b871e773618f0b50e95f22ab60aa0ba998505e48a786d1bffb6c6290d3a4",
+          "lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+          "lib/libvulkan_asahi.so": "eb2f3983f849eee5e8d3a22b2db6141cd32e833a7feb078311312f2d29779fc2"
+        },
+        "scope": "Isolated Vulkan candidate, no desktop configuration change"
+      }
+    },
+    {
+      "path": "/home/council/dev/gpu-replay-bench/diagnostics/m3-multidraw-vertex-relocs-toggle-20260930",
+      "summary": {
+        "false": {
+          "samples_fps": [
+            69.61582539244564,
+            80.3292242917952,
+            81.40037250221397,
+            74.46007344011936,
+            76.15312296278498,
+            74.90074303334707,
+            75.90509328109746,
+            74.8886888229246,
+            80.62982623431209
+          ],
+          "median_fps": 75.90509328109746
+        },
+        "true": {
+          "samples_fps": [
+            76.93028351532807,
+            76.11577621602527,
+            75.89686106369187,
+            75.24792403832431,
+            71.17623726276027,
+            76.61095231348975,
+            77.19533080130418,
+            71.518560508743,
+            76.96586303573194
+          ],
+          "median_fps": 76.11577621602527
+        },
+        "fps_improvement_percent": 0.27756099863758266,
+        "comparison": "mesa-build",
+        "pairs": 9,
+        "variant_options": {
+          "baseline": {
+            "HK_M3_MULTIDRAW_VERTEX_RANGES": "false"
+          },
+          "candidate": {
+            "HK_M3_MULTIDRAW_VERTEX_RANGES": "true"
+          }
+        },
+        "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+      },
+      "images": [
+        {
+          "image": "frame-0001392082.png",
+          "width": 3024,
+          "height": 1837,
+          "maximum_channel_error": 0,
+          "mean_channel_error": 0.0,
+          "pixels_over_one_level": 0
+        },
+        {
+          "image": "frame-0001429009.png",
+          "width": 3024,
+          "height": 1837,
+          "maximum_channel_error": 0,
+          "mean_channel_error": 0.0,
+          "pixels_over_one_level": 0
+        },
+        {
+          "image": "frame-0001468244.png",
+          "width": 3024,
+          "height": 1837,
+          "maximum_channel_error": 0,
+          "mean_channel_error": 0.0,
+          "pixels_over_one_level": 0
+        }
+      ],
+      "build": {
+        "prefix": "/opt/asahi-m3-multidraw-vertex-relocs-869f4ba474c4",
+        "sha256": "869f4ba474c4b93c94256d76937290fb8e958598b9570d7fe410851613cf018d",
+        "revision": "b178f1395df444c67a69c7d645a86a62611cf884",
+        "base": "/opt/asahi-m3-multidraw-drawid-bae133dad83f",
+        "patch_sha256": "b633546f045698d06c0c51a5a8adc44bb32572fd2d26b83c00fcb917443c048c",
+        "libraries": {
+          "lib/libEGL_mesa.so.0.0.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+          "lib/libGLX_mesa.so.0.0.0": "e11d8506382a3d6de989a74d6c49982eeadc613d72a5bbd97774fdb7ea37e32a",
+          "lib/libgallium-26.1.4.so": "4f58b871e773618f0b50e95f22ab60aa0ba998505e48a786d1bffb6c6290d3a4",
+          "lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+          "lib/libvulkan_asahi.so": "869f4ba474c4b93c94256d76937290fb8e958598b9570d7fe410851613cf018d"
+        },
+        "scope": "Isolated Vulkan candidate, no desktop configuration change"
+      }
+    }
+  ],
+  "reason": "First layout cache regressed median replay FPS; tighter relocation cache tied within timing variation. Removed from shared branch. Synthetic resource oracles/images passed, but no broad CTS qualification or desktop deployment."
+}
