@@ -21,6 +21,16 @@ static const struct drm_asahi_params_global params_g13g = {
    .gpu_generation = 13,
    .gpu_variant = 'G',
    .gpu_revision = 0,
+   /* A complete synthetic M1 identity is required by agx_chip_from_params.
+    * This profile is for offline compilation, not hardware qualification. */
+   .chip_id = 0x8103,
+   .num_dies = 1,
+   .num_clusters_total = 1,
+   .num_cores_per_cluster = 8,
+   .core_masks = {0xff},
+   .max_commands_per_submission = 256,
+   .max_attachments = 16,
+   .max_frequency_khz = 1278000,
    .vm_start = 0x4000,
    .vm_end = 0x7fffff8000ull,
    .command_timestamp_frequency_hz = 1000000000,
