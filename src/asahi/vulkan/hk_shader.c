@@ -151,9 +151,9 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    static_assert(sizeof(pdev->dev.debug) == sizeof(uint32_t));
    uint64_t flags = pdev->dev.debug;
    if (agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip)) {
-      flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_UBOS", false) << 32;
-      flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_VARIANT", false) << 33;
-      flags |= (uint64_t)debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", false) << 34;
+      flags |= (uint64_t)hk_ubo_prefetch_enabled(pdev->dev.chip) << 32;
+      flags |= (uint64_t)hk_ubo_prefetch_variant_enabled(pdev->dev.chip) << 33;
+      flags |= (uint64_t)hk_plain_samplers_enabled(pdev->dev.chip) << 34;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) << 35;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
@@ -2267,7 +2267,7 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
 
    const bool defer_ubo_aliases = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
       nir->info.stage == MESA_SHADER_FRAGMENT &&
-      debug_get_bool_option("HK_M4_PREFETCH_UBOS", false);
+      hk_ubo_prefetch_enabled(dev->dev.chip);
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && !defer_ubo_aliases)
       NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
 
@@ -2967,7 +2967,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    unsigned reserved = root + (4 * (1 + set_count));
    shader->info.agx3_root_uniform = root;
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && sw_stage == MESA_SHADER_FRAGMENT &&
-       debug_get_bool_option("HK_M4_PREFETCH_UBOS", false)) {
+       hk_ubo_prefetch_enabled(dev->dev.chip)) {
       const struct hk_ubo_prefetch_layouts prefetch_layouts = {
          .sets = set_layouts, .count = set_count,
       };
@@ -2975,7 +2975,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
                hk_ubo_prefetch_binding_allowed, (void *)&prefetch_layouts);
       if (shader->info.ubo_prefetch_direct) {
-         if (debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", false)) {
+         if (hk_plain_samplers_enabled(dev->dev.chip)) {
             for (unsigned set = 0; set < set_count; ++set) {
                if (!set_layouts || !set_layouts[set])
                   continue;
@@ -3541,8 +3541,8 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       struct hk_shader *shader = hk_only_variant(obj);
       const bool direct_variant = sw_stage == MESA_SHADER_FRAGMENT &&
          agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
-         debug_get_bool_option("HK_M4_PREFETCH_UBOS", false) &&
-         debug_get_bool_option("HK_M4_PREFETCH_VARIANT", false);
+         hk_ubo_prefetch_enabled(dev->dev.chip) &&
+         hk_ubo_prefetch_variant_enabled(dev->dev.chip);
       nir_shader *direct_nir = direct_variant ? nir_shader_clone(NULL, nir) : NULL;
 
       /* hk_compile_nir takes ownership of nir */
@@ -3551,7 +3551,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                               true, NULL, info->set_layout_count, info->set_layouts);
       if (result == VK_SUCCESS && direct_nir &&
           (shader->info.ubo_prefetch_count ||
-           debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", false))) {
+           hk_plain_samplers_enabled(dev->dev.chip))) {
          struct hk_shader *direct = &obj->variants[1];
          direct->info.ubo_prefetch_direct = true;
          result = hk_compile_nir(dev, pAllocator, direct_nir, info->flags,

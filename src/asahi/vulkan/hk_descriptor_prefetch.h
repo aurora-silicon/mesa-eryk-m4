@@ -2,6 +2,29 @@
 #pragma once
 
 #include "nir.h"
+#include "asahi/lib/agx_chip.h"
+#include "util/u_debug.h"
+
+/* Enable the bounded input-loader path on G15S. Keep the existing
+ * diagnostic overrides and preserve other architectures' defaults. Compilation
+ * and pipeline UUIDs must use the same policy. */
+static inline bool
+hk_ubo_prefetch_enabled(enum agx_chip chip)
+{
+   return debug_get_bool_option("HK_M4_PREFETCH_UBOS", chip == AGX_CHIP_G15S);
+}
+
+static inline bool
+hk_ubo_prefetch_variant_enabled(enum agx_chip chip)
+{
+   return debug_get_bool_option("HK_M4_PREFETCH_VARIANT", chip == AGX_CHIP_G15S);
+}
+
+static inline bool
+hk_plain_samplers_enabled(enum agx_chip chip)
+{
+   return debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", chip == AGX_CHIP_G15S);
+}
 
 /* One contiguous, immutable-at-execution descriptor span per Vulkan set.
  * A zero size means ordinary shader loads remain in use. */
