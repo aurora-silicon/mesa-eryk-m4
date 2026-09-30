@@ -59,7 +59,9 @@ check_worker_affinity(const cpu_set_t *caller)
       return;
    cpu_set_t expected = *caller, current;
    const char *option = getenv("ZINK_PREFER_HIGH_CAPACITY_CPUS");
-   CHECK(option && (!strcmp(option, "true") || !strcmp(option, "false")));
+   /* This optional oracle is for Honeykrisp's default-on worker policy. */
+   if (!option) option = "true";
+   CHECK(!strcmp(option, "true") || !strcmp(option, "false"));
    if (!strcmp(option, "true")) {
       unsigned capacities[CPU_SETSIZE] = {0}, maximum = 0, minimum = ~0u;
       long count = sysconf(_SC_NPROCESSORS_CONF);

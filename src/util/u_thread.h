@@ -83,6 +83,12 @@ util_set_thread_affinity(thrd_t thread,
                          uint32_t *old_mask,
                          unsigned num_mask_bits);
 
+/* Prefer the highest-capacity CPUs within the thread's inherited affinity.
+ * Optional latency policy for driver-owned queues, never application threads.
+ * Missing topology, unsupported affinity or an empty intersection is a no-op. */
+bool
+util_thread_prefer_high_capacity(thrd_t thread);
+
 static inline bool
 util_set_current_thread_affinity(const uint32_t *mask,
                                  uint32_t *old_mask,

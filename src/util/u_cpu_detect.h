@@ -129,6 +129,10 @@ struct util_cpu_caps_t {
     * A value of zero indicates that CPUs are homogeneous.
     */
    int16_t nr_big_cpus;
+
+   /* Highest-capacity CPUs on a heterogeneous Linux system. Empty when
+    * capacity data is absent/invalid or all CPUs have the same capacity. */
+   util_affinity_mask high_capacity_mask;
 };
 
 struct _util_cpu_caps_state_t {

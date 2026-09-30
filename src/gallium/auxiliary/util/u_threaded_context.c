@@ -5553,7 +5553,9 @@ threaded_context_create(struct pipe_context *pipe,
     * from the queue before being executed, so keep one tc_batch slot for that
     * execution. Also, keep one unused slot for an unflushed batch.
     */
-   if (!util_queue_init(&tc->queue, "gdrv", TC_MAX_BATCHES - 2, 1, 0, NULL))
+   const unsigned queue_flags = tc->options.prefer_high_capacity_cpus ?
+      UTIL_QUEUE_INIT_PREFER_HIGH_CAPACITY_CPUS : 0;
+   if (!util_queue_init(&tc->queue, "gdrv", TC_MAX_BATCHES - 2, 1, queue_flags, NULL))
       goto fail;
 
    tc->last_completed = -1;

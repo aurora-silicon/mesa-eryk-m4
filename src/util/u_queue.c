@@ -251,6 +251,9 @@ util_queue_thread_func(void *input)
                                        util_get_cpu_caps()->num_cpu_mask_bits);
    }
 
+   if (queue->flags & UTIL_QUEUE_INIT_PREFER_HIGH_CAPACITY_CPUS)
+      util_thread_prefer_high_capacity(thrd_current());
+
 #if defined(__linux__)
    if (queue->flags & UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY) {
       /* The nice() function can only set a maximum of 19. */

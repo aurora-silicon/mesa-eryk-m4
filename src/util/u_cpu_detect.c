@@ -552,6 +552,17 @@ get_cpu_topology(bool zen)
             num_big_cpus++;
       }
    }
+   if (!fail && caps && big_cap) {
+      bool heterogeneous = false;
+      for (unsigned i = 0; i < util_cpu_caps.max_cpus; i++)
+         heterogeneous |= caps[i] != big_cap;
+      if (heterogeneous) {
+         for (unsigned i = 0; i < util_cpu_caps.max_cpus && i < UTIL_MAX_CPUS; i++) {
+            if (caps[i] == big_cap)
+               util_cpu_caps.high_capacity_mask[i / 32] |= 1u << (i % 32);
+         }
+      }
+   }
    free(caps);
    util_cpu_caps.nr_big_cpus = num_big_cpus;
 #endif

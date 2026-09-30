@@ -3635,7 +3635,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
    }
 
    setup_renderdoc(screen);
-   if (screen->threaded_submit && !util_queue_init(&screen->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen)) {
+   unsigned submit_queue_flags = UTIL_QUEUE_INIT_RESIZE_IF_FULL;
+   if (debug_get_bool_option("ZINK_PREFER_HIGH_CAPACITY_CPUS",
+                            zink_driverid(screen) == VK_DRIVER_ID_MESA_HONEYKRISP))
+      submit_queue_flags |= UTIL_QUEUE_INIT_PREFER_HIGH_CAPACITY_CPUS;
+   if (screen->threaded_submit && !util_queue_init(&screen->flush_queue, "zfq", 8, 1, submit_queue_flags, screen)) {
       if (!screen->driver_name_is_inferred)
          mesa_loge("zink: Failed to create flush queue.\n");
       goto fail;

@@ -6022,6 +6022,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                                                      zink_context_replace_buffer_storage,
                                                      &(struct threaded_context_options){
                                                         .create_fence = zink_create_tc_fence_for_tc,
+                                                        .prefer_high_capacity_cpus = debug_get_bool_option(
+                                                           "ZINK_PREFER_HIGH_CAPACITY_CPUS",
+                                                           zink_driverid(screen) == VK_DRIVER_ID_MESA_HONEYKRISP),
                                                         .is_resource_busy = zink_context_is_resource_busy,
                                                         .driver_calls_flush_notify = !screen->driver_workarounds.track_renderpasses,
                                                         .unsynchronized_get_device_reset_status = true,

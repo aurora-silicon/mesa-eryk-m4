@@ -20,6 +20,8 @@ p.add_argument('--prefix', required=True)
 p.add_argument('--sha256', required=True)
 p.add_argument('--gallium-sha256', help='Also verify an isolated Gallium candidate')
 p.add_argument('--cpu-affinity', help='Restrict only the workload to this taskset CPU list')
+p.add_argument('--default-only', action='store_true',
+               help='Exercise the driver default with the option absent')
 p.add_argument('--output', required=True, type=Path)
 p.add_argument('--option', default='HK_M3_MULTIDRAW_UBO_PROOF',
                help='Boolean diagnostic option compared false/true')
@@ -56,10 +58,12 @@ manifest.update(remote=remote, compile_command=command, option=a.option,
     source_sha256=hashlib.sha256(a.source.read_bytes()).hexdigest(),
     mesa_prefix=a.prefix, mesa_sha256=a.sha256,
     cpu_affinity=a.cpu_affinity,
+    default_only=a.default_only,
     scope='Synthetic multi-draw resource pixel oracles, not CTS or benchmark')
 (a.output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 results = []
-for label, option in [('baseline', 'false'), ('candidate', 'true')]:
+variants = [('default', None)] if a.default_only else [('baseline', 'false'), ('candidate', 'true')]
+for label, option in variants:
     env = dict(PATH='/usr/bin:/bin', LD_LIBRARY_PATH=a.prefix + '/lib',
         VK_DRIVER_FILES=a.prefix + '/asahi.json',
         LIBGL_DRIVERS_PATH=a.prefix + '/lib/dri',
@@ -69,7 +73,9 @@ for label, option in [('baseline', 'false'), ('candidate', 'true')]:
         ASAHI_M3_EXPERIMENTAL='1', ASAHI_M4_EXPERIMENTAL='1',
         HK_DEBUG_LOG='0', AGX_MESA_DEBUG='nopromote',
         EGL_PLATFORM='surfaceless', MESA_SHADER_CACHE_DIR=remote + '/cache',
-        HK_M4_PROGRAM_PROFILE='true', **{a.option: option})
+        HK_M4_PROGRAM_PROFILE='true')
+    if option is not None:
+        env[a.option] = option
     if a.option == 'ZINK_PREFER_HIGH_CAPACITY_CPUS':
         env['M3_PROBE_CHECK_WORKER_AFFINITY'] = '1'
     workload = ['env', '-i', *[k + '=' + v for k, v in env.items()], remote + '/probe']

@@ -8,6 +8,7 @@
 #include "util/u_thread.h"
 
 #include "macros.h"
+#include "u_cpu_detect.h"
 
 #ifdef HAVE_PTHREAD
 #include <signal.h>
@@ -142,6 +143,31 @@ util_set_thread_affinity(thrd_t thread,
    }
 
    return true;
+#else
+   return false;
+#endif
+}
+
+bool
+util_thread_prefer_high_capacity(thrd_t thread)
+{
+#if defined(HAVE_PTHREAD_SETAFFINITY)
+   const struct util_cpu_caps_t *caps = util_get_cpu_caps();
+   cpu_set_t allowed;
+   if (pthread_getaffinity_np(thread, sizeof(allowed), &allowed) != 0)
+      return false;
+   uint32_t mask[UTIL_MAX_CPUS / 32] = {0};
+   bool any = false;
+   for (unsigned i = 0; i < caps->num_cpu_mask_bits && i < CPU_SETSIZE &&
+                        i < UTIL_MAX_CPUS; i++) {
+      if (CPU_ISSET(i, &allowed) &&
+          (caps->high_capacity_mask[i / 32] & (1u << (i % 32)))) {
+         mask[i / 32] |= 1u << (i % 32);
+         any = true;
+      }
+   }
+   return any && util_set_thread_affinity(thread, mask, NULL,
+                                         caps->num_cpu_mask_bits);
 #else
    return false;
 #endif
