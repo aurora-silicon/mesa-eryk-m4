@@ -170,8 +170,9 @@ with identical images. Every sample, including the lows, is in
 Candidate `28e498ebc274` narrows late substitution to vertex shaders. Qualified
 direct fragment inputs again enter ordinary uniform optimization immediately;
 newly matched general/fallback reads still remain unchanged. All six game
-image checks (both Minecraft renderers plus the five-game selection above,
-counting native Minecraft once) pass exactly. Paired timings and the final
+image checks pass. Both Minecraft renderers, Satisfactory and 0 A.D. match
+exactly; Factorio and SuperTuxKart differ by at most one RGB level, within the
+previously accepted tolerance. Paired timings and the final
 CTS selection follow; no desktop installation has changed.
 
 The narrower candidate's median is 46.2599 FPS versus its paired baseline's
@@ -182,3 +183,9 @@ vertex programs but also selected fallback fragment programs with roughly
 6335–6357 instructions and 32 bytes of scratch. The bounded address sample
 covers the replay as a whole, not specifically the timed interval; it does
 not yet attribute frame time to those fallback programs.
+
+The final `28e498ebc274` CTS rerun also completed healthy with 965 Pass,
+464 NotSupported and zero failures. `vertex-late-qualified.json` records the
+six passing game comparisons, all paired timing samples and final CTS summary.
+This qualifies the retained M3 replay selection, not full Vulkan conformance,
+M4 execution, a live Minecraft FPS claim or a desktop deployment.

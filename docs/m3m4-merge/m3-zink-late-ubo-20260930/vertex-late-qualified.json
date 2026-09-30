@@ -1,0 +1,122 @@
+{
+  "candidate": "28e498ebc2749fc5dbb8e283f12f0aebd55d14087dd50b8a2e2247d9d66eef04",
+  "game_checks": [
+    {
+      "case": "factorio-linux-wayland",
+      "result": "pass",
+      "maximum_errors": [
+        1,
+        1,
+        1
+      ],
+      "receipt": "results/factorio-linux-wayland/m3/20260930T141508068462Z-m3-factorio-linux-wayland-check/benchmark.json"
+    },
+    {
+      "case": "supertuxkart-zink",
+      "result": "pass",
+      "maximum_errors": [
+        1,
+        1,
+        1
+      ],
+      "receipt": "results/supertuxkart-zink/m3/20260930T141532544562Z-m3-supertuxkart-zink-check/benchmark.json"
+    },
+    {
+      "case": "0ad-vulkan",
+      "result": "pass",
+      "maximum_errors": [
+        0,
+        0,
+        0
+      ],
+      "receipt": "results/0ad-vulkan/m3/20260930T141522570608Z-m3-0ad-vulkan-check/benchmark.json"
+    },
+    {
+      "case": "satisfactory-vulkan-gameplay",
+      "result": "pass",
+      "maximum_errors": [
+        0,
+        0,
+        0
+      ],
+      "receipt": "results/satisfactory-vulkan-gameplay/m3/20260930T141426212077Z-m3-satisfactory-vulkan-gameplay-check/benchmark.json"
+    },
+    {
+      "case": "minecraft-demo-vulkan",
+      "result": "pass",
+      "maximum_errors": [
+        0,
+        0,
+        0
+      ],
+      "receipt": "results/minecraft-demo-vulkan/m3/20260930T141416441381Z-m3-minecraft-demo-vulkan-check/benchmark.json"
+    },
+    {
+      "case": "minecraft-demo-zink",
+      "result": "pass",
+      "maximum_errors": [
+        0,
+        0,
+        0
+      ],
+      "receipt": "results/minecraft-demo-zink/m3/20260930T141358568674Z-m3-minecraft-demo-zink-check/benchmark.json"
+    }
+  ],
+  "cts": {
+    "healthy": true,
+    "counts": {
+      "NotSupported": 464,
+      "Pass": 965
+    },
+    "selected": 1429,
+    "completed_batches_end": 1429,
+    "stopped_on_test_failure": false
+  },
+  "timing": {
+    "false": {
+      "samples_fps": [
+        27.09776456964085,
+        27.08025922931996,
+        26.19633643152223
+      ],
+      "median_fps": 27.08025922931996
+    },
+    "true": {
+      "samples_fps": [
+        41.46608289904269,
+        46.566943009756166,
+        46.25985110082671
+      ],
+      "median_fps": 46.25985110082671
+    },
+    "fps_improvement_percent": 70.82499362022683,
+    "comparison": "mesa-build",
+    "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+  },
+  "images": [
+    {
+      "image": "frame-0001392082.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001429009.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001468244.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    }
+  ]
+}
