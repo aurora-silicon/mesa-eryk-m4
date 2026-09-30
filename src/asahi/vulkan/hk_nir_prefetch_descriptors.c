@@ -456,7 +456,7 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
    }
    nir_foreach_function_impl(impl, nir) {
       bool changed = false;
-      struct candidate { nir_intrinsic_instr *intr; unsigned entry; bool late; };
+      struct candidate { nir_intrinsic_instr *intr; unsigned entry; bool expanded; };
       struct util_dynarray candidates;
       util_dynarray_init(&candidates, NULL);
       nir_foreach_block(block, impl) {
@@ -502,7 +502,7 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
                ++*load_count;
             }
             util_dynarray_append(&candidates,
-                                 ((struct candidate){intr, entry, expanded && direct}));
+                                 ((struct candidate){intr, entry, expanded}));
          }
       }
       /* All accepted addresses are immutable descriptors plus a constant,
@@ -554,7 +554,13 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
          }
       }
       util_dynarray_foreach(&candidates, struct candidate, c) {
-         if (c->late) {
+         changed = true;
+         /* Keep the original read in the general executable. Its descriptor
+          * may require alias/residency resolution. The separately qualified
+          * direct executable alone substitutes these newly admitted words. */
+         if (c->expanded && !direct)
+            continue;
+         if (c->expanded) {
             nir_builder late = nir_builder_at(nir_after_instr(&c->intr->instr));
             nir_def *value = nir_load_prefetched_agx(&late, &c->intr->def,
                .base = loads[c->entry].uniform_half);
@@ -562,7 +568,6 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
          } else {
             nir_def_replace(&c->intr->def, replacement[c->entry]);
          }
-         changed = true;
       }
       util_dynarray_fini(&candidates);
       nir_progress(changed, impl, nir_metadata_none);

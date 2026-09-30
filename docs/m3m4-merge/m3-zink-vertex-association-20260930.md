@@ -131,3 +131,19 @@ direct `exec` through Python and were not affected. One such diagnostic hit
 its time bound and recovered through the watchdog; neither is a candidate
 performance or correctness result. The corrected stack capture completed
 within the guard, retaining its userspace fault as diagnosis only.
+
+### Preserving the general executable
+
+Rebuilding the generators removed the crash. Candidate `fd35180bed56`
+then produced three **pixel-identical** Minecraft GL frames, but the
+Satisfactory first frame still had four pixels above one RGB level. Deferring
+promotion in the direct executable alone had not changed the general
+fragment variant's earlier transformation.
+
+Candidate `7349063a5845` retains the original newly matched reads in the
+general executable, while keeping their metadata to build/qualify the separate
+direct variant. Only that qualified variant uses late uniform substitution.
+The first Satisfactory frame now matches the original reference exactly
+(`20260930T140535920125Z-m3-satisfactory-vulkan-gameplay-check`). A unit check
+requires the general variant to retain the original arithmetic source. Full
+retained frames, other games, targeted CTS and paired timings are pending.

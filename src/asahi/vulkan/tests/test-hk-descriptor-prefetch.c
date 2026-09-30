@@ -189,6 +189,8 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
       assert(nir_intrinsic_base(deferred) == loads[0].uniform_half);
       assert(deferred->src[0].ssa == value);
    }
+   if (eligible && !late && bound_shape)
+      assert(contractible->src[0].src.ssa == value);
    for (unsigned i = 0; i < count; ++i) {
       assert(loads[i].set == (root ? HK_UBO_PREFETCH_ROOT_SET : 0));
       assert(loads[i].descriptor_offset_B == 128);
