@@ -122,7 +122,7 @@ allow_dynamic_ubo(void *data, unsigned set, unsigned offset)
 
 static void
 test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
-                 bool allow)
+                 bool allow, unsigned bound_shape)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
                                                  "dynamic and vector UBO");
@@ -137,11 +137,24 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
                                                nir_channel(&b, desc, 1));
    unsigned access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER |
                      (volatile_load ? ACCESS_VOLATILE : 0);
+   const unsigned offset = bound_shape == 2 || bound_shape == 3 ? 0 : 40;
    nir_def *value;
    if (bounded) {
-      nir_def *valid = nir_ult(&b, nir_imm_int(&b, 43), nir_channel(&b, desc, 2));
+      nir_def *size = nir_channel(&b, desc, bound_shape == 5 ? 3 : 2);
+      nir_def *valid = nir_ult(&b, nir_imm_int(&b, offset + 3), size);
+      if (bound_shape) {
+         nir_def *remaining = bound_shape == 7
+            ? nir_isub(&b, size, nir_imm_int(&b, 3))
+            : nir_usub_sat(&b, size, nir_imm_int(&b, bound_shape == 4 ? 2 : 3));
+         if (bound_shape == 2)
+            valid = nir_ine_imm(&b, remaining, 0);
+         else if (bound_shape == 3)
+            valid = nir_ine(&b, nir_imm_int(&b, 0), remaining);
+         else
+            valid = nir_ult(&b, nir_imm_int(&b, offset + (bound_shape == 6)), remaining);
+      }
       nir_def *base = nir_bcsel(&b, valid, pointer, nir_imm_int64(&b, 1ull << 32));
-      value = nir_load_global(&b, 1, 32, nir_iadd_imm(&b, base, 40),
+      value = nir_load_global(&b, 1, 32, nir_iadd_imm(&b, base, offset),
                               .align_mul = 4, .access = access);
    } else {
       value = nir_load_global_constant(&b, 4, 32, nir_iadd_imm(&b, pointer, 40),
@@ -151,14 +164,14 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
    struct hk_ubo_prefetch loads[HK_UBO_PREFETCH_MAX] = {0};
    unsigned end = 28, count = 0;
    struct dynamic_ubo_test test = {root, allow};
-   bool eligible = allow && !indexed && !volatile_load;
+   bool eligible = allow && !indexed && !volatile_load && bound_shape < 4;
    assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
                               allow_dynamic_ubo, &test) == eligible);
    assert(count == (eligible ? bounded ? 1 : 4 : 0));
    for (unsigned i = 0; i < count; ++i) {
       assert(loads[i].set == (root ? HK_UBO_PREFETCH_ROOT_SET : 0));
       assert(loads[i].descriptor_offset_B == 128);
-      assert(loads[i].offset_B == 40 + 4 * i);
+      assert(loads[i].offset_B == offset + 4 * i);
       assert(loads[i].direct_half == loads[0].direct_half);
    }
    bool fallback_root = false;
@@ -343,10 +356,12 @@ int main(void)
    test_ubo(true, false, access | ACCESS_VOLATILE, false);
    for (unsigned root = 0; root < 2; ++root)
       for (unsigned bounded = 0; bounded < 2; ++bounded) {
-         test_dynamic_ubo(root, bounded, false, false, true);
-         test_dynamic_ubo(root, bounded, true, false, true);
-         test_dynamic_ubo(root, bounded, false, true, true);
-         test_dynamic_ubo(root, bounded, false, false, false);
+         for (unsigned shape = 0; shape < (bounded ? 8 : 1); ++shape) {
+            test_dynamic_ubo(root, bounded, false, false, true, shape);
+            test_dynamic_ubo(root, bounded, true, false, true, shape);
+            test_dynamic_ubo(root, bounded, false, true, true, shape);
+            test_dynamic_ubo(root, bounded, false, false, false, shape);
+         }
       }
 
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL, "descriptor prefetch");

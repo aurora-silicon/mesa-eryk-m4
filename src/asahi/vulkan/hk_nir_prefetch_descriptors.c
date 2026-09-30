@@ -280,6 +280,50 @@ ubo_src(nir_scalar s, unsigned index)
    return nir_scalar_chase_movs(nir_scalar_chase_alu_src(s, index));
 }
 
+/* The robust-access lowering uses offset < usub_sat(size, 3) for a 32-bit
+ * word. Preprocessing folds the offset-zero case to usub_sat(size, 3) != 0.
+ * Both are exactly offset + 3 < size for the admitted nonwrapping offsets.
+ * Recognize the bound without weakening it or accepting another descriptor's
+ * size; ubo_load still checks the size component against the loaded pointer.
+ */
+static nir_scalar
+ubo_word_bound(nir_scalar valid, uint64_t offset)
+{
+   if (!nir_scalar_is_alu(valid))
+      return (nir_scalar){0};
+
+   nir_scalar remaining = {0};
+   if (nir_scalar_alu_op(valid) == nir_op_ult) {
+      nir_scalar lhs = ubo_src(valid, 0), rhs = ubo_src(valid, 1);
+      if (!nir_scalar_is_const(lhs))
+         return (nir_scalar){0};
+      if (nir_scalar_as_uint(lhs) == offset + 3)
+         return rhs;
+      if (nir_scalar_as_uint(lhs) != offset)
+         return (nir_scalar){0};
+      remaining = rhs;
+   } else if (nir_scalar_alu_op(valid) == nir_op_ine && offset == 0) {
+      nir_scalar lhs = ubo_src(valid, 0), rhs = ubo_src(valid, 1);
+      if (nir_scalar_is_const(lhs)) {
+         nir_scalar tmp = lhs; lhs = rhs; rhs = tmp;
+      }
+      if (!nir_scalar_is_const(rhs) || nir_scalar_as_uint(rhs) != 0)
+         return (nir_scalar){0};
+      remaining = lhs;
+   } else {
+      return (nir_scalar){0};
+   }
+
+   if (!nir_scalar_is_alu(remaining) ||
+       nir_scalar_alu_op(remaining) != nir_op_usub_sat)
+      return (nir_scalar){0};
+   nir_scalar size = ubo_src(remaining, 0), bytes = ubo_src(remaining, 1);
+   if (size.def->bit_size != 32 || !nir_scalar_is_const(bytes) ||
+       nir_scalar_as_uint(bytes) != 3)
+      return (nir_scalar){0};
+   return size;
+}
+
 static bool
 ubo_load(nir_intrinsic_instr *intr, unsigned set_base, unsigned set_count,
          struct hk_ubo_prefetch *load)
@@ -319,12 +363,10 @@ ubo_load(nir_intrinsic_instr *intr, unsigned set_base, unsigned set_count,
       nir_scalar valid = ubo_src(address, 0);
       pointer = ubo_src(address, 1);
       nir_scalar zero = ubo_src(address, 2);
-      if (!nir_scalar_is_const(zero) || nir_scalar_as_uint(zero) != AGX_ZERO_PAGE_ADDRESS ||
-          !nir_scalar_is_alu(valid) || nir_scalar_alu_op(valid) != nir_op_ult)
+      if (!nir_scalar_is_const(zero) || nir_scalar_as_uint(zero) != AGX_ZERO_PAGE_ADDRESS)
          return false;
-      nir_scalar last = ubo_src(valid, 0);
-      bound = ubo_src(valid, 1);
-      if (!nir_scalar_is_const(last) || nir_scalar_as_uint(last) != offset + 3)
+      bound = ubo_word_bound(valid, offset);
+      if (!bound.def)
          return false;
    }
    if (!nir_scalar_is_alu(pointer) ||
