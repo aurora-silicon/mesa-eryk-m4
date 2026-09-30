@@ -20,3 +20,12 @@ Meson's thin archive before renaming definitions, leaving shared NIR APIs alone.
 3024x1837 Minecraft GL capture completed, compiling all fragment pipelines with
 `HK_M3_NEO_FRAGMENT_COMPILER=true` and `ZINK_DISABLE_SAMPLER_MINMAX=true`.
 No GPU execution or performance result is established by that shim run.
+
+M3 integration correction: retain the qualified compiler's masked-shift rewrite
+restriction in agx_nir_algebraic.py. A dynamic NIR shift wraps its count whereas
+ubitfield_extract cannot replace that expression for arbitrary counts. Neo's
+unrestricted fusion broke Zink sparse-residency checks and made ordinary UBO
+reads return zero. Restricting fusion to literal in-bounds extracts fixes the
+CPU-checked sampler/UBO readback (16 draws, ordinary and custom-border samplers).
+The original imported compiler failed that same probe; constant colour passed.
+No cache-hint or scoreboard diagnostic changes are needed for this correction.
