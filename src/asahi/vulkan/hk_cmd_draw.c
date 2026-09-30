@@ -1100,11 +1100,13 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
     * Carry both budgets into deferred sample counts and fragment epilogs. */
    unsigned max_tile_samples =
       agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) ? 2048 : 0;
-   if (dev->dev.chip == AGX_CHIP_G16G && render->tilebuffer.nr_samples == 1) {
+   if ((dev->dev.chip == AGX_CHIP_G16G || dev->dev.chip == AGX_CHIP_G15S) &&
+       render->tilebuffer.nr_samples == 1) {
       /* Diagnostic occupancy control: only reduce the qualified sample
        * budget. Geometry, storage and epilog selection still use the common
        * allocator, so this never invents a hardware tile shape. */
-      unsigned limit = debug_get_num_option("HK_M4_MAX_TILE_SAMPLES", 2048);
+      unsigned limit = debug_get_num_option(dev->dev.chip == AGX_CHIP_G15S ?
+         "HK_M3_MAX_TILE_SAMPLES" : "HK_M4_MAX_TILE_SAMPLES", 2048);
       if (limit == 256 || limit == 512 || limit == 1024)
          max_tile_samples = limit;
    }

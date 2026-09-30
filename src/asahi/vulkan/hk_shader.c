@@ -159,6 +159,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)hk_vertex_plain_samplers_enabled(pdev->dev.chip) << 48;
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_VERTEX_UNIFORM_CSE", false) << 46;
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_GRAPHICS_LOAD_SCHED", false) << 47;
+      flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_SHORT_SAMPLE_LOOPS", false) << 49;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) << 35;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
@@ -186,7 +187,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    static_assert(AGX_DBG_REMAT < BITFIELD_BIT(17));
    static_assert(((AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
                    AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
-                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 31) == 0);
+                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 63) == 0);
    flags |= (agx_get_compiler_debug() &
              (AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
               AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
@@ -3023,6 +3024,9 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          NIR_PASS(_, nir, nir_opt_constant_folding);
          NIR_PASS(_, nir, nir_opt_dead_cf);
          NIR_PASS(_, nir, nir_opt_dce);
+         if (sw_stage == MESA_SHADER_FRAGMENT &&
+             debug_get_bool_option("HK_NATIVE_SHORT_SAMPLE_LOOPS", false))
+            NIR_PASS(_, nir, hk_nir_release_short_sample_loops);
       }
       NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
       if (features & HK_FEAT_STRICT_SPARSE)
