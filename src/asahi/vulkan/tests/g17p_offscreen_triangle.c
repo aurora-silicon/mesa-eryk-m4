@@ -1170,8 +1170,15 @@ main(void)
    };
 #endif
 #ifdef AGX_ROBUST_INDEX_BATCH_PROBE
+   unsigned index_bits = batch_option("AGX_BATCH_INDEX_BITS", 32, 32);
+   if (index_bits != 8 && index_bits != 16 && index_bits != 32)
+      die("batch probe supports 8-, 16- and 32-bit indices");
+   VkPhysicalDeviceIndexTypeUint8FeaturesEXT index8_available = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT,
+   };
    VkPhysicalDeviceRobustness2FeaturesEXT robust_available = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
+      .pNext = &index8_available,
    };
    VkPhysicalDeviceFeatures2 batch_available = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
@@ -1182,8 +1189,15 @@ main(void)
        !batch_available.features.robustBufferAccess ||
        !batch_available.features.multiDrawIndirect)
       die("robust indexed multi-draw is not supported");
+   if (index_bits == 8 && !index8_available.indexTypeUint8)
+      die("8-bit indices are not supported");
+   VkPhysicalDeviceIndexTypeUint8FeaturesEXT index8_enabled = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT,
+      .indexTypeUint8 = index_bits == 8,
+   };
    const VkPhysicalDeviceRobustness2FeaturesEXT robust_enabled = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
+      .pNext = index_bits == 8 ? &index8_enabled : NULL,
       .robustBufferAccess2 = VK_TRUE,
    };
    const VkPhysicalDeviceFeatures batch_features = {
@@ -1193,6 +1207,7 @@ main(void)
    const char *batch_extensions[] = {
       VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
       VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,
+      VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME,
    };
 #endif
    const VkDeviceCreateInfo device_info = {
@@ -1200,7 +1215,7 @@ main(void)
 #ifdef AGX_ROBUST_INDEX_BATCH_PROBE
       .pNext = &robust_enabled,
       .pEnabledFeatures = &batch_features,
-      .enabledExtensionCount = 2,
+      .enabledExtensionCount = index_bits == 8 ? 3 : 2,
       .ppEnabledExtensionNames = batch_extensions,
 #elif G17P_F16_IO
       .pNext = &enabled11,
@@ -1320,13 +1335,20 @@ main(void)
    unsigned parallel = batch_option("AGX_BATCH_PARALLEL", 0, 1);
    unsigned use_count = batch_option("AGX_BATCH_INDIRECT_COUNT", 0, 1);
    unsigned executed = batch_option("AGX_BATCH_EXECUTED", batch_count, batch_count);
-   unsigned index_bits = batch_option("AGX_BATCH_INDEX_BITS", 32, 32);
-   if (index_bits != 16 && index_bits != 32)
-      die("batch probe supports 16- and 32-bit indices");
-   uint32_t indices32[] = {0, 1, 2};
-   uint16_t indices16[] = {0, 1, 2};
-   VkBuffer indices = batch_buffer(device, &memory_properties, 3 * index_bits / 8,
+   unsigned index_count = batch_option("AGX_BATCH_INDEX_COUNT", 3, 256);
+   if (index_count < 3)
+      die("batch probe requires at least three indices");
+   unsigned input_count = batch_option("AGX_BATCH_INPUT_INDICES", 3, 129);
+   if (input_count < 3)
+      die("batch probe needs at least three input indices");
+   uint32_t indices32[129];
+   uint16_t indices16[129];
+   uint8_t indices8[129];
+   for (unsigned i = 0; i < input_count; ++i)
+      indices8[i] = indices16[i] = indices32[i] = i % 3;
+   VkBuffer indices = batch_buffer(device, &memory_properties, input_count * index_bits / 8,
       VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      index_bits == 8 ? (void *)indices8 :
       index_bits == 16 ? (void *)indices16 : (void *)indices32);
    VkDrawIndexedIndirectCommand *args = calloc(batch_count, sizeof(*args));
    if (!args)
@@ -1334,9 +1356,9 @@ main(void)
    for (unsigned i = 0; i < batch_count; ++i) {
       args[i].instanceCount = 1;
       if (parallel || i == active) {
-         args[i].indexCount = scenario == 4 ? 0 : 3;
+         args[i].indexCount = scenario == 4 ? 0 : index_count;
          args[i].instanceCount = scenario == 3 ? 0 : 1;
-         args[i].firstIndex = scenario == 1 ? 1 : scenario == 2 ? 3 : 0;
+         args[i].firstIndex = scenario == 1 ? 1 : scenario == 2 ? input_count : 0;
       }
    }
    batch_expect_empty = scenario >= 2 || (use_count &&
@@ -1347,8 +1369,8 @@ main(void)
    VkBuffer count_buffer = batch_buffer(device, &memory_properties, sizeof(uint32_t),
       VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, NULL);
    fprintf(stderr, "BATCH_PROBE count=%u active=%u scenario=%u parallel=%u "
-                   "index_bits=%u indirect_count=%u executed=%u empty=%u\n",
-      batch_count, active, scenario, parallel, index_bits, use_count, executed,
+                   "index_bits=%u index_count=%u input_count=%u indirect_count=%u executed=%u empty=%u\n",
+      batch_count, active, scenario, parallel, index_bits, index_count, input_count, use_count, executed,
       batch_expect_empty);
 #endif
 
@@ -1756,6 +1778,7 @@ main(void)
                           &vertex_offset);
 #ifdef AGX_ROBUST_INDEX_BATCH_PROBE
    vkCmdBindIndexBuffer(command_buffer, indices, 0,
+      index_bits == 8 ? VK_INDEX_TYPE_UINT8_EXT :
       index_bits == 16 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
    if (use_count)
       vkCmdDrawIndexedIndirectCountKHR(command_buffer, indirect, 0,

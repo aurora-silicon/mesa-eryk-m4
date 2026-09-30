@@ -1,0 +1,718 @@
+{
+  "candidate": {
+    "prefix": "/opt/asahi-m3-robust-batch-padding-84f175790579",
+    "sha256": "84f175790579968b0f2cdb337187e7c37094c01988325be860cfb94cd8452a15",
+    "revision": "cfeca7b4b6df7043b3fd1e2f5d55a15a1e5728d8",
+    "base": "/opt/asahi-m3-robust-index-batch-9d83ae85c9bf",
+    "patch_sha256": "5f18878a06b5dba3a950e78787b8d59dd30456772e93bd55f4d87bf342d07a94",
+    "libraries": {
+      "lib/libEGL_mesa.so.0.0.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+      "lib/libGLX_mesa.so.0.0.0": "e11d8506382a3d6de989a74d6c49982eeadc613d72a5bbd97774fdb7ea37e32a",
+      "lib/libgallium-26.1.4.so": "4f58b871e773618f0b50e95f22ab60aa0ba998505e48a786d1bffb6c6290d3a4",
+      "lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+      "lib/libvulkan_asahi.so": "84f175790579968b0f2cdb337187e7c37094c01988325be860cfb94cd8452a15"
+    },
+    "scope": "Isolated Vulkan candidate, no desktop configuration change"
+  },
+  "witness_manifest": {
+    "scope": "Synthetic exact-pixel witness, not CTS or benchmark",
+    "compile_command": [
+      "aarch64-linux-gnu-gcc",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-DTEST_DEVICE_ID=0x6030",
+      "-DAGX_ROBUST_INDEX_BATCH_PROBE=1",
+      "-I/home/council/dev/dirtyroom_m4/mesa/m3m4-merged/include",
+      "-I/home/council/dev/dirtyroom_m4/mesa/m3m4-merged/src/asahi/vulkan/tests",
+      "/home/council/dev/dirtyroom_m4/mesa/m3m4-merged/src/asahi/vulkan/tests/g17p_offscreen_triangle.c",
+      "-ldl",
+      "-o",
+      "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/index-batch-probe"
+    ],
+    "source_sha256": "cd9e33b0024907edc0c55698a57acda6271eaae79a2f36d4537621a7d5dcf331",
+    "binary_sha256": "7214100edfddcb6fcb42d84d8bdf7be86c6d31ccbb903a6b19975f422f3c054d",
+    "mesa_prefix": "/opt/asahi-m3-robust-batch-padding-84f175790579",
+    "mesa_sha256": "84f175790579968b0f2cdb337187e7c37094c01988325be860cfb94cd8452a15",
+    "batching": true,
+    "boot_id": "f614ebbd-0af0-44e2-a4bb-124202a3e22b"
+  },
+  "witnesses": [
+    {
+      "case": {
+        "name": "last-valid-2",
+        "env": {
+          "AGX_BATCH_COUNT": "2",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/00-last-valid-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-2",
+        "env": {
+          "AGX_BATCH_COUNT": "2",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/01-last-partial-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-127",
+        "env": {
+          "AGX_BATCH_COUNT": "127",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/02-last-valid-127",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-127",
+        "env": {
+          "AGX_BATCH_COUNT": "127",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/03-last-partial-127",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-128",
+        "env": {
+          "AGX_BATCH_COUNT": "128",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/04-last-valid-128",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-128",
+        "env": {
+          "AGX_BATCH_COUNT": "128",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/05-last-partial-128",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-129",
+        "env": {
+          "AGX_BATCH_COUNT": "129",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/06-last-valid-129",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-129",
+        "env": {
+          "AGX_BATCH_COUNT": "129",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/07-last-partial-129",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-257",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/08-last-valid-257",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-257",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/09-last-partial-257",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-valid-2048",
+        "env": {
+          "AGX_BATCH_COUNT": "2048",
+          "AGX_BATCH_SCENARIO": "0"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/10-last-valid-2048",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "last-partial-2048",
+        "env": {
+          "AGX_BATCH_COUNT": "2048",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/11-last-partial-2048",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-8-1",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/12-parallel-8-1",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-8-2",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "2",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/13-parallel-8-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-8-3",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "3",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/14-parallel-8-3",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-8-4",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "4",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/15-parallel-8-4",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-suffix-8",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8",
+          "AGX_BATCH_INDEX_COUNT": "64"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/16-long-suffix-8",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-copy-8",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "8",
+          "AGX_BATCH_INDEX_COUNT": "256",
+          "AGX_BATCH_INPUT_INDICES": "67"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/17-long-copy-8",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-1",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/18-parallel-16-1",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-2",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "2",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/19-parallel-16-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-3",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "3",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/20-parallel-16-3",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-16-4",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "4",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/21-parallel-16-4",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-suffix-16",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16",
+          "AGX_BATCH_INDEX_COUNT": "64"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/22-long-suffix-16",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-copy-16",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "16",
+          "AGX_BATCH_INDEX_COUNT": "256",
+          "AGX_BATCH_INPUT_INDICES": "67"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/23-long-copy-16",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-1",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/24-parallel-32-1",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-2",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "2",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/25-parallel-32-2",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-3",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "3",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/26-parallel-32-3",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "parallel-32-4",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "4",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/27-parallel-32-4",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-suffix-32",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32",
+          "AGX_BATCH_INDEX_COUNT": "64"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/28-long-suffix-32",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "long-copy-32",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_SCENARIO": "1",
+          "AGX_BATCH_PARALLEL": "1",
+          "AGX_BATCH_INDEX_BITS": "32",
+          "AGX_BATCH_INDEX_COUNT": "256",
+          "AGX_BATCH_INPUT_INDICES": "67"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/29-long-copy-32",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-0",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "0",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/30-selected-0",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-127",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "127",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/31-selected-127",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-128",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "128",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/32-selected-128",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-255",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "255",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/33-selected-255",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "selected-256",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_ACTIVE_DRAW": "256",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/34-selected-256",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "count-last-partial",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_INDIRECT_COUNT": "1",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/35-count-last-partial",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "count-predicated-last",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_INDIRECT_COUNT": "1",
+          "AGX_BATCH_EXECUTED": "256",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/36-count-predicated-last",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    },
+    {
+      "case": {
+        "name": "count-zero",
+        "env": {
+          "AGX_BATCH_COUNT": "257",
+          "AGX_BATCH_INDIRECT_COUNT": "1",
+          "AGX_BATCH_EXECUTED": "0",
+          "AGX_BATCH_SCENARIO": "1"
+        }
+      },
+      "path": "/home/council/dev/dirtyroom_m4/build/m3-robust-index-batch/witnesses-v4-r1/37-count-zero",
+      "passed": true,
+      "returncode": 0,
+      "guard_phase": "complete"
+    }
+  ],
+  "paired_timings": {
+    "false": {
+      "samples_fps": [
+        57.02330772390606,
+        57.991548767882755,
+        47.53299652286466
+      ],
+      "median_fps": 57.02330772390606
+    },
+    "true": {
+      "samples_fps": [
+        68.54773690674818,
+        68.35094233598723,
+        69.92136056451486
+      ],
+      "median_fps": 68.54773690674818
+    },
+    "fps_improvement_percent": 20.210032779299315,
+    "comparison": "mesa-build",
+    "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+  },
+  "images": [
+    {
+      "image": "frame-0001392082.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001429009.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001468244.png",
+      "width": 3024,
+      "height": 1837,
+      "maximum_channel_error": 0,
+      "mean_channel_error": 0.0,
+      "pixels_over_one_level": 0
+    }
+  ],
+  "rejected_prototypes": {
+    "v2": {
+      "candidate": {
+        "prefix": "/opt/asahi-m3-robust-batch-cpu-count-708107575304",
+        "sha256": "70810757530489db09f8ec05d298fbb3494efa747aced9a9faa8e78fafe2e5a9",
+        "revision": "cfeca7b4b6df7043b3fd1e2f5d55a15a1e5728d8",
+        "base": "/opt/asahi-m3-robust-index-batch-9d83ae85c9bf",
+        "patch_sha256": "1c9c7f90a4f936044ea2cfda18da1b0651b28d505136b375ba61cafa6564ad6a",
+        "libraries": {
+          "lib/libEGL_mesa.so.0.0.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+          "lib/libGLX_mesa.so.0.0.0": "e11d8506382a3d6de989a74d6c49982eeadc613d72a5bbd97774fdb7ea37e32a",
+          "lib/libgallium-26.1.4.so": "4f58b871e773618f0b50e95f22ab60aa0ba998505e48a786d1bffb6c6290d3a4",
+          "lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+          "lib/libvulkan_asahi.so": "70810757530489db09f8ec05d298fbb3494efa747aced9a9faa8e78fafe2e5a9"
+        },
+        "scope": "Isolated Vulkan candidate, no desktop configuration change"
+      },
+      "timing": {
+        "false": {
+          "samples_fps": [
+            76.40724709189115,
+            75.3626641690542,
+            76.63959707559545
+          ],
+          "median_fps": 76.40724709189115
+        },
+        "true": {
+          "samples_fps": [
+            69.5828862004716,
+            76.9357581059957,
+            71.44767058171243
+          ],
+          "median_fps": 71.44767058171243
+        },
+        "fps_improvement_percent": -6.490976574792818,
+        "comparison": "mesa-build",
+        "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+      }
+    },
+    "v3": {
+      "candidate": {
+        "prefix": "/opt/asahi-m3-robust-batch-publish-once-90351377fa12",
+        "sha256": "90351377fa125067d47e95e71b2c688c9c58089768bc5cf8df327ee6332b364a",
+        "revision": "cfeca7b4b6df7043b3fd1e2f5d55a15a1e5728d8",
+        "base": "/opt/asahi-m3-robust-index-batch-9d83ae85c9bf",
+        "patch_sha256": "24eda76166cd3327cd182fd07bec53f20b67e5a6e7477f004b921be6bb5cb2a5",
+        "libraries": {
+          "lib/libEGL_mesa.so.0.0.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+          "lib/libGLX_mesa.so.0.0.0": "e11d8506382a3d6de989a74d6c49982eeadc613d72a5bbd97774fdb7ea37e32a",
+          "lib/libgallium-26.1.4.so": "4f58b871e773618f0b50e95f22ab60aa0ba998505e48a786d1bffb6c6290d3a4",
+          "lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+          "lib/libvulkan_asahi.so": "90351377fa125067d47e95e71b2c688c9c58089768bc5cf8df327ee6332b364a"
+        },
+        "scope": "Isolated Vulkan candidate, no desktop configuration change"
+      },
+      "timing": {
+        "false": {
+          "samples_fps": [
+            69.89766967180513,
+            76.3757846959501,
+            76.42302578078808
+          ],
+          "median_fps": 76.3757846959501
+        },
+        "true": {
+          "samples_fps": [
+            64.3359238328885,
+            64.31044652162137,
+            76.73003654597929
+          ],
+          "median_fps": 64.3359238328885
+        },
+        "fps_improvement_percent": -15.763976646514289,
+        "comparison": "mesa-build",
+        "scope": "Same 30 completed 3024x1837 gameplay frames; replay FPS, not live Java/game FPS."
+      }
+    }
+  },
+  "qualification_scope": "38 synthetic batched witnesses and exact Minecraft GL images; final CTS, single-helper and broader game follow-up in progress"
+}

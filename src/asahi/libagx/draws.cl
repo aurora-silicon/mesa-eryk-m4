@@ -330,13 +330,13 @@ static void
 libagx_memcpy_to_aligned(global uint *dst, constant uchar *src, uint len,
                          uint tid, uint group_size)
 {
-   /* Copy a few bytes at the start */
-   uint start_unaligned = ((uintptr_t)src) & 3;
-   if (start_unaligned) {
-      uint need = 4 - start_unaligned;
-      libagx_memcpy_small((global uchar *)dst, src, need, tid);
-      src += need;
-      len -= need;
+   /* Advancing only the source to align it shifts the copy and may subtract
+    * more than len for a short byte-index tail. Preserve offsets and bounds
+    * for unaligned sources; this is only the out-of-bounds padding path. */
+   if (((uintptr_t)src) & 3) {
+      for (uint i = tid; i < len; i += group_size)
+         ((global uchar *)dst)[i] = src[i];
+      return;
    }
 
    /* Copy a few bytes at the end */
@@ -350,13 +350,12 @@ libagx_memcpy_to_aligned(global uint *dst, constant uchar *src, uint len,
                                group_size);
 }
 
-/* Precondition: len must be < the group size */
+/* A suffix may contain 32 indices, i.e. up to 128 bytes, for 32 lanes. */
 static void
-libagx_memset_small(global uchar *dst, uchar b, int len, uint tid)
+libagx_memset_index_suffix(global uchar *dst, uchar b, uint len, uint tid)
 {
-   if (tid < len) {
-      dst[tid] = b;
-   }
+   for (uint i = tid; i < len; i += 32)
+      dst[i] = b;
 }
 
 /*
@@ -442,8 +441,9 @@ libagx_draw_robust_index_impl(global uint32_t *vdm, global struct poly_heap *hea
       libagx_memcpy_to_aligned((global uint *)padded, in_buf, in_size_B, tid,
                                32);
 
-      /* Extend with up to 32 zeroes with a small memset */
-      libagx_memset_small(padded + in_size_B, 0, out_size_B - in_size_B, tid);
+      /* Extend with up to 32 zero indices, including every byte. */
+      libagx_memset_index_suffix(padded + in_size_B, 0,
+                                 out_size_B - in_size_B, tid);
    }
 
    if (first) {

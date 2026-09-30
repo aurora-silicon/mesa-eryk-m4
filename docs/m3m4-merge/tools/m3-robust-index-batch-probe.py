@@ -15,11 +15,15 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('--workspace', type=Path,
+    default=ROOT if (ROOT/'mesa/m3m4-merged').is_dir() else Path.cwd(),
+    help='dirtyroom workspace root (also allows execution of the committed mirror)')
 p.add_argument('--prefix', required=True)
 p.add_argument('--sha256', required=True)
 p.add_argument('--output', required=True, type=Path)
 p.add_argument('--disable-batching', action='store_true')
 a = p.parse_args()
+ROOT = a.workspace.resolve()
 a.output = a.output.resolve()
 a.output.mkdir(parents=True, exist_ok=False)
 source = ROOT/'mesa/m3m4-merged/src/asahi/vulkan/tests/g17p_offscreen_triangle.c'
@@ -53,10 +57,14 @@ def add(name, **env):
 for count in (2, 127, 128, 129, 257, 2048):
     add('last-valid-'+str(count), count=count, scenario=0)
     add('last-partial-'+str(count), count=count, scenario=1)
-for bits in (16, 32):
+for bits in (8, 16, 32):
     for scenario in (1, 2, 3, 4):
         add('parallel-%d-%d'%(bits,scenario), count=257, scenario=scenario,
             parallel=1, index_bits=bits)
+    add('long-suffix-'+str(bits), count=257, scenario=1,
+        parallel=1, index_bits=bits, index_count=64)
+    add('long-copy-'+str(bits), count=257, scenario=1,
+        parallel=1, index_bits=bits, index_count=256, input_indices=67)
 for active in (0, 127, 128, 255, 256):
     add('selected-'+str(active), count=257, active_draw=active, scenario=1)
 add('count-last-partial', count=257, indirect_count=1, scenario=1)
@@ -81,7 +89,8 @@ for i,case in enumerate(cases):
                    check=True,timeout=90)
     guard=json.loads((a.output/label/'result.json').read_text())
     workload=(a.output/label/'workload.log').read_text()
-    ok=not rc and guard['phase']=='complete' and ': PASS' in workload
+    ok=not rc and guard['phase']=='complete' and ': PASS' in workload and \
+       guard['boot_id']==manifest['boot_id']
     results.append(dict(case=case, path=str(a.output/label), passed=ok,
                         returncode=rc, guard_phase=guard['phase']))
     (a.output/'results.json').write_text(json.dumps(results, indent=2)+'\n')
