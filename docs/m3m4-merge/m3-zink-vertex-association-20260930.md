@@ -156,3 +156,20 @@ that every possible NIR serialization change is detected. The matching
 helper builds; negative probes with a stale count and with changed numbering
 at unchanged count both fail at the generated assertion. Probe receipts:
 `build/m3-zink-bottleneck/vertex-rounding/opcode-guard-test/`.
+
+### Broader checks and fragment follow-up
+
+`7349063a5845` passed the full retained frames for native Vulkan Minecraft,
+Satisfactory gameplay, Factorio Wayland, 0 A.D. Vulkan and SuperTuxKart Zink;
+all compared RGB pixels match exactly. The indexed 1429-case Vulkan selection
+completed healthy: 965 Pass, 464 NotSupported, no failures. In three alternating
+pairs, Minecraft GL improved from 27.0858 to 46.3201 FPS median (+71.01%),
+with identical images. Every sample, including the lows, is in
+`m3-zink-late-ubo-20260930/late-all-stage-checkpoint.json`.
+
+Candidate `28e498ebc274` narrows late substitution to vertex shaders. Qualified
+direct fragment inputs again enter ordinary uniform optimization immediately;
+newly matched general/fallback reads still remain unchanged. All six game
+image checks (both Minecraft renderers plus the five-game selection above,
+counting native Minecraft once) pass exactly. Paired timings and the final
+CTS selection follow; no desktop installation has changed.

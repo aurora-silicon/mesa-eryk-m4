@@ -183,7 +183,7 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
    assert(!nir_alu_instr_no_contract(contractible));
    assert(nir_alu_instr_no_contract(noncontractible));
    assert(!nir_alu_instr_no_reassoc(independent));
-   if (eligible && late && bound_shape) {
+   if (eligible && late && bound_shape && stage == MESA_SHADER_VERTEX) {
       nir_intrinsic_instr *deferred = nir_def_as_intrinsic(contractible->src[0].src.ssa);
       assert(deferred->intrinsic == nir_intrinsic_load_prefetched_agx);
       assert(nir_intrinsic_base(deferred) == loads[0].uniform_half);

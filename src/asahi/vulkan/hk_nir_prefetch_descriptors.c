@@ -560,7 +560,10 @@ hk_nir_prefetch_ubos(nir_shader *nir, unsigned set_base, unsigned set_count,
           * direct executable alone substitutes these newly admitted words. */
          if (c->expanded && !direct)
             continue;
-         if (c->expanded) {
+         /* Keep vertex position arithmetic's original convergence until
+          * reassociation is finished. Qualified fragment inputs can enter
+          * the ordinary uniform optimizations immediately. */
+         if (c->expanded && nir->info.stage == MESA_SHADER_VERTEX) {
             nir_builder late = nir_builder_at(nir_after_instr(&c->intr->instr));
             nir_def *value = nir_load_prefetched_agx(&late, &c->intr->def,
                .base = loads[c->entry].uniform_half);
