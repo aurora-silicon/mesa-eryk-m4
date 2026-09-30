@@ -59,6 +59,7 @@ main(void)
          eglMakeCurrent(d, EGL_NO_SURFACE, EGL_NO_SURFACE, c));
    printf("Renderer: %s\n", glGetString(GL_RENDERER));
    CHECK(extension("GL_ARB_multi_draw_indirect"));
+   CHECK(extension("GL_ARB_shader_draw_parameters"));
    CHECK(extension("GL_ARB_sparse_buffer"));
    PFNGLBUFFERPAGECOMMITMENTARBPROC commit =
       (void *)eglGetProcAddress("glBufferPageCommitmentARB");
@@ -66,15 +67,19 @@ main(void)
 
    GLuint p = glCreateProgram();
    glAttachShader(p, shader(GL_VERTEX_SHADER,
-      "#version 330 core\nlayout(std140) uniform Mask {uvec4 mask;};"
-      "flat out uvec4 vmask;void main(){vmask=mask;"
-      "vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);"
+      "#version 330 core\n#extension GL_ARB_shader_draw_parameters : require\n"
+      "layout(std140) uniform Mask {uvec4 mask;};"
+      "flat out uvec4 vmask;flat out uvec3 vdraw;void main(){vmask=mask;"
+      "vdraw=uvec3(gl_DrawIDARB,gl_BaseVertexARB,gl_BaseInstanceARB);"
+      "int i=gl_VertexID-gl_BaseVertexARB;vec2 p=vec2((i<<1)&2,i&2);"
       "gl_Position=vec4(p*2.0-1.0,0,1);}"));
    glAttachShader(p, shader(GL_FRAGMENT_SHADER,
       "#version 330 core\nlayout(std140) uniform Values {uvec4 value;};"
-      "flat in uvec4 vmask;uniform sampler2D image;out vec4 color;"
-      "void main(){color=texture(image,vec2(-0.5))*"
-      "vec4(value^vmask)/255.0;}"));
+      "flat in uvec4 vmask;flat in uvec3 vdraw;uniform sampler2D image;"
+      "out vec4 color;void main(){uint id=vdraw.x;"
+      "uvec4 tag=uvec4((id^(id>>8)^(id>>16)^(id>>24))&255u,"
+      "vdraw.y&255u,vdraw.z&255u,0u);color=texture(image,vec2(-0.5))*"
+      "vec4(value^vmask^tag)/255.0;}"));
    glLinkProgram(p);
    GLint ok;
    glGetProgramiv(p, GL_LINK_STATUS, &ok);
@@ -109,7 +114,7 @@ main(void)
    struct { uint32_t count, instances, first_index, base_vertex, base_instance; }
       draws[257];
    for (unsigned i = 0; i < 257; ++i)
-      draws[i] = (__typeof__(draws[0])){3, 1, 0, 0, 0};
+      draws[i] = (__typeof__(draws[0])){3, 1, 0, i % 13, i * 2 + 7};
    glGenBuffers(1, &indirect);
    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirect);
    glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(draws), draws, GL_STATIC_DRAW);
@@ -172,7 +177,10 @@ main(void)
       for (unsigned component = 0; component < 4; ++component) {
          /* Border components are exactly 1, 1/4, 0, 1. */
          const unsigned scale[] = {4, 1, 0, 4};
-         const unsigned color = value[component] ^ mask[component];
+         const unsigned id = count - 1;
+         const unsigned tag[] = {(id ^ (id >> 8) ^ (id >> 16) ^ (id >> 24)) & 255,
+                                 id % 13, (id * 2 + 7) & 255, 0};
+         const unsigned color = value[component] ^ mask[component] ^ tag[component];
          expected[component] = border ?
             (color * scale[component] + 2) / 4 :
             (color * texel[component] + 127) / 255;
