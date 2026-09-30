@@ -6201,7 +6201,9 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
     * the separately tuned internal clear/reload programs unchanged.
     */
    if (key->dev.encoding != AGX_ISA_ENCODING_AGX2 &&
-       (ctx->stage == MESA_SHADER_FRAGMENT || ctx->stage == MESA_SHADER_COMPUTE) &&
+       (ctx->stage == MESA_SHADER_FRAGMENT || ctx->stage == MESA_SHADER_COMPUTE ||
+        (ctx->stage == MESA_SHADER_VERTEX &&
+         debug_get_bool_option("AGX_NATIVE_VERTEX_UNIFORM_CSE", false))) &&
        !ctx->is_preamble && !nir->info.internal)
       AGX_PASS(ctx, agx_opt_cse);
 
@@ -6287,7 +6289,9 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    agx_lower_pseudo(ctx);
 
    if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-       ctx->stage == MESA_SHADER_COMPUTE && !ctx->is_preamble &&
+       (ctx->stage == MESA_SHADER_COMPUTE ||
+        ((ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_FRAGMENT) &&
+         debug_get_bool_option("AGX_NATIVE_GRAPHICS_LOAD_SCHED", false))) && !ctx->is_preamble &&
        !nir->info.internal)
       agx_schedule_native_loads(ctx);
 

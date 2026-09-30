@@ -157,6 +157,8 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)hk_plain_samplers_enabled(pdev->dev.chip) << 34;
       flags |= (uint64_t)hk_vertex_ubo_prefetch_enabled(pdev->dev.chip) << 45;
       flags |= (uint64_t)hk_vertex_plain_samplers_enabled(pdev->dev.chip) << 48;
+      flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_VERTEX_UNIFORM_CSE", false) << 46;
+      flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_GRAPHICS_LOAD_SCHED", false) << 47;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) << 35;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
@@ -184,7 +186,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    static_assert(AGX_DBG_REMAT < BITFIELD_BIT(17));
    static_assert(((AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
                    AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
-                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 19) == 0);
+                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 31) == 0);
    flags |= (agx_get_compiler_debug() &
              (AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
               AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
