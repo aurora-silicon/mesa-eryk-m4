@@ -214,7 +214,12 @@ enum hk_vs_variant {
    /* Hardware compute shader, when next is geometry/tessellation */
    HK_VS_VARIANT_SW,
 
+   /* VS and TES both have the two base variants above. */
    HK_VS_VARIANTS,
+
+   /* Only VS has an immutable ordinary-UBO hardware alternative. */
+   HK_VS_VARIANT_HW_UBO = HK_VS_VARIANTS,
+   HK_VS_UBO_VARIANTS,
 };
 
 enum hk_gs_variant {
@@ -247,7 +252,7 @@ hk_num_variants(mesa_shader_stage stage)
 {
    switch (stage) {
    case MESA_SHADER_VERTEX:
-      return HK_VS_VARIANTS + 1; /* Ordinary hardware UBO variant. */
+      return HK_VS_UBO_VARIANTS;
    case MESA_SHADER_TESS_EVAL:
       return HK_VS_VARIANTS;
 
@@ -295,7 +300,7 @@ hk_variant_name(struct hk_api_shader *obj, struct hk_shader *variant)
       assert(i < ARRAY_SIZE(hk_gs_variant_name));
       return hk_gs_variant_name[i];
    } else {
-      if (obj->vk.stage == MESA_SHADER_VERTEX && i == HK_VS_VARIANTS)
+      if (obj->vk.stage == MESA_SHADER_VERTEX && i == HK_VS_VARIANT_HW_UBO)
          return "Hardware ordinary UBO";
       assert(i < 2);
       return i == HK_VS_VARIANT_SW ? "Software" : "Hardware";

@@ -3464,7 +3464,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       NIR_PASS(_, nir, nir_opt_constant_folding);
 
       for (unsigned v = 0; v < hk_num_variants(sw_stage); ++v) {
-         if (v == HK_VS_VARIANTS &&
+         if (v == HK_VS_VARIANT_HW_UBO &&
              !hk_vertex_ubo_prefetch_enabled(dev->dev.chip))
             continue;
          /* Only compile the software variant if we might use this shader with
@@ -3479,7 +3479,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
 
          struct hk_shader *shader = &obj->variants[v];
          bool hw = v != HK_VS_VARIANT_SW;
-         shader->info.ubo_prefetch_direct = v == HK_VS_VARIANTS;
+         shader->info.ubo_prefetch_direct = v == HK_VS_VARIANT_HW_UBO;
 
          /* Optional variants may be skipped. Retain the original until the
           * loop ends instead of transferring it to a conditionally last one. */

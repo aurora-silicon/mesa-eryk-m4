@@ -5119,7 +5119,7 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
 
    bool direct_vertex = !gfx->shaders[MESA_SHADER_TESS_EVAL] &&
       !gfx->shaders[MESA_SHADER_GEOMETRY] &&
-      hk_shader_can_use_direct_ubos(cmd, MESA_SHADER_VERTEX, HK_VS_VARIANTS);
+      hk_shader_can_use_direct_ubos(cmd, MESA_SHADER_VERTEX, HK_VS_VARIANT_HW_UBO);
    if (direct_vertex != gfx->vs_ubo_direct) {
       if (debug_get_option_hk_m4_prefetch_audit())
          fprintf(stderr, "M3 vertex UBO variant: %s\n",

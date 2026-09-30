@@ -1,41 +1,50 @@
-# Experimental M3 vertex input loading
+# M3 vertex uniform input loading
 
-Not enabled by default. `HK_M3_VERTEX_PREFETCH_UBOS=true` builds a third
-hardware vertex variant for immutable ordinary UBOs. Software geometry/tess
-paths retain alias lowering, and recording selects the general variant for
-sparse/shadow buffers. Uniform metadata and NIR inputs move together past the
-16-half vertex ABI prefix; the admission budget reserves that space.
+G15S uses a third hardware vertex variant for immutable ordinary UBOs.
+Software geometry/tessellation paths retain alias lowering; recording selects
+the general variant for sparse/shadow buffers and mutable bindings. Uniform
+metadata and NIR inputs move together past the 16-half vertex ABI prefix;
+admission reserves this space and falls back when the budget is exhausted.
+GPU loads read live uniform values at execution. CPU recording examines only
+immutable descriptor metadata, not buffer contents.
 
-Host descriptor/bounds tests and ARM64 builds pass. Minecraft native Vulkan
-replays complete but fail the existing image comparison: approximately 1500
-pixels differ, of which 20 exceed one RGB level, maximum 77-79. Adding compiler
-waits has no effect. A diagnostic that marks all vertex ALU exact worsens the
-comparison and is not included. No failed run is a qualified score.
+The default policy enables this path and resource-program templates on G15S;
+`HK_M3_VERTEX_PREFETCH_UBOS=false` and `HK_M4_IOTO_TEMPLATES=false` remain
+available as independent diagnostic opt-outs. Other chips retain their defaults.
+The vertex policy participates in the compiler/pipeline cache key.
 
-The naive path is CPU-bound building Ioto resource programs. Existing
-`HK_M4_IOTO_TEMPLATES=true` brings ordinary frame intervals from ~21ms to
-9-10ms, but these screenshot runs are not benchmark timings. Native counters
-covering initialization plus replay show tiling span ~107ms versus ~181ms
-for the fragment-only candidate; these are not isolated per-frame timings.
+## Correctness and pass ordering
 
-Remaining work: diagnose the vertex arithmetic/edge differences, qualify
-variant switching and sparse/dynamic/robust paths with CTS, measure warmed
-completed replays, then consider defaults. Evidence retained under
-`/home/council/dev/gpu-replay-bench/diagnostics/m3-vertex-*` and
-`/home/council/dev/dirtyroom_m4/build/minecraft-auto-prefetch`.
+The first experiment changed about 1,500 pixels, 20 beyond one RGB level.
+Forcing its general vertex variant produced exactly the same changed pixels
+as direct loading, isolating the problem from the loaded uniform values.
+A redundant second full preprocessing pass after UBO lowering changed the
+arithmetic expression shapes. Removing that late pass restores exact saved
+Minecraft Vulkan frames while retaining the fast loads. The normal backend
+optimization still handles newly introduced address/select operations.
 
-## Pass-order diagnosis
+Keep the early full preprocessing pass: replacing it with scalar/constants-only
+cleanup restored Minecraft images but rejected a dynamically indexed storage-
+image vertex shader. The early-only full-preprocessing candidate passes that
+case and the original Minecraft reference. No image threshold was relaxed.
 
-Forcing the general vertex variant in the original experiment produces exactly
-the same changed pixels as direct UBO loading. Thus the discrepancy is not
-caused by the loaded values. Skipping the second full preprocessing pass for
-vertices restores exact first/middle/last Minecraft images while retaining
-9–10 ms ordinary frame intervals. The early full pass must remain: a reduced
-scalar/constants-only early pass rejects a dynamically indexed storage-image
-vertex shader in CTS. That test passes again with full early preprocessing
-and no redundant late preprocessing. An expanded 1,069-case indexed CTS
-selection is now being qualified; this path remains opt-in.
+The corrected candidate `/opt/asahi-m3-vertex-early-only-9c0bf9e93d3e` completes
+1,069 indexed CTS cases: **716 Pass, 353 NotSupported, no failures or guard
+errors**. Coverage includes vertex UBO, geometry, tessellation, vertex inputs,
+transform feedback, shader objects, robust UBOs and descriptor fallback cases.
+Catalog SHA256: `72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf`.
+Saved game checks also pass for Minecraft OpenGL/Zink, Satisfactory Vulkan,
+Factorio Wayland, 0 A.D. Vulkan and SuperTuxKart Zink at their existing image
+tolerances. Host descriptor/prefix-budget and Ioto-program tests pass. This is targeted
+regression coverage, not a full conformance run. M4 was not exercised.
 
-Evidence: `cts-vertex-image-{control,cse,early-only}` and
-`vertex-early-only-stage` under `build/minecraft-auto-prefetch`; saved Minecraft
-check `20260930T030645822727Z`, exact against the original reference.
+Evidence is in `build/minecraft-auto-prefetch/{cts-vertex-selection,
+cts-vertex-early-only,cts-vertex-image-*,vertex-early-only-stage}` and the
+benchmark repository's `diagnostics/m3-vertex-*`. Exact Minecraft check:
+`20260930T030645822727Z`. Final package timings and desktop deployment will be
+recorded separately after validation with default options.
+
+The naive vertex-loader implementation spent too much CPU time constructing
+Ioto resource programs. Reusing their structure while patching each draw's GPU
+addresses removes that cost; the template path retains bounds and allocation
+checks. Shader input loading and CPU template reuse are separate optimizations.

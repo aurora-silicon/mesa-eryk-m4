@@ -30,7 +30,15 @@ static inline bool
 hk_vertex_ubo_prefetch_enabled(enum agx_chip chip)
 {
    return chip == AGX_CHIP_G15S &&
-          debug_get_bool_option("HK_M3_VERTEX_PREFETCH_UBOS", false);
+          debug_get_bool_option("HK_M3_VERTEX_PREFETCH_UBOS", true);
+}
+
+/* Cache resource-program structure, while patching each draw's GPU addresses.
+ * Other chips retain the opt-in policy until separately qualified. */
+static inline bool
+hk_ioto_templates_enabled(enum agx_chip chip)
+{
+   return debug_get_bool_option("HK_M4_IOTO_TEMPLATES", chip == AGX_CHIP_G15S);
 }
 
 /* One contiguous, immutable-at-execution descriptor span per Vulkan set.

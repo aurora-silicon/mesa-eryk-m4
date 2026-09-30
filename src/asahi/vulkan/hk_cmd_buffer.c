@@ -16,6 +16,7 @@
 #include "hk_agx3_vdm_decode.h"
 #include "hk_buffer.h"
 #include "hk_cmd_pool.h"
+#include "hk_descriptor_prefetch.h"
 #include "hk_descriptor_set.h"
 #include "hk_descriptor_set_layout.h"
 #include "hk_device.h"
@@ -55,7 +56,6 @@
 #include "vulkan/vulkan_core.h"
 
 /* These process options are immutable during command recording. */
-DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_ioto_templates, "HK_M4_IOTO_TEMPLATES", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_program_profile, "HK_M4_PROGRAM_PROFILE", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_shader_profile, "HK_M4_SHADER_PROFILE", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_native_preamble, "HK_M4_NATIVE_PREAMBLE", false)
@@ -1917,7 +1917,7 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       }
 
       struct agx3_ioto_uniform_template *uniform_template = NULL;
-      if (debug_get_option_hk_m4_ioto_templates() &&
+      if (hk_ioto_templates_enabled(dev->dev.chip) &&
           (s->info.stage == MESA_SHADER_VERTEX || s->info.stage == MESA_SHADER_FRAGMENT)) {
          const unsigned index = s->info.stage == MESA_SHADER_FRAGMENT;
          if (!cmd->uniform_templates[index])

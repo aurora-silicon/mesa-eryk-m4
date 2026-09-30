@@ -730,8 +730,8 @@ hk_bound_hw_vs(struct hk_graphics_state *gfx)
       return &tes->variants[HK_VS_VARIANT_HW];
    else
       return &vs->variants[gfx->vs_ubo_direct &&
-                          vs->variants[HK_VS_VARIANTS].info.ubo_prefetch_direct
-                             ? HK_VS_VARIANTS : HK_VS_VARIANT_HW];
+                          vs->variants[HK_VS_VARIANT_HW_UBO].info.ubo_prefetch_direct
+                             ? HK_VS_VARIANT_HW_UBO : HK_VS_VARIANT_HW];
 }
 
 static inline struct hk_shader *
@@ -741,7 +741,7 @@ hk_bound_sw_vs(struct hk_graphics_state *gfx)
    struct hk_shader *hw_vs = hk_bound_hw_vs(gfx);
 
    if (hw_vs == &vs->variants[HK_VS_VARIANT_HW] ||
-       hw_vs == &vs->variants[HK_VS_VARIANTS])
+       hw_vs == &vs->variants[HK_VS_VARIANT_HW_UBO])
       return hw_vs;
    else
       return &vs->variants[HK_VS_VARIANT_SW];
