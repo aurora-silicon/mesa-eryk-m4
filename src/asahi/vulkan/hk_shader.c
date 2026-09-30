@@ -51,6 +51,7 @@
 #include "vk_ycbcr_conversion.h"
 
 #include "asahi/compiler/agx_compile.h"
+#include "asahi/compiler/agx_compiler.h"
 #include "asahi/compiler/agx_nir.h"
 #include "asahi/compiler/agx_nir_texture.h"
 #include "asahi/lib/agx_abi.h"
@@ -154,6 +155,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)hk_ubo_prefetch_enabled(pdev->dev.chip) << 32;
       flags |= (uint64_t)hk_ubo_prefetch_variant_enabled(pdev->dev.chip) << 33;
       flags |= (uint64_t)hk_plain_samplers_enabled(pdev->dev.chip) << 34;
+      flags |= (uint64_t)hk_vertex_ubo_prefetch_enabled(pdev->dev.chip) << 45;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_PREFETCH_DESCRIPTORS", false) << 35;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
@@ -172,13 +174,14 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
     * binaries makes e.g. AGX_MESA_DEBUG=wait silently ineffective, and can
     * later reuse diagnostic binaries in a normal application. Reserve the
     * bits 44..60 for the compiler's original bit positions. Compiler bit 0
-    * is unused, so flag 44 holds the diagnostic buffer shortcut above.
+    * is unused, so flag 44 holds the diagnostic buffer shortcut above. Bit 1
+    * only logs shaders; flag 45 holds the vertex input-loader policy.
     * Logging/validation options do not change code and need no separate cache.
     */
    static_assert(AGX_DBG_REMAT < BITFIELD_BIT(17));
    static_assert(((AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
                    AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
-                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 1) == 0);
+                   AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 3) == 0);
    flags |= (agx_get_compiler_debug() &
              (AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
               AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
@@ -2266,8 +2269,10 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
 
    const bool defer_ubo_aliases = agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
-      nir->info.stage == MESA_SHADER_FRAGMENT &&
-      hk_ubo_prefetch_enabled(dev->dev.chip);
+      ((nir->info.stage == MESA_SHADER_FRAGMENT &&
+        hk_ubo_prefetch_enabled(dev->dev.chip)) ||
+       (nir->info.stage == MESA_SHADER_VERTEX &&
+        hk_vertex_ubo_prefetch_enabled(dev->dev.chip)));
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && !defer_ubo_aliases)
       NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
 
@@ -2966,16 +2971,25 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    NIR_PASS(_, nir, hk_lower_uvs_index, sw_stage, nr_vbos);
    unsigned reserved = root + (4 * (1 + set_count));
    shader->info.agx3_root_uniform = root;
-   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && sw_stage == MESA_SHADER_FRAGMENT &&
-       hk_ubo_prefetch_enabled(dev->dev.chip)) {
+   const bool vertex_ubo_prefetch = sw_stage == MESA_SHADER_VERTEX &&
+      hk_vertex_ubo_prefetch_enabled(dev->dev.chip);
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
+       ((sw_stage == MESA_SHADER_FRAGMENT && hk_ubo_prefetch_enabled(dev->dev.chip)) ||
+        vertex_ubo_prefetch)) {
       const struct hk_ubo_prefetch_layouts prefetch_layouts = {
          .sets = set_layouts, .count = set_count,
       };
-      NIR_PASS(_, nir, hk_nir_prefetch_ubos, root + 4, set_count, &reserved,
-               shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
-               hk_ubo_prefetch_binding_allowed, (void *)&prefetch_layouts);
+      /* Software vertex execution retains alias lowering, but not the
+       * hardware vertex loader. Reserve the prefix before admitting loads;
+       * explicit preamble indices and metadata are relocated together below. */
+      if (!vertex_ubo_prefetch || shader->info.ubo_prefetch_direct) {
+         NIR_PASS(_, nir, hk_nir_prefetch_ubos, root + 4, set_count, &reserved,
+                  AGX_NUM_UNIFORMS - (vertex_ubo_prefetch ? AGX_ABI_VUNI_NATIVE_PREFIX : 0),
+                  shader->info.ubo_prefetch, &shader->info.ubo_prefetch_count,
+                  hk_ubo_prefetch_binding_allowed, (void *)&prefetch_layouts);
+      }
       if (shader->info.ubo_prefetch_direct) {
-         if (hk_plain_samplers_enabled(dev->dev.chip)) {
+         if (sw_stage == MESA_SHADER_FRAGMENT && hk_plain_samplers_enabled(dev->dev.chip)) {
             for (unsigned set = 0; set < set_count; ++set) {
                if (!set_layouts || !set_layouts[set])
                   continue;
@@ -3027,6 +3041,10 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       /* Software vertex execution keeps the vertex root and draw-parameter
        * ABI. Image access reserves halves 0..15 in both execution engines. */
       agx_nir_reserve_native_vertex_prefix(nir);
+      for (unsigned i = 0; i < shader->info.ubo_prefetch_count; ++i) {
+         shader->info.ubo_prefetch[i].uniform_half += AGX_ABI_VUNI_NATIVE_PREFIX;
+         shader->info.ubo_prefetch[i].direct_half += AGX_ABI_VUNI_NATIVE_PREFIX;
+      }
       root += AGX_ABI_VUNI_NATIVE_PREFIX;
       reserved += AGX_ABI_VUNI_NATIVE_PREFIX;
       shader->info.agx3_root_uniform = root;
@@ -3438,7 +3456,10 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
       /* Fold constant offset srcs for IO. */
       NIR_PASS(_, nir, nir_opt_constant_folding);
 
-      for (enum hk_vs_variant v = 0; v < HK_VS_VARIANTS; ++v) {
+      for (unsigned v = 0; v < hk_num_variants(sw_stage); ++v) {
+         if (v == HK_VS_VARIANTS &&
+             !hk_vertex_ubo_prefetch_enabled(dev->dev.chip))
+            continue;
          /* Only compile the software variant if we might use this shader with
           * geometry/tessellation. We need to compile the hardware variant
           * unconditionally to handle the VS -> null FS case, which does not
@@ -3450,13 +3471,12 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
             continue;
 
          struct hk_shader *shader = &obj->variants[v];
-         bool hw = v == HK_VS_VARIANT_HW;
-         bool last = (v + 1) == HK_VS_VARIANTS;
+         bool hw = v != HK_VS_VARIANT_SW;
+         shader->info.ubo_prefetch_direct = v == HK_VS_VARIANTS;
 
-         /* Each variant gets its own NIR. To save an extra clone, we use the
-          * original NIR for the last stage.
-          */
-         nir_shader *clone = last ? nir : nir_shader_clone(NULL, nir);
+         /* Optional variants may be skipped. Retain the original until the
+          * loop ends instead of transferring it to a conditionally last one. */
+         nir_shader *clone = nir_shader_clone(NULL, nir);
 
          /* Without a declared fragment successor this hardware variant is
           * only used for VS -> null FS. Geometry/tessellation and transform
@@ -3484,8 +3504,7 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                       attribs, ARRAY_SIZE(attribs), key->vs.attribs,
                       ARRAY_SIZE(key->vs.attribs), shader->info.vs.attribs_read)) {
                   ralloc_free(clone);
-                  if (!last)
-                     ralloc_free(nir);
+                  ralloc_free(nir);
                   hk_api_shader_destroy(&dev->vk, &obj->vk, pAllocator);
                   return VK_ERROR_FEATURE_NOT_PRESENT;
                }
@@ -3532,11 +3551,11 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                            hw, nir->xfb_info, info->set_layout_count, info->set_layouts);
          if (result != VK_SUCCESS) {
             hk_api_shader_destroy(&dev->vk, &obj->vk, pAllocator);
-            if (!last)
-               ralloc_free(nir);
+            ralloc_free(nir);
             return result;
          }
       }
+      ralloc_free(nir);
    } else {
       struct hk_shader *shader = hk_only_variant(obj);
       const bool direct_variant = sw_stage == MESA_SHADER_FRAGMENT &&

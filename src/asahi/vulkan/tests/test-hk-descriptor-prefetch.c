@@ -50,19 +50,27 @@ static void test_ubo(bool early, bool direct, unsigned access, bool eligible)
    struct hk_ubo_prefetch loads[HK_UBO_PREFETCH_MAX] = {0};
    unsigned end = 28, count = 0;
    bool allowed = false;
-   assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, loads, &count,
+   assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
                                allow_ubo, &allowed));
    assert(count == 0 && end == 28);
    allowed = true;
    if (!eligible) {
-      assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, loads, &count,
+      assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
                                    allow_ubo, &allowed));
       assert(count == 0 && end == 28);
       nir_validate_shader(b.shader, "non-speculatable UBO unchanged");
       ralloc_free(b.shader);
       return;
    }
-   assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, loads, &count,
+   /* Leave room for a native vertex ABI prefix. Exhaustion must retain the
+    * original loads, rather than admitting inputs beyond the shifted file. */
+   end = 494;
+   assert(!hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 496, loads, &count,
+                               allow_ubo, &allowed));
+   assert(count == 0 && end == 494);
+   nir_validate_shader(b.shader, "reserved uniform prefix fallback");
+   end = 28;
+   assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
                               allow_ubo, &allowed));
    assert(count == 2 && end == 34 && loads[0].set == 0);
    assert(loads[1].direct_half == loads[0].direct_half);
@@ -144,7 +152,7 @@ test_dynamic_ubo(bool root, bool bounded, bool indexed, bool volatile_load,
    unsigned end = 28, count = 0;
    struct dynamic_ubo_test test = {root, allow};
    bool eligible = allow && !indexed && !volatile_load;
-   assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, loads, &count,
+   assert(hk_nir_prefetch_ubos(b.shader, 24, 1, &end, 512, loads, &count,
                               allow_dynamic_ubo, &test) == eligible);
    assert(count == (eligible ? bounded ? 1 : 4 : 0));
    for (unsigned i = 0; i < count; ++i) {
