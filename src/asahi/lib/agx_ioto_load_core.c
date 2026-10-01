@@ -5,6 +5,7 @@
 
 #include "agx_ioto_load_core.h"
 
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
 
@@ -92,6 +93,27 @@ agx_ioto_load_core_init(struct agx_ioto_load_core *core, enum agx_chip chip,
    core->fast_path_enabled = fast_path_enabled;
    core->gpu0_round_nops =
       encoding == AGX_IOTO_LOAD_ENCODING_GPU0 && gpu0_round_nops;
+   return true;
+}
+
+bool
+agx_ioto_load_core_set_fixed_base(struct agx_ioto_load_core *core,
+                                  uint64_t address, uint16_t base_half)
+{
+   if (!core || core->fixed_base_valid || core->load_count ||
+       core->cache_count || !core->cache || !core->cache_capacity ||
+       (address & 3) || (base_half & 1) ||
+       (uint32_t)base_half + 4u > (uint32_t)core->initial_gpr_dwords * 2u)
+      return false;
+
+   core->fixed_base_address = address;
+   core->fixed_base_half = base_half;
+   core->fixed_base_valid = true;
+   core->cache[0] = (struct agx_ioto_load_cache_entry){
+      .address = address,
+      .base_half = base_half,
+   };
+   core->cache_count = 1;
    return true;
 }
 
@@ -289,10 +311,17 @@ agx_ioto_load_finish_worst_case_size(const struct agx_ioto_load_core *core,
          return false;
       if (complete_round) {
          uint8_t mask = core->loads[i].lane_mask;
+         unsigned tps = core->loads[i].cprog_input_tps_half;
          for (uint8_t dword = 0; dword < core->loads[i].count_dwords;
               ++dword, mask >>= 2) {
             if ((mask & 3) != 0 && !add_size(&total, copy_size))
                return false;
+            unsigned inputs = (core->loads[i].cprog_input_mask >> (2 * dword)) & 3;
+            unsigned halves = (inputs & 1) + (inputs >> 1);
+            unsigned copies = inputs == 3 && !(tps & 1) ? 1 : halves;
+            if (!add_size(&total, copies * copy_size))
+               return false;
+            tps += halves;
          }
       }
    }
@@ -331,7 +360,8 @@ raw_ioto_kind(enum agx_ioto_load_raw_kind kind)
 
 static bool
 raw_record_valid(const struct agx_ioto_load_core *core,
-                 const struct agx_ioto_load_raw_record *raw, bool is_load)
+                 const struct agx_ioto_load_raw_record *raw, bool is_load,
+                 bool trusted)
 {
    if (raw == NULL)
       return false;
@@ -352,8 +382,40 @@ raw_record_valid(const struct agx_ioto_load_core *core,
       return false;
    }
 
+   if (trusted) {
+      if (is_load) {
+         switch (raw->kind) {
+         case AGX_IOTO_LOAD_RAW_LDDEV_EP0:
+            return raw->length == 8;
+         case AGX_IOTO_LOAD_RAW_LDDEV_EP1:
+         case AGX_IOTO_LOAD_RAW_LDDEV_EP3:
+            return raw->length == 10;
+         case AGX_IOTO_LOAD_RAW_LDDEV_EP2:
+            return raw->length == 14;
+         case AGX_IOTO_LOAD_RAW_LDDEV_EP4:
+            return raw->length == 12;
+         case AGX_IOTO_LOAD_RAW_LDDEV_EP5:
+            return raw->length == 16;
+         default:
+            return false;
+         }
+      }
+
+      if (raw->kind == AGX_IOTO_LOAD_RAW_COPY_EP0)
+         return raw->length == 4;
+      if (raw->kind == AGX_IOTO_LOAD_RAW_COPY_EP1)
+         return raw->length ==
+                (core->encoding == AGX_IOTO_LOAD_ENCODING_GPU0 ? 10 : 8);
+      return false;
+   }
+
    const enum agx_ioto_kind kind = raw_ioto_kind(raw->kind);
-   return agx_ioto_check_kind(core->chip, kind, raw->bytes, raw->length);
+   struct agx_ioto_record validated;
+   size_t consumed = 0;
+   return kind != AGX_IOTO_KIND_INVALID &&
+          agx_ioto_validate_kind(core->chip, kind, raw->bytes, raw->length,
+                                 &validated, &consumed) &&
+          consumed == raw->length;
 }
 
 static bool
@@ -394,6 +456,7 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
       return false;
 
    const size_t old_length = core->sink.length;
+   const size_t old_copy_suffix_offset = core->copy_suffix_offset;
    if (core->load_count != 0) {
       memcpy(workspace.loads, core->loads,
              core->load_count * sizeof(workspace.loads[0]));
@@ -411,7 +474,7 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
       if (!ops->pack_load(ops->context, core->chip, load, &raw, &slot) ||
           slot == 0 ||
           slot > (core->encoding == AGX_IOTO_LOAD_ENCODING_GPU0 ? 6 : 8) ||
-          !raw_record_valid(core, &raw, true) ||
+          !raw_record_valid(core, &raw, true, ops->trusted_records) ||
           !append_bytes(core, raw.bytes, raw.length)) {
          core->sink.length = old_length;
          return false;
@@ -421,14 +484,12 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
    }
 
    if (complete_round && core->gpu0_round_nops) {
-      /* The completion slots are one-based. Register-source metadata is
-       * unrelated to the scoreboard slot selected by pack_load. Include
-       * loads emitted by an earlier incomplete round as well. */
+      static const uint8_t hazard_for_value[6] = {1, 2, 4, 8, 16, 32};
       uint8_t hazard = 0;
       for (size_t i = 0; i < core->load_count; ++i) {
-         const uint8_t slot = workspace.loads[i].signal_slot;
-         if (slot >= 1 && slot <= 6)
-            hazard |= 1u << (slot - 1);
+         const int32_t value = workspace.loads[i].data.value;
+         if (value >= 0 && value < 6)
+            hazard |= hazard_for_value[value];
       }
 
       uint8_t nop[AGX_IOTO_LOAD_NOP_SIZE];
@@ -442,9 +503,8 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
       }
    }
 
-   const size_t copy_offset = core->sink.length;
    if (complete_round) {
-      const bool emitted = core->load_count != 0 || core->gpu0_round_nops;
+      core->copy_suffix_offset = core->sink.length;
       for (size_t i = 0; i < core->load_count; ++i) {
          const struct agx_ioto_inflight_load *load = &workspace.loads[i];
          uint8_t mask = load->lane_mask;
@@ -458,14 +518,29 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
             memset(&raw, 0, sizeof(raw));
             if (!ops->pack_copy(ops->context, core->chip, load, dword,
                                 lane_code, &raw) ||
-                !raw_record_valid(core, &raw, false) ||
+                !raw_record_valid(core, &raw, false,
+                                  ops->trusted_records) ||
                 !append_bytes(core, raw.bytes, raw.length))
                goto fail;
+
+            if ((load->cprog_input_mask >> (2 * dword)) & 3) {
+               struct agx_ioto_load_raw_record extra[2] = {0};
+               uint8_t count = 0;
+               if (!ops->pack_cprog_copy ||
+                   !ops->pack_cprog_copy(ops->context, core->chip, load,
+                                          dword, extra, &count) ||
+                   count == 0 || count > 2)
+                  goto fail;
+               for (unsigned e = 0; e < count; ++e) {
+                  if (!raw_record_valid(core, &extra[e], false,
+                                         ops->trusted_records) ||
+                      !append_bytes(core, extra[e].bytes, extra[e].length))
+                     goto fail;
+               }
+            }
          }
       }
 
-      if (emitted)
-         core->copy_offset = copy_offset;
       core->current_gpr_dwords = core->initial_gpr_dwords;
       core->load_count = 0;
       core->abi4_load_pending = false;
@@ -474,7 +549,16 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
        * boundary.  In particular, absolute-address base registers may be
        * reused immediately after current_gpr_dwords is reset.
        */
-      core->cache_count = 0;
+      if (core->fixed_base_valid) {
+         assert(core->cache_capacity > 0);
+         core->cache[0] = (struct agx_ioto_load_cache_entry){
+            .address = core->fixed_base_address,
+            .base_half = core->fixed_base_half,
+         };
+         core->cache_count = 1;
+      } else {
+         core->cache_count = 0;
+      }
    } else {
       for (size_t i = 0; i < core->load_count; ++i) {
          struct agx_ioto_inflight_load *original =
@@ -490,6 +574,7 @@ agx_ioto_load_finish_round(struct agx_ioto_load_core *core, bool complete_round,
 
 fail:
    core->sink.length = old_length;
+   core->copy_suffix_offset = old_copy_suffix_offset;
    return false;
 }
 
@@ -543,6 +628,20 @@ agx_ioto_load_absolute(struct agx_ioto_load_core *core,
        load->native_slot > UINT16_MAX / 2 || load->lane_mask == 0 ||
        core->next_sequence == UINT32_MAX)
       return false;
+
+   if (load->cprog_input_mask &&
+       (core->chip != AGX_CHIP_G17P || !ops || !ops->pack_cprog_copy ||
+        (load->cprog_input_mask & ~load->lane_mask) ||
+        (load->cprog_input_mask >> (2 * load->count_dwords)) ||
+        load->cprog_input_tps_half < 8 || load->cprog_input_tps_half >= 520))
+      return false;
+   if (load->cprog_input_mask) {
+      unsigned inputs = 0;
+      for (unsigned h = 0; h < 8; ++h)
+         inputs += (load->cprog_input_mask >> h) & 1;
+      if (inputs > 520u - load->cprog_input_tps_half)
+         return false;
+   }
 
    const uint8_t n = load->count_dwords > 2 ? load->count_dwords : 2;
    const uint8_t valid_lane_bits = (uint8_t)((1u << (2u * n)) - 1);
@@ -608,12 +707,25 @@ agx_ioto_load_absolute(struct agx_ioto_load_core *core,
    size_t cache_insert = 0;
    uint16_t base_half = 0;
    int16_t delta = 0;
-   const bool cache_hit =
-      !needs_round &&
-      cache_lookup(core, load->address, &cache_insert, &base_half, &delta);
+   bool cache_hit = false;
+   if (!needs_round) {
+      cache_hit = cache_lookup(core, load->address, &cache_insert,
+                               &base_half, &delta);
+   } else if (core->fixed_base_valid &&
+              load->address >= core->fixed_base_address &&
+              load->address - core->fixed_base_address <= INT16_MAX) {
+      /* Ordinary round-owned bases are invalid after finishRound(true), but
+       * the launcher-owned prefix is deliberately reserved and re-seeded. */
+      base_half = core->fixed_base_half;
+      delta = (int16_t)(load->address - core->fixed_base_address);
+      cache_hit = true;
+   }
    if (!cache_hit &&
        (core->cache_capacity == 0 ||
         (!needs_round && core->cache_count == core->cache_capacity)))
+      return false;
+   if (!cache_hit && core->relocations &&
+       core->relocation_count == core->relocation_capacity)
       return false;
 
    uint8_t low[AGX_IOTO_LOAD_LDIMM_MAX_SIZE],
@@ -644,6 +756,7 @@ agx_ioto_load_absolute(struct agx_ioto_load_core *core,
    const size_t old_length = core->sink.length;
    const size_t old_load_count = core->load_count;
    const size_t old_cache_count = core->cache_count;
+   const size_t old_relocation_count = core->relocation_count;
    const uint8_t old_current = core->current_gpr_dwords;
    const uint32_t old_next_sequence = core->next_sequence;
 
@@ -653,13 +766,26 @@ agx_ioto_load_absolute(struct agx_ioto_load_core *core,
    core->current_gpr_dwords = predicted_core.current_gpr_dwords;
 
    if (!cache_hit) {
+      const size_t relocation_offset = core->sink.length;
       if (!append_bytes(core, low, low_length) ||
           !append_bytes(core, high, high_length))
          goto rollback;
 
-      /* A complete round cleared the cache, so its insertion point is zero. */
+      if (core->relocations) {
+         core->relocations[core->relocation_count++] =
+            (struct agx_ioto_load_relocation){
+               .offset = relocation_offset,
+               .address = load->address,
+               .dest_half = base_temp_half,
+               .low_length = low_length,
+               .high_length = high_length,
+            };
+      }
+
+      /* A complete round clears ordinary entries.  A launcher-owned fixed
+       * base is immediately re-seeded and remains the first sorted entry. */
       if (needs_round)
-         cache_insert = 0;
+         cache_insert = cache_lower_bound(core, load->address);
 
       memmove(&core->cache[cache_insert + 1], &core->cache[cache_insert],
               (core->cache_count - cache_insert) * sizeof(core->cache[0]));
@@ -683,6 +809,8 @@ agx_ioto_load_absolute(struct agx_ioto_load_core *core,
    queued->native_slot_half = (uint16_t)(2u * load->native_slot);
    queued->lane_mask = load->lane_mask;
    queued->cprog_dest_half = load->cprog_dest_half;
+   queued->cprog_input_mask = load->cprog_input_mask;
+   queued->cprog_input_tps_half = load->cprog_input_tps_half;
    queued->sequence = core->next_sequence++;
    return true;
 
@@ -690,6 +818,7 @@ rollback:
    core->sink.length = old_length;
    core->load_count = old_load_count;
    core->cache_count = old_cache_count;
+   core->relocation_count = old_relocation_count;
    core->current_gpr_dwords = old_current;
    core->next_sequence = old_next_sequence;
    return false;

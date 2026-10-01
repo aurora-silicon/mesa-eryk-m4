@@ -4,10 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <errno.h>
+#include <string.h>
 #include <xf86drm.h>
 #include "asahi/lib/agx_device_virtio.h"
+#include "asahi/lib/agx_va_runtime_hole.h"
 #include "asahi/lib/decode.h"
+#include "drm-uapi/dma-buf.h"
 #include "util/bitset.h"
+#include "util/libsync.h"
 #include "util/u_dynarray.h"
 #include "util/u_range.h"
 #include "agx_device.h"
@@ -85,6 +90,106 @@ agx_encoder_allocate(struct agx_batch *batch, struct agx_device *dev)
    return (struct agx_encoder){.bo = bo, .current = map, .end = map + bo->size};
 }
 
+static void agx_g17p_vdm_alias_free(struct agx_device *dev, uint64_t alias,
+                                    uint64_t size);
+
+static uint64_t
+agx_g17p_vdm_alias_alloc(struct agx_device *dev, uint64_t size)
+{
+   simple_mtx_lock(&dev->vma_lock);
+   const uint64_t alias = util_vma_heap_alloc(
+      &dev->g17p_vdm_alias_heap, size, AIL_PAGESIZE);
+   simple_mtx_unlock(&dev->vma_lock);
+
+   if (agx_g17p_vdm_alias_range_valid(alias, size))
+      return alias;
+
+   if (alias)
+      agx_g17p_vdm_alias_free(dev, alias, size);
+   return 0;
+}
+
+static void
+agx_g17p_vdm_alias_free(struct agx_device *dev, uint64_t alias, uint64_t size)
+{
+   simple_mtx_lock(&dev->vma_lock);
+   util_vma_heap_free(&dev->g17p_vdm_alias_heap, alias, size);
+   simple_mtx_unlock(&dev->vma_lock);
+}
+
+struct agx_g17p_vdm_alias {
+   struct agx_bo *bo;
+   uint64_t address;
+};
+
+uint64_t
+agx_batch_get_g17p_vdm_alias(struct agx_batch *batch, struct agx_bo *bo,
+                             uint64_t address)
+{
+   struct agx_device *dev = agx_device(batch->ctx->base.screen);
+   if (!agx_chip_uses_native_gallium(dev->chip))
+      return address;
+
+   if (!bo || address < bo->va->addr || address - bo->va->addr >= bo->size)
+      return 0;
+
+   uint64_t alias = 0;
+   util_dynarray_foreach(&batch->g17p_vdm_aliases,
+                         struct agx_g17p_vdm_alias, entry) {
+      if (entry->bo == bo) {
+         alias = entry->address;
+         break;
+      }
+   }
+
+   if (!alias) {
+      alias = agx_g17p_vdm_alias_alloc(dev, bo->size);
+      const uint32_t flags = DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE;
+      const int ret = alias ? agx_bo_bind(dev, bo, alias, bo->size, 0, flags)
+                            : -1;
+      assert(alias && ret == 0);
+      if (!alias || ret)
+         return 0;
+
+      const struct agx_g17p_vdm_alias entry = {bo, alias};
+      util_dynarray_append(&batch->g17p_vdm_aliases, entry);
+   }
+
+   return alias + (address - bo->va->addr);
+}
+
+static void
+agx_encoder_bind_vdm_alias(struct agx_device *dev, struct agx_encoder *encoder)
+{
+   if (!agx_chip_uses_native_gallium(dev->chip))
+      return;
+
+   const uint64_t alias =
+      agx_g17p_vdm_alias_alloc(dev, encoder->bo->size);
+   const uint32_t flags = DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE;
+   const int ret = alias ? agx_bo_bind(dev, encoder->bo, alias,
+                                      encoder->bo->size, 0, flags)
+                         : -1;
+   assert(alias && ret == 0);
+   if (!alias || ret)
+      return;
+
+   encoder->g17p_vdm_alias = alias;
+}
+
+static void
+agx_encoder_cleanup(struct agx_device *dev, struct agx_encoder *encoder)
+{
+   if (encoder->g17p_vdm_alias) {
+      agx_bo_bind(dev, NULL, encoder->g17p_vdm_alias, encoder->bo->size, 0,
+                  DRM_ASAHI_BIND_UNBIND);
+      agx_g17p_vdm_alias_free(dev, encoder->g17p_vdm_alias,
+                              encoder->bo->size);
+   }
+
+   agx_bo_unreference(dev, encoder->bo);
+}
+
 static void
 agx_batch_init(struct agx_context *ctx,
                const struct pipe_framebuffer_state *key,
@@ -99,8 +204,8 @@ agx_batch_init(struct agx_context *ctx,
 
    agx_bo_reference(screen->rodata);
    agx_pool_init(&batch->pool, dev, "Batch pool", 0, true);
-   agx_pool_init(&batch->pipeline_pool, dev, "Batch low VA pool", AGX_BO_LOW_VA,
-                 true);
+   agx_pool_init(&batch->pipeline_pool, dev, "Batch executable low VA pool",
+                 AGX_BO_LOW_VA | AGX_BO_EXEC, true);
 
    /* These allocations can happen only once and will just be zeroed (not freed)
     * during batch clean up. The memory is owned by the context.
@@ -117,12 +222,16 @@ agx_batch_init(struct agx_context *ctx,
       memset(&batch->vdm, 0, sizeof(batch->vdm));
    } else {
       batch->vdm = agx_encoder_allocate(batch, dev);
+      agx_encoder_bind_vdm_alias(dev, &batch->vdm);
       memset(&batch->cdm, 0, sizeof(batch->cdm));
    }
 
    util_dynarray_init(&batch->scissor, ctx);
    util_dynarray_init(&batch->depth_bias, ctx);
    util_dynarray_init(&batch->timestamps, ctx);
+   util_dynarray_init(&batch->g17p_vdm_aliases, ctx);
+   util_dynarray_init(&batch->faulttrace_cmdbuf, ctx);
+   batch->faulttrace_seqid = 0;
 
    batch->clear = 0;
    batch->draw = 0;
@@ -130,6 +239,7 @@ agx_batch_init(struct agx_context *ctx,
    batch->resolve = 0;
    batch->feedback = 0;
    memset(batch->uploaded_clear_color, 0, sizeof(batch->uploaded_clear_color));
+   memset(batch->clear_color, 0, sizeof(batch->clear_color));
    batch->clear_depth = 0;
    batch->clear_stencil = 0;
    batch->varyings = 0;
@@ -230,6 +340,38 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
 
    agx_finish_batch_queries(batch, begin_ts, end_ts);
 
+   /* Diagnostic CPU observation after retirement distinguishes an empty
+    * multisample store from a later texture-fetch or resolve problem. */
+   if (!reset && (dev->debug & AGX_DBG_ASYNCTRACE) &&
+       batch->key.nr_cbufs == 1 && batch->key.cbufs[0].texture &&
+       batch->key.cbufs[0].format == PIPE_FORMAT_R8_UNORM &&
+       util_res_sample_count(batch->key.cbufs[0].texture) > 1) {
+      struct agx_resource *rt = agx_resource(batch->key.cbufs[0].texture);
+      const size_t size = MIN2(rt->layout.size_B, rt->bo->size);
+      const uint8_t *map = size <= 4 * 1024 * 1024 ? agx_bo_map(rt->bo) : NULL;
+      if (map) {
+         size_t nonzero = 0, full = 0;
+         size_t first = size, last = 0, quarters[4] = {0}, residues[4] = {0};
+         for (size_t i = 0; i < size; ++i) {
+            nonzero += map[i] != 0;
+            full += map[i] == 0xff;
+            if (map[i]) {
+               first = MIN2(first, i);
+               last = i;
+               quarters[MIN2((i * 4) / size, 3)]++;
+               residues[i % 4]++;
+            }
+         }
+         agx_msg("MSAA image at retire: base=0x%llx size=0x%zx "
+                 "nonzero=%zu full=%zu samples=%u first=0x%zx last=0x%zx "
+                 "quarters=%zu,%zu,%zu,%zu residues4=%zu,%zu,%zu,%zu\n",
+                 (unsigned long long)agx_map_gpu(rt), size, nonzero, full,
+                 util_res_sample_count(&rt->base), first, last,
+                 quarters[0], quarters[1], quarters[2], quarters[3],
+                 residues[0], residues[1], residues[2], residues[3]);
+      }
+   }
+
    if (reset) {
       int handle;
       AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) {
@@ -257,14 +399,22 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
    }
 
    agx_bo_unreference(dev, screen->rodata);
-   agx_bo_unreference(dev, batch->vdm.bo);
-   agx_bo_unreference(dev, batch->cdm.bo);
+   util_dynarray_foreach(&batch->g17p_vdm_aliases,
+                         struct agx_g17p_vdm_alias, entry) {
+      agx_bo_bind(dev, NULL, entry->address, entry->bo->size, 0,
+                  DRM_ASAHI_BIND_UNBIND);
+      agx_g17p_vdm_alias_free(dev, entry->address, entry->bo->size);
+   }
+   agx_encoder_cleanup(dev, &batch->vdm);
+   agx_encoder_cleanup(dev, &batch->cdm);
    agx_pool_cleanup(&batch->pool);
    agx_pool_cleanup(&batch->pipeline_pool);
 
    util_dynarray_fini(&batch->scissor);
    util_dynarray_fini(&batch->depth_bias);
    util_dynarray_fini(&batch->timestamps);
+   util_dynarray_fini(&batch->g17p_vdm_aliases);
+   util_dynarray_fini(&batch->faulttrace_cmdbuf);
 
    if (!(dev->debug & (AGX_DBG_TRACE | AGX_DBG_SYNC))) {
       agx_batch_print_stats(dev, batch);
@@ -529,7 +679,14 @@ agx_batch_reads(struct agx_batch *batch, struct agx_resource *rsrc)
 
    /* Hazard: read-after-write */
    agx_flush_writer_except(batch->ctx, rsrc, batch, "Read from another batch",
-                           false);
+                            false);
+
+   /* A combined depth/stencil read also retains the separate stencil BO.
+    * Its writer may differ after a plane-by-plane blit, so resolve that
+    * dependency before submitting the reader as well. */
+   if (rsrc->separate_stencil)
+      agx_flush_writer_except(batch->ctx, rsrc->separate_stencil, batch,
+                              "Read stencil from another batch", false);
 }
 
 static void
@@ -590,23 +747,34 @@ agx_batch_writes_range(struct agx_batch *batch, struct agx_resource *rsrc,
                   offset + size);
 }
 
-static int
-agx_get_in_sync(struct agx_context *ctx)
+static bool
+agx_get_in_sync(struct agx_context *ctx, uint32_t *syncobj)
 {
    struct agx_device *dev = agx_device(ctx->base.screen);
+   *syncobj = 0;
 
    if (ctx->in_sync_fd >= 0) {
       int ret =
          drmSyncobjImportSyncFile(dev->fd, ctx->in_sync_obj, ctx->in_sync_fd);
-      assert(!ret);
+
+      /* A native-fence import can fail under transient kernel allocation
+       * pressure. Waiting on the original sync file preserves the acquire
+       * ordering without losing the submission or poisoning the context. */
+      if (ret && sync_wait(ctx->in_sync_fd, -1)) {
+         agx_msg("native acquire fence import and fallback wait failed\n");
+         close(ctx->in_sync_fd);
+         ctx->in_sync_fd = -1;
+         return false;
+      }
 
       close(ctx->in_sync_fd);
       ctx->in_sync_fd = -1;
 
-      return ctx->in_sync_obj;
-   } else {
-      return 0;
+      if (!ret)
+         *syncobj = ctx->in_sync_obj;
    }
+
+   return true;
 }
 
 static void
@@ -628,6 +796,60 @@ struct attachments {
    size_t count;
 };
 
+struct agx_shared_bo_sync {
+   struct agx_bo *bo;
+   uint32_t in_syncobj;
+};
+
+static bool
+agx_wait_shared_bo(struct agx_bo *bo)
+{
+   struct dma_buf_sync sync = {
+      .flags = DMA_BUF_SYNC_START | DMA_BUF_SYNC_RW,
+   };
+
+   if (bo->prime_fd < 0 || drmIoctl(bo->prime_fd, DMA_BUF_IOCTL_SYNC, &sync))
+      return false;
+
+   sync.flags = DMA_BUF_SYNC_END | DMA_BUF_SYNC_RW;
+   return drmIoctl(bo->prime_fd, DMA_BUF_IOCTL_SYNC, &sync) == 0;
+}
+
+static void
+agx_retire_failed_submit(struct agx_context *ctx, struct agx_batch *batch,
+                         struct drm_asahi_sync *syncs,
+                         struct agx_shared_bo_sync *shared_bos,
+                         unsigned shared_bo_count, void *extres,
+                         struct util_dynarray *cmdbuf, int error)
+{
+   struct agx_device *dev = agx_device(ctx->base.screen);
+
+   for (unsigned i = 0; i < shared_bo_count; ++i) {
+      if (shared_bos[i].in_syncobj)
+         drmSyncobjDestroy(dev->fd, shared_bos[i].in_syncobj);
+   }
+
+   free(syncs);
+   free(shared_bos);
+   free(extres);
+   util_dynarray_fini(cmdbuf);
+
+   /* No GPU work owns this batch. Retire its resources immediately and
+    * expose a context reset instead of leaving an unsignalled batch fence
+    * that can deadlock EGL, GBM, or a compositor during teardown. */
+   if (ctx->batch == batch)
+      ctx->batch = NULL;
+   agx_batch_mark_submitted(batch);
+   agx_batch_cleanup(ctx, batch, false);
+
+   const bool first_fault = !ctx->any_faults;
+   ctx->any_faults = true;
+   if (first_fault && ctx->reset.reset)
+      ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+
+   errno = error;
+}
+
 static void
 asahi_add_attachment(struct attachments *att, struct agx_resource *rsrc)
 {
@@ -639,6 +861,66 @@ asahi_add_attachment(struct attachments *att, struct agx_resource *rsrc)
    };
 }
 
+static void
+agx_cmdtrace_dump_cmdbuf(struct agx_device *dev, struct agx_batch *batch,
+                         struct util_dynarray *cmdbuf, const char *role,
+                         uint64_t seqid, int submit_errno)
+{
+   fprintf(stderr,
+           "asahi: cmdtrace role=%s queue=%u batch=%u seqid=%" PRIu64
+           " syncobj=%u draws=%u errno=%d cmdbuf-bytes=%u\n",
+           role, batch->ctx->queue_id, agx_batch_idx(batch), seqid,
+           batch->syncobj, batch->draws, submit_errno, cmdbuf->size);
+
+   if (!cmdbuf->size)
+      return;
+
+   /* G17P VDM encodes compact aliases rather than the allocator-owned BO
+    * addresses tracked by agxdecode. Add decoder-only views for the lifetime
+    * of this dump so it can follow the encoder and every aliased PPP payload
+    * without changing any GPU mapping. */
+   const unsigned payload_alias_count = util_dynarray_num_elements(
+      &batch->g17p_vdm_aliases, struct agx_g17p_vdm_alias);
+   const unsigned alias_count =
+      (batch->vdm.g17p_vdm_alias != 0) + payload_alias_count;
+   struct agx_bo *alias_bos = calloc(alias_count, sizeof(*alias_bos));
+   struct agx_va *alias_vas = calloc(alias_count, sizeof(*alias_vas));
+   unsigned alias_index = 0;
+
+   if (alias_bos && alias_vas && batch->vdm.g17p_vdm_alias) {
+      alias_bos[alias_index] = *batch->vdm.bo;
+      alias_vas[alias_index] = (struct agx_va){
+         .addr = batch->vdm.g17p_vdm_alias,
+         .size_B = batch->vdm.bo->size,
+      };
+      alias_bos[alias_index].handle = UINT32_MAX - alias_index;
+      alias_bos[alias_index].va = &alias_vas[alias_index];
+      agxdecode_track_alloc(dev->agxdecode, &alias_bos[alias_index++]);
+   }
+
+   if (alias_bos && alias_vas) {
+      util_dynarray_foreach(&batch->g17p_vdm_aliases,
+                            struct agx_g17p_vdm_alias, entry) {
+         alias_bos[alias_index] = *entry->bo;
+         alias_vas[alias_index] = (struct agx_va){
+            .addr = entry->address,
+            .size_B = entry->bo->size,
+         };
+         alias_bos[alias_index].handle = UINT32_MAX - alias_index;
+         alias_bos[alias_index].va = &alias_vas[alias_index];
+         agxdecode_track_alloc(dev->agxdecode, &alias_bos[alias_index++]);
+      }
+   }
+
+   agxdecode_drm_cmdbuf(dev->agxdecode, &dev->params, cmdbuf, true);
+   agxdecode_next_frame();
+
+   while (alias_index)
+      agxdecode_track_free(dev->agxdecode, &alias_bos[--alias_index]);
+   free(alias_vas);
+   free(alias_bos);
+}
+
 void
 agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
                  struct drm_asahi_cmd_compute *compute,
@@ -647,15 +929,25 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
    struct agx_device *dev = agx_device(ctx->base.screen);
    struct agx_screen *screen = agx_screen(ctx->base.screen);
 
-   /* We allocate the worst-case sync array size since this won't be excessive
-    * for most workloads
+   /* At most every BO contributes an input wait, followed by the explicit and
+    * inter-context input fences. The submission then appends two output
+    * fences, which also need full records in the same allocation.
     */
    unsigned max_syncs = batch->bo_list.bit_count + 2;
+   unsigned sync_capacity = max_syncs + 3;
    unsigned in_sync_count = 0;
    unsigned shared_bo_count = 0;
    struct drm_asahi_sync *syncs =
-      malloc((max_syncs * sizeof(struct drm_asahi_sync)) + 2);
-   struct agx_bo **shared_bos = malloc(max_syncs * sizeof(struct agx_bo *));
+      malloc(sync_capacity * sizeof(*syncs));
+   struct agx_shared_bo_sync *shared_bos =
+      malloc(max_syncs * sizeof(*shared_bos));
+   struct util_dynarray cmdbuf = UTIL_DYNARRAY_INIT;
+
+   if (!syncs || !shared_bos) {
+      agx_retire_failed_submit(ctx, batch, syncs, shared_bos, 0, NULL,
+                               &cmdbuf, ENOMEM);
+      return;
+   }
 
    uint64_t wait_seqid = p_atomic_read(&screen->flush_wait_seqid);
 
@@ -707,24 +999,46 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
 
          /* Get a sync file fd from the buffer */
          int in_sync_fd = agx_export_sync_file(dev, bo);
-         assert(in_sync_fd >= 0);
+         uint32_t sync_handle = 0;
+         int ret = in_sync_fd >= 0
+                      ? drmSyncobjCreate(dev->fd, 0, &sync_handle)
+                      : -1;
 
-         /* Create a new syncobj */
-         uint32_t sync_handle;
-         int ret = drmSyncobjCreate(dev->fd, 0, &sync_handle);
-         assert(ret >= 0);
+         if (!ret) {
+            ret = drmSyncobjImportSyncFile(dev->fd, sync_handle, in_sync_fd);
+            if (ret) {
+               drmSyncobjDestroy(dev->fd, sync_handle);
+               sync_handle = 0;
+            }
+         }
 
-         /* Import the sync file into it */
-         ret = drmSyncobjImportSyncFile(dev->fd, sync_handle, in_sync_fd);
-         assert(ret >= 0);
-         assert(sync_handle);
-         close(in_sync_fd);
+         /* Preserve correctness if a sync-file fd or temporary syncobj cannot
+          * be allocated. The dma-buf ioctl waits all prior implicit access;
+          * if we already have the sync file, waiting it avoids cache-domain
+          * transitions. */
+         if (in_sync_fd < 0 ? !agx_wait_shared_bo(bo)
+                            : (ret && sync_wait(in_sync_fd, -1))) {
+            const int sync_errno = errno ? errno : EIO;
+            if (in_sync_fd >= 0)
+               close(in_sync_fd);
+            u_rwlock_rdunlock(&screen->destroy_lock);
+            agx_retire_failed_submit(ctx, batch, syncs, shared_bos,
+                                     shared_bo_count, virt.extres, &cmdbuf,
+                                     sync_errno);
+            return;
+         }
 
-         /* Add it to our wait list */
-         agx_add_sync(syncs, &in_sync_count, sync_handle);
+         if (in_sync_fd >= 0)
+            close(in_sync_fd);
+
+         if (sync_handle)
+            agx_add_sync(syncs, &in_sync_count, sync_handle);
 
          /* And keep track of the BO for cloning the out_sync */
-         shared_bos[shared_bo_count++] = bo;
+         shared_bos[shared_bo_count++] = (struct agx_shared_bo_sync){
+            .bo = bo,
+            .in_syncobj = sync_handle,
+         };
          if (dev->is_virtio)
             virt.extres_count++;
       } else {
@@ -740,22 +1054,23 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
                bo->va->addr, queue_id);
 
             agx_add_sync(syncs, &in_sync_count, agx_bo_writer_syncobj(writer));
-            shared_bos[shared_bo_count++] = NULL;
          }
       }
    }
 
    if (dev->is_virtio && virt.extres_count) {
-      struct agx_bo **p = shared_bos;
       virt.extres =
          malloc(virt.extres_count * sizeof(struct asahi_ccmd_submit_res));
+      if (!virt.extres) {
+         u_rwlock_rdunlock(&screen->destroy_lock);
+         agx_retire_failed_submit(ctx, batch, syncs, shared_bos,
+                                  shared_bo_count, NULL, &cmdbuf, ENOMEM);
+         return;
+      }
 
       for (unsigned i = 0; i < virt.extres_count; i++) {
-         while (!*p)
-            p++; // Skip inter-context slots which are not recorded here
-         virt.extres[i].res_id = (*p)->uapi_handle;
+         virt.extres[i].res_id = shared_bos[i].bo->uapi_handle;
          virt.extres[i].flags = ASAHI_EXTRES_READ | ASAHI_EXTRES_WRITE;
-         p++;
       }
    }
 
@@ -769,7 +1084,16 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
    }
 
    /* Add an explicit fence from gallium, if any */
-   agx_add_sync(syncs, &in_sync_count, agx_get_in_sync(ctx));
+   uint32_t explicit_syncobj = 0;
+   if (!agx_get_in_sync(ctx, &explicit_syncobj)) {
+      const int sync_errno = errno ? errno : EIO;
+      u_rwlock_rdunlock(&screen->destroy_lock);
+      agx_retire_failed_submit(ctx, batch, syncs, shared_bos,
+                               shared_bo_count, virt.extres, &cmdbuf,
+                               sync_errno);
+      return;
+   }
+   agx_add_sync(syncs, &in_sync_count, explicit_syncobj);
 
    /* Add an implicit cross-context flush sync point, if any */
    if (wait_seqid) {
@@ -801,7 +1125,74 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
     * Everything still works (but over-synchronizes because this effectively
     * serializes all submissions once any context flushes once).
     */
+   /* The G17P kernel path accepts one hardware command per submission, so a
+    * batch that carries geometry/transform feedback compute work ahead of
+    * its render submits the compute command on its own and makes the render
+    * submission wait on its fence. Other chips keep the combined submission
+    * with its intra-submit barrier.
+    */
+   uint32_t compute_syncobj = 0;
+   const bool split_compute =
+      agx_chip_uses_native_gallium(dev->chip) && compute && render;
+   if (split_compute) {
+      struct util_dynarray compute_cmdbuf = UTIL_DYNARRAY_INIT;
+      struct drm_asahi_sync *compute_syncs =
+         malloc((in_sync_count + 1) * sizeof(*compute_syncs));
+      int ret = compute_syncs ? drmSyncobjCreate(dev->fd, 0, &compute_syncobj)
+                              : -1;
+
+      if (!ret) {
+         memcpy(compute_syncs, syncs, in_sync_count * sizeof(*syncs));
+         compute_syncs[in_sync_count] = (struct drm_asahi_sync){
+            .sync_type = DRM_ASAHI_SYNC_SYNCOBJ,
+            .handle = compute_syncobj,
+         };
+
+         struct drm_asahi_cmd_header header = agx_cmd_header(true, 0, 0);
+         util_dynarray_append(&compute_cmdbuf, header);
+         util_dynarray_append(&compute_cmdbuf, *compute);
+
+         struct drm_asahi_submit compute_submit = {
+            .flags = 0,
+            .queue_id = ctx->queue_id,
+            .in_sync_count = in_sync_count,
+            .out_sync_count = 1,
+            .syncs = (uint64_t)(uintptr_t)(compute_syncs),
+            .cmdbuf = (uint64_t)(uintptr_t)(compute_cmdbuf.data),
+            .cmdbuf_size = compute_cmdbuf.size,
+         };
+
+         ret = dev->ops.submit(dev, &compute_submit, &virt);
+      }
+
+      const int compute_errno =
+         ret < -1 ? -ret : (ret ? (errno ? errno : EIO) : 0);
+
+      if (!ret && (dev->debug & AGX_DBG_ASYNCTRACE))
+         agx_cmdtrace_dump_cmdbuf(dev, batch, &compute_cmdbuf,
+                                  "accepted-compute", seqid, 0);
+
+      free(compute_syncs);
+      util_dynarray_fini(&compute_cmdbuf);
+
+      if (ret) {
+         fprintf(stderr, "DRM_IOCTL_ASAHI_SUBMIT compute failed: %s\n",
+                 strerror(compute_errno));
+         if (compute_syncobj)
+            drmSyncobjDestroy(dev->fd, compute_syncobj);
+         u_rwlock_rdunlock(&screen->destroy_lock);
+         agx_retire_failed_submit(ctx, batch, syncs, shared_bos,
+                                  shared_bo_count, virt.extres, &cmdbuf,
+                                  compute_errno);
+         return;
+      }
+
+      batch_debug(batch, "Render waits on its own compute submission");
+      agx_add_sync(syncs, &in_sync_count, compute_syncobj);
+   }
+
    struct drm_asahi_sync *out_syncs = syncs + in_sync_count;
+   assert(in_sync_count + 2 <= sync_capacity);
 
    out_syncs[0] = (struct drm_asahi_sync){
       .sync_type = DRM_ASAHI_SYNC_SYNCOBJ,
@@ -815,9 +1206,7 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
    };
 
    /* Submit! */
-   struct util_dynarray cmdbuf = UTIL_DYNARRAY_INIT;
-
-   if (compute) {
+   if (compute && !split_compute) {
       /* Barrier on previous submission */
       struct drm_asahi_cmd_header header = agx_cmd_header(true, 0, 0);
 
@@ -833,6 +1222,9 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
          if (fb->cbufs[i].texture)
             asahi_add_attachment(&att, agx_resource(fb->cbufs[i].texture));
       }
+
+      if (fb->resolve)
+         asahi_add_attachment(&att, agx_resource(fb->resolve));
 
       if (fb->zsbuf.texture) {
          struct agx_resource *rsrc = agx_resource(fb->zsbuf.texture);
@@ -855,9 +1247,13 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
                                     att.list, att.count);
       }
 
-      /* Barrier on previous submission */
+      /* Barrier on previous submission, or on the compute command that
+       * shares this submission. A split compute is a previous submission.
+       */
+      const bool compute_here = compute && !split_compute;
       struct drm_asahi_cmd_header header = agx_cmd_header(
-         false, compute ? DRM_ASAHI_BARRIER_NONE : 0, compute ? 1 : 0);
+         false, compute_here ? DRM_ASAHI_BARRIER_NONE : 0,
+         compute_here ? 1 : 0);
 
       util_dynarray_append(&cmdbuf, header);
       util_dynarray_append(&cmdbuf, *render);
@@ -873,54 +1269,114 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
       .cmdbuf_size = cmdbuf.size,
    };
 
+   if (dev->debug & AGX_DBG_FAULTTRACE) {
+      util_dynarray_append_array(&batch->faulttrace_cmdbuf, uint8_t,
+                                 cmdbuf.data, cmdbuf.size);
+      batch->faulttrace_seqid = seqid;
+   }
+
    int ret = dev->ops.submit(dev, &submit, &virt);
+   const int submit_errno =
+      ret < -1 ? -ret : (ret ? (errno ? errno : EIO) : 0);
 
    u_rwlock_rdunlock(&screen->destroy_lock);
 
+   /* The render job holds its own reference to the compute fence. */
+   if (compute_syncobj)
+      drmSyncobjDestroy(dev->fd, compute_syncobj);
+
+   if (!ret && (dev->debug & AGX_DBG_ASYNCTRACE))
+      agx_cmdtrace_dump_cmdbuf(dev, batch, &cmdbuf, "accepted-current",
+                               seqid, 0);
+
    if (ret) {
-      if (compute) {
-         fprintf(stderr, "DRM_IOCTL_ASAHI_SUBMIT compute failed: %m\n");
+      if (compute && !split_compute) {
+         fprintf(stderr, "DRM_IOCTL_ASAHI_SUBMIT compute failed: %s\n",
+                 strerror(submit_errno));
       }
 
       if (render) {
          struct drm_asahi_cmd_render *c = render;
          fprintf(
             stderr,
-            "DRM_IOCTL_ASAHI_SUBMIT render failed: %m (%dx%d tile %dx%d layers %d samples %d)\n",
+            "DRM_IOCTL_ASAHI_SUBMIT render failed: %s (%dx%d tile %dx%d layers %d samples %d)\n",
+            strerror(submit_errno),
             c->width_px, c->height_px, c->utile_width_px, c->utile_height_px,
             c->layers, c->samples);
       }
 
-      assert(0);
-   }
+      /* Unlike `trace`, faulttrace does not wait after or decode successful
+       * submissions, so it preserves the compositor's queue chronology. BO
+       * tracking was armed at device open and each submitted batch retained
+       * its small DRM command wrapper. A wait-queue-timeline failure is
+       * observed by the current (rejected) submit but was caused by an earlier
+       * in-flight submit, so decode those candidates before the observer. */
+      if (dev->debug & AGX_DBG_FAULTTRACE) {
+         unsigned i;
+         foreach_submitted(ctx, i) {
+            struct agx_batch *candidate = &ctx->batches.slots[i];
+            agx_cmdtrace_dump_cmdbuf(
+               dev, candidate, &candidate->faulttrace_cmdbuf,
+               "in-flight-prior", candidate->faulttrace_seqid, submit_errno);
+         }
 
-   if (ret == ENODEV)
-      abort();
+         agx_cmdtrace_dump_cmdbuf(dev, batch, &batch->faulttrace_cmdbuf,
+                                  "rejected-current", seqid, submit_errno);
+      } else if (dev->debug & AGX_DBG_ASYNCTRACE) {
+         agx_cmdtrace_dump_cmdbuf(dev, batch, &cmdbuf, "rejected-current",
+                                  seqid, submit_errno);
+      }
+
+      agx_retire_failed_submit(ctx, batch, syncs, shared_bos,
+                               shared_bo_count, virt.extres, &cmdbuf,
+                               submit_errno);
+      return;
+   }
 
    /* Now stash our batch fence into any shared BOs. */
    if (shared_bo_count) {
       /* Convert our handle to a sync file */
       int out_sync_fd = -1;
       int ret = drmSyncobjExportSyncFile(dev->fd, batch->syncobj, &out_sync_fd);
-      assert(ret >= 0);
-      assert(out_sync_fd >= 0);
+      bool transfer_failed = ret || out_sync_fd < 0;
 
       for (unsigned i = 0; i < shared_bo_count; i++) {
-         if (!shared_bos[i])
-            continue;
-
          batch_debug(batch, "Signals shared BO @ 0x%" PRIx64,
-                     shared_bos[i]->va->addr);
+                     shared_bos[i].bo->va->addr);
 
          /* Free the in_sync handle we just acquired */
-         ret = drmSyncobjDestroy(dev->fd, syncs[i].handle);
-         assert(ret >= 0);
+         if (shared_bos[i].in_syncobj) {
+            ret = drmSyncobjDestroy(dev->fd, shared_bos[i].in_syncobj);
+            if (ret)
+               transfer_failed = true;
+            shared_bos[i].in_syncobj = 0;
+         }
+
          /* And then import the out_sync sync file into it */
-         ret = agx_import_sync_file(dev, shared_bos[i], out_sync_fd);
-         assert(ret >= 0);
+         if (out_sync_fd >= 0 &&
+             agx_import_sync_file(dev, shared_bos[i].bo, out_sync_fd))
+            transfer_failed = true;
       }
 
-      close(out_sync_fd);
+      if (out_sync_fd >= 0)
+         close(out_sync_fd);
+
+      /* Once submitted, a missing implicit release fence cannot be repaired
+       * by dropping the batch. Wait for completion before returning so every
+       * dma-buf is safe for its next owner even when sync-file transfer runs
+       * out of kernel resources. */
+      if (transfer_failed) {
+         ret = drmSyncobjWait(dev->fd, &batch->syncobj, 1, INT64_MAX,
+                              DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL, NULL);
+         if (ret) {
+            agx_msg("shared BO release-fence fallback wait failed: %s\n",
+                    strerror(ret < -1 ? -ret : (errno ? errno : EIO)));
+            const bool first_fault = !ctx->any_faults;
+            ctx->any_faults = true;
+            if (first_fault && ctx->reset.reset)
+               ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+         }
+      }
    }
 
    /* Record the syncobj on each BO we write, so it can be added post-facto as a

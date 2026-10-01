@@ -104,3 +104,11 @@ agx_vdm_hal200_bind_tail_unpack(
 
    return true;
 }
+
+uint32_t
+agx_vdm_hal200_bind_viewport_control(size_t bytes)
+{
+   if (bytes < 40 || bytes > 520 || (bytes - 8) % 32)
+      return 0;
+   return (bytes / 4) << 8;
+}

@@ -127,3 +127,8 @@ bool agx_vdm_hal200_indirect_draw_pack(
 #ifdef __cplusplus
 }
 #endif
+
+struct agx_vdm_hal200_direct_draw_body { uint8_t bytes[AGX_VDM_HAL200_DIRECT_DRAW_BODY_LENGTH]; uint8_t length; };
+struct agx_vdm_hal200_indexed_draw_body { uint8_t bytes[AGX_VDM_HAL200_INDEXED_DRAW_BODY_LENGTH]; uint8_t length; };
+bool agx_vdm_hal200_direct_draw_body_pack(enum agx_chip chip, const struct agx_vdm_hal200_direct_draw_fields *fields, struct agx_vdm_hal200_direct_draw_body *out);
+bool agx_vdm_hal200_indexed_draw_body_pack(enum agx_chip chip, const struct agx_vdm_hal200_indexed_draw_fields *fields, struct agx_vdm_hal200_indexed_draw_body *out);

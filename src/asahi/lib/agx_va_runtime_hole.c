@@ -192,3 +192,14 @@ agx_va_reserve_runtime_graph_hole(
 
    return reserve_intervals(usc_heap, usc_interval, usc_count);
 }
+
+bool
+agx_g17p_vdm_payload_compact(uint64_t addr, uint64_t *compact)
+{
+   if (!compact || addr < AGX_G17P_VDM_USER_BASE ||
+       addr >= AGX_G17P_VDM_USER_LIMIT || (addr & 3))
+      return false;
+
+   *compact = addr - AGX_G17P_VDM_USER_BASE;
+   return true;
+}

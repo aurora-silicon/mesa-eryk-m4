@@ -13,6 +13,10 @@
 #include "pool.h"
 
 struct agx_precompiled_shader {
+   struct agx_shader_info info;
+   uint16_t printf_uniform;
+   size_t entry_offset;
+   size_t rodata_offset;
    struct agx_shader b;
    struct agx_bo *bo;
    uint64_t ptr;
@@ -51,6 +55,8 @@ struct agx_bg_eot_key {
    struct agx_tilebuffer_layout tib;
    enum agx_bg_eot_op op[8];
    unsigned reserved_preamble;
+   bool single_sample_reload;
+   bool multisample_store;
    unsigned clear_preamble_base; /* Zero retains the legacy half4 clear ABI. */
 };
 

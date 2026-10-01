@@ -61,6 +61,7 @@ bool agx_va_overlaps_runtime_graph_hole(enum agx_chip chip, uint64_t addr,
 
 bool agx_g17p_vdm_alias_heap_init(struct util_vma_heap *heap);
 bool agx_g17p_vdm_alias_range_valid(uint64_t addr, uint64_t size);
+bool agx_g17p_vdm_payload_compact(uint64_t addr, uint64_t *compact);
 bool agx_g17p_vdm_alias_compact(uint64_t addr, uint32_t *offset);
 
 bool agx_va_reserve_runtime_graph_hole(

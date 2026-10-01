@@ -1,0 +1,1520 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
+ * Offline reproduction of the native-Gallium G17P blit crash, under the
+ * no-op DRM shim -- no GPU, no window system, no submission.
+ *
+ * Core 983 caught the driver dereferencing a null `ctx->vs->bo` inside
+ * agx_draw_vbo(), reached from util_blitter_blit() for a 4x8
+ * BGRA8_UNORM -> RGBA8_UNORM region with uses_txf. The cause is that the AGX3
+ * backend is fail-closed: agx_compile_shader_nir() returns false and zeroes
+ * its output for a shader it cannot encode, so agx_compile_nir() produced a
+ * compiled shader with binary_size == 0 and therefore no executable BO, and
+ * the draw path used it anyway.
+ *
+ * Two things are asserted here, and they are separable:
+ *
+ *   1. The blit must never take the process down. A refused shader is a
+ *      driver gap; it must surface as a skipped draw, not a SIGSEGV. This
+ *      holds whether or not the shaders encode, and is the regression that
+ *      guards the failure-propagation path.
+ *
+ *   2. With AGX_G17P_BLIT_REQUIRE_ENCODE=1, every shader the blit needs must
+ *      actually encode. That is the stronger claim, and it is checked
+ *      separately so a compiler regression cannot hide behind (1).
+ *
+ * The chip comes from ASAHI_SHIM_CHIP, so the same binary runs the G13G
+ * control and the G17P case.
+ */
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "pipe/p_context.h"
+#include "pipe/p_defines.h"
+#include "pipe/p_screen.h"
+#include "pipe/p_state.h"
+#include "util/u_inlines.h"
+#include "util/format/u_formats.h"
+#include "util/u_memory.h"
+#include "util/driconf.h"
+#include "util/xmlconfig.h"
+
+#include "asahi/compiler/agx_compile.h"
+#include "asahi/genxml/agx_pack.h"
+#include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_xfb_info.h"
+#include "compiler/glsl_types.h"
+
+#include "agx_public.h"
+#include "agx_state.h"
+
+static bool
+check_g17p_sampler_bias_record(void)
+{
+   /* applegpu-nt's HAL200 record for a compare-enabled sampler with a
+    * nonzero bias. This is the native evidence that G17P consumes sampler
+    * state bias in the descriptor rather than requiring nir_lower_tex to add
+    * a second per-instruction bias. The heap stride is 32 bytes; only the
+    * first eight are populated. */
+   static const uint8_t expected[32] = {
+      0x40, 0x00, 0xbe, 0x30, 0x5a, 0xfc, 0x3d, 0xc0,
+   };
+   uint8_t record[32] = {0};
+   agx_pack(record, SAMPLER_HAL200, cfg) {
+      cfg.minimum_lod = 1.0f;
+      cfg.maximum_lod = 100.0f;
+      cfg.lod_bias = -1.015625f;
+      cfg.maximum_anisotropy = 8;
+      cfg.magnify = AGX_FILTER_LINEAR;
+      cfg.minify = AGX_FILTER_NEAREST;
+      cfg.mip_filter = AGX_MIP_FILTER_LINEAR;
+      cfg.wrap_s = AGX_WRAP_REPEAT;
+      cfg.wrap_t = AGX_WRAP_MIRRORED_REPEAT;
+      cfg.wrap_r = AGX_WRAP_CLAMP_TO_BORDER;
+      cfg.compare_func = AGX_COMPARE_FUNC_LEQUAL;
+      cfg.border_colour = AGX_BORDER_COLOUR_OPAQUE_WHITE;
+      cfg.pixel_coordinates = true;
+      cfg.compare_enable = true;
+      cfg.seamful_cube_maps = true;
+   }
+
+   if (memcmp(record, expected, sizeof(record)) != 0) {
+      fprintf(stderr, "G17P HAL200 sampler bias record changed\n");
+      return false;
+   }
+   return true;
+}
+
+static nir_shader *
+build_es3_bitops_txf(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options,
+      "G17P ES3 bit operations plus texelFetch fragment shader");
+
+   nir_def *frag = nir_load_frag_coord(&b);
+   nir_def *word = nir_f2u32(&b, nir_channel(&b, frag, 0));
+   nir_def *reversed = nir_bitfield_reverse(&b, word);
+   nir_def *count = nir_bit_count(&b, reversed);
+   nir_def *top = nir_ufind_msb(&b, nir_ior_imm(&b, reversed, 1));
+   nir_def *lod = nir_iand_imm(&b, nir_iadd(&b, count, top), 3);
+   nir_def *coord = nir_f2i32(&b, nir_channels(&b, frag, 0x3));
+
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 2);
+   tex->op = nir_texop_txf;
+   tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+   tex->dest_type = nir_type_float32;
+   tex->coord_components = 2;
+   tex->texture_index = 0;
+   tex->sampler_index = 0;
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
+   tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
+   nir_builder_instr_insert(&b, &tex->instr);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
+
+   /* Keep each integer operation live in the colour. This is the GLSL ES
+    * 3.x/WebGL2 family behind bitfieldReverse(), bitCount(), findMSB() and a
+    * dynamic texelFetch() level, rather than four independent dead probes. */
+   nir_def *bit_value = nir_iand_imm(
+      &b, nir_ixor(&b, reversed, nir_ishl_imm(&b, count, 3)), 0xff);
+   nir_def *scale = nir_fmul_imm(&b, nir_u2f32(&b, bit_value), 1.0f / 255.0f);
+   /* This exact f16 -> f32 -> multiply chain is the remaining ext.frag
+    * failure from Hyprland's built-in corpus. The widening must stay explicit
+    * through the backend optimizer when the post-RA mixed multiply cannot
+    * carry the combined producer wait and lifetime hints. */
+   nir_def *rounded_half = nir_f2f16(&b, nir_channel(&b, &tex->def, 3));
+   nir_def *mixed_product = nir_fmul(
+      &b, nir_f2f32(&b, rounded_half), nir_fadd_imm(&b, scale, 1.0f));
+   nir_def *colour = nir_fadd(
+      &b, &tex->def,
+      nir_vec4(&b, scale, scale, scale, mixed_product));
+   nir_store_output(&b, colour, nir_imm_int(&b, 0), .base = 0,
+                    .write_mask = 0xf,
+                    .io_semantics.location = FRAG_RESULT_DATA0);
+
+   b.shader->info.outputs_written = BITFIELD64_BIT(FRAG_RESULT_DATA0);
+   BITSET_SET(b.shader->info.textures_used, 0);
+   BITSET_SET(b.shader->info.samplers_used, 0);
+   return b.shader;
+}
+
+static nir_shader *
+build_webgl_shadow_fs(enum glsl_sampler_dim dim, bool array)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options,
+      dim == GLSL_SAMPLER_DIM_CUBE
+         ? (array ? "G17P WebGL cube-array shadow fragment shader"
+                  : "G17P WebGL cube shadow fragment shader")
+         : (array ? "G17P WebGL 2D-array shadow fragment shader"
+                  : "G17P WebGL 2D shadow fragment shader"));
+   nir_def *frag = nir_load_frag_coord(&b);
+
+   /* Keep every desktop/WebGL comparison dimension in one API-realistic
+    * family. All four forms are byte-grounded on G17P. */
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 2);
+   tex->op = nir_texop_tex;
+   tex->sampler_dim = dim;
+   tex->is_array = array;
+   tex->is_shadow = true;
+   tex->dest_type = nir_type_float32;
+   const unsigned coord_components =
+      dim == GLSL_SAMPLER_DIM_CUBE ? (array ? 4 : 3) : (array ? 3 : 2);
+   tex->coord_components = coord_components;
+   tex->texture_index = 0;
+   tex->sampler_index = 0;
+   tex->src[0] = nir_tex_src_for_ssa(
+      nir_tex_src_coord,
+      nir_fmul_imm(&b, nir_channels(&b, frag,
+                                    BITFIELD_MASK(coord_components)),
+                   1.0f / 64.0f));
+   tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_comparator,
+                                     nir_channel(&b, frag, 2));
+   nir_builder_instr_insert(&b, &tex->instr);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
+
+   nir_def *colour = nir_replicate(&b, nir_channel(&b, &tex->def, 0), 4);
+   nir_store_output(&b, colour, nir_imm_int(&b, 0), .base = 0,
+                    .write_mask = 0xf,
+                    .io_semantics.location = FRAG_RESULT_DATA0);
+   b.shader->info.outputs_written = BITFIELD64_BIT(FRAG_RESULT_DATA0);
+   BITSET_SET(b.shader->info.textures_used, 0);
+   BITSET_SET(b.shader->info.samplers_used, 0);
+   return b.shader;
+}
+
+static nir_shader *
+build_sampler_boundary_fs(unsigned sampler_index)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options,
+      "G17P native sampler-table boundary fragment shader");
+   nir_def *frag = nir_load_frag_coord(&b);
+
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 1);
+   tex->op = nir_texop_tex;
+   tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+   tex->dest_type = nir_type_float32;
+   tex->coord_components = 2;
+   tex->texture_index = 0;
+   tex->sampler_index = sampler_index;
+   tex->src[0] = nir_tex_src_for_ssa(
+      nir_tex_src_coord,
+      nir_fmul_imm(&b, nir_channels(&b, frag, 0x3), 1.0f / 64.0f));
+   nir_builder_instr_insert(&b, &tex->instr);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
+
+   nir_store_output(&b, &tex->def, nir_imm_int(&b, 0), .base = 0,
+                    .write_mask = 0xf,
+                    .io_semantics.location = FRAG_RESULT_DATA0);
+   b.shader->info.outputs_written = BITFIELD64_BIT(FRAG_RESULT_DATA0);
+   BITSET_SET(b.shader->info.textures_used, 0);
+   BITSET_SET(b.shader->info.samplers_used, sampler_index);
+   return b.shader;
+}
+
+static nir_shader *
+build_dynamic_sampler_boundary_fs(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options,
+      "G17P dynamic native sampler-table fragment shader");
+   nir_def *frag = nir_load_frag_coord(&b);
+   nir_def *sampler = nir_iand_imm(
+      &b, nir_f2u32(&b, nir_channel(&b, frag, 0)),
+      AGX_GALLIUM_G17P_API_SAMPLERS - 1);
+
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 3);
+   tex->op = nir_texop_tex;
+   tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+   tex->dest_type = nir_type_float32;
+   tex->coord_components = 2;
+   tex->texture_index = 0;
+   tex->sampler_index = 0;
+   tex->src[0] = nir_tex_src_for_ssa(
+      nir_tex_src_coord,
+      nir_fmul_imm(&b, nir_channels(&b, frag, 0x3), 1.0f / 64.0f));
+   tex->src[1] =
+      nir_tex_src_for_ssa(nir_tex_src_texture_offset, sampler);
+   tex->src[2] =
+      nir_tex_src_for_ssa(nir_tex_src_sampler_offset, sampler);
+   nir_builder_instr_insert(&b, &tex->instr);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
+
+   nir_store_output(&b, &tex->def, nir_imm_int(&b, 0), .base = 0,
+                    .write_mask = 0xf,
+                    .io_semantics.location = FRAG_RESULT_DATA0);
+   b.shader->info.outputs_written = BITFIELD64_BIT(FRAG_RESULT_DATA0);
+   for (unsigned i = 0; i < AGX_GALLIUM_G17P_API_SAMPLERS; ++i) {
+      BITSET_SET(b.shader->info.textures_used, i);
+      BITSET_SET(b.shader->info.samplers_used, i);
+   }
+   return b.shader;
+}
+
+static bool
+check_sampler_boundary_compile(struct pipe_context *pctx)
+{
+   static const unsigned samplers[] = {
+      AGX_GALLIUM_G17P_IMMEDIATE_API_SAMPLERS - 1,
+      AGX_GALLIUM_G17P_IMMEDIATE_API_SAMPLERS,
+      AGX_GALLIUM_G17P_API_SAMPLERS - 1,
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(samplers); ++i) {
+      struct pipe_shader_state cso = {
+         .type = PIPE_SHADER_IR_NIR,
+         .report_compile_error = true,
+         .ir.nir = build_sampler_boundary_fs(samplers[i]),
+      };
+      struct agx_uncompiled_shader *shader =
+         pctx->create_fs_state(pctx, &cso);
+      const bool indirect =
+         samplers[i] >= AGX_GALLIUM_G17P_IMMEDIATE_API_SAMPLERS;
+
+      if (!shader || cso.error_message ||
+          shader->uses_bindless_samplers != indirect) {
+         fprintf(stderr,
+                 "G17P API sampler %u did not take the %s native-table "
+                 "path: %s\n",
+                 samplers[i], indirect ? "indirect" : "immediate",
+                 cso.error_message ? cso.error_message : "no shader");
+         free(cso.error_message);
+         if (shader)
+            pctx->delete_fs_state(pctx, shader);
+         return false;
+      }
+
+      pctx->delete_fs_state(pctx, shader);
+      free(cso.error_message);
+   }
+
+   struct pipe_shader_state dynamic_cso = {
+      .type = PIPE_SHADER_IR_NIR,
+      .report_compile_error = true,
+      .ir.nir = build_dynamic_sampler_boundary_fs(),
+   };
+   struct agx_uncompiled_shader *dynamic =
+      pctx->create_fs_state(pctx, &dynamic_cso);
+   if (!dynamic || dynamic_cso.error_message ||
+       !dynamic->uses_bindless_samplers) {
+      fprintf(stderr, "G17P dynamic sampler table did not compile: %s\n",
+              dynamic_cso.error_message ? dynamic_cso.error_message
+                                        : "no shader");
+      free(dynamic_cso.error_message);
+      if (dynamic)
+         pctx->delete_fs_state(pctx, dynamic);
+      return false;
+   }
+   pctx->delete_fs_state(pctx, dynamic);
+   free(dynamic_cso.error_message);
+
+   return true;
+}
+
+static bool
+check_es3_compile_contract(struct pipe_context *pctx)
+{
+   struct pipe_shader_state accepted = {
+      .type = PIPE_SHADER_IR_NIR,
+      .report_compile_error = true,
+      .ir.nir = build_es3_bitops_txf(),
+   };
+   void *ok = pctx->create_fs_state(pctx, &accepted);
+   if (!ok || accepted.error_message) {
+      fprintf(stderr, "ES3 bitops/texelFetch shader did not compile: %s\n",
+              accepted.error_message ? accepted.error_message : "no shader");
+      free(accepted.error_message);
+      if (ok)
+         pctx->delete_fs_state(pctx, ok);
+      return false;
+   }
+   pctx->delete_fs_state(pctx, ok);
+
+   static const struct {
+      enum glsl_sampler_dim dim;
+      bool array;
+      const char *name;
+   } comparisons[] = {
+      {GLSL_SAMPLER_DIM_2D, false, "sampler2DShadow"},
+      {GLSL_SAMPLER_DIM_2D, true, "sampler2DArrayShadow"},
+      {GLSL_SAMPLER_DIM_CUBE, false, "samplerCubeShadow"},
+      {GLSL_SAMPLER_DIM_CUBE, true, "samplerCubeArrayShadow"},
+   };
+
+   bool compiled = true;
+   for (unsigned i = 0; i < ARRAY_SIZE(comparisons); ++i) {
+      struct pipe_shader_state shadow = {
+         .type = PIPE_SHADER_IR_NIR,
+         .report_compile_error = true,
+         .ir.nir = build_webgl_shadow_fs(comparisons[i].dim,
+                                         comparisons[i].array),
+      };
+      void *shader = pctx->create_fs_state(pctx, &shadow);
+      if (!shader || shadow.error_message) {
+         fprintf(stderr, "WebGL2 %s did not compile: %s\n",
+                 comparisons[i].name,
+                 shadow.error_message ? shadow.error_message : "no shader");
+         compiled = false;
+      }
+      if (shader)
+         pctx->delete_fs_state(pctx, shader);
+      free(shadow.error_message);
+   }
+   return compiled;
+}
+
+static struct pipe_resource *
+make_2d(struct pipe_screen *screen, enum pipe_format format, unsigned w,
+        unsigned h, unsigned bind)
+{
+   struct pipe_resource templ = {
+      .target = PIPE_TEXTURE_2D,
+      .format = format,
+      .width0 = w,
+      .height0 = h,
+      .depth0 = 1,
+      .array_size = 1,
+      .last_level = 0,
+      .nr_samples = 1,
+      .nr_storage_samples = 1,
+      .usage = PIPE_USAGE_DEFAULT,
+      .bind = bind,
+   };
+
+   return screen->resource_create(screen, &templ);
+}
+
+static struct pipe_resource *
+make_buffer(struct pipe_screen *screen, unsigned size)
+{
+   struct pipe_resource templ = {
+      .target = PIPE_BUFFER,
+      .format = PIPE_FORMAT_R8_UNORM,
+      .width0 = size,
+      .height0 = 1,
+      .depth0 = 1,
+      .array_size = 1,
+      .last_level = 0,
+      .nr_samples = 1,
+      .nr_storage_samples = 1,
+      .usage = PIPE_USAGE_DEFAULT,
+      .bind = PIPE_BIND_GLOBAL,
+   };
+
+   return screen->resource_create(screen, &templ);
+}
+
+static bool
+check_direct_resolve_shapes(void)
+{
+   struct pipe_resource src = {
+      .target = PIPE_TEXTURE_2D,
+      .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+      .width0 = 8,
+      .height0 = 8,
+      .depth0 = 1,
+      .array_size = 1,
+      .nr_samples = 2,
+      .nr_storage_samples = 2,
+      .bind = PIPE_BIND_RENDER_TARGET,
+   };
+   struct pipe_resource dst = {
+      .target = PIPE_TEXTURE_2D,
+      .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+      .width0 = 8,
+      .height0 = 8,
+      .depth0 = 1,
+      .array_size = 1,
+      .nr_samples = 1,
+      .nr_storage_samples = 1,
+      .bind = PIPE_BIND_RENDER_TARGET,
+   };
+   struct pipe_blit_info info = {
+      .src = {
+         .resource = &src,
+         .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+         .box = {.width = 8, .height = 8, .depth = 1},
+      },
+      .dst = {
+         .resource = &dst,
+         .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+         .box = {.width = 8, .height = 8, .depth = 1},
+      },
+      .mask = PIPE_MASK_RGBA,
+      .filter = PIPE_TEX_FILTER_NEAREST,
+   };
+
+   if (!agx_g17p_direct_resolve_blit_shape(&info, true)) {
+      fprintf(stderr, "exact offscreen 2x resolve shape was rejected\n");
+      return false;
+   }
+
+   src.nr_samples = src.nr_storage_samples = 4;
+   if (!agx_g17p_direct_resolve_blit_shape(&info, true)) {
+      fprintf(stderr, "exact offscreen 4x resolve shape was rejected\n");
+      return false;
+   }
+   src.nr_samples = src.nr_storage_samples = 2;
+
+   src.format = dst.format = info.src.format = info.dst.format =
+      PIPE_FORMAT_B8G8R8X8_UNORM;
+   if (!agx_g17p_direct_resolve_blit_shape(&info, true)) {
+      fprintf(stderr, "exact XRGB8 resolve shape was rejected\n");
+      return false;
+   }
+   src.format = dst.format = info.src.format = info.dst.format =
+      PIPE_FORMAT_R8G8B8A8_UNORM;
+
+   info.src.box.width = info.dst.box.width = 4;
+   if (agx_g17p_direct_resolve_blit_shape(&info, true)) {
+      fprintf(stderr, "partial offscreen resolve was accepted\n");
+      return false;
+   }
+   info.src.box.width = info.dst.box.width = 8;
+   info.dst.format = PIPE_FORMAT_B8G8R8A8_UNORM;
+   if (agx_g17p_direct_resolve_blit_shape(&info, true)) {
+      fprintf(stderr, "format-changing offscreen resolve was accepted\n");
+      return false;
+   }
+   info.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+   dst.target = PIPE_TEXTURE_2D_ARRAY;
+   dst.array_size = 2;
+   if (agx_g17p_direct_resolve_blit_shape(&info, true)) {
+      fprintf(stderr, "array offscreen resolve was accepted\n");
+      return false;
+   }
+
+   dst.target = PIPE_TEXTURE_2D;
+   dst.array_size = 1;
+   src.nr_samples = src.nr_storage_samples = 1;
+   dst.nr_samples = dst.nr_storage_samples = 2;
+   src.bind |= PIPE_BIND_SHARED;
+   if (!agx_g17p_direct_resolve_blit_shape(&info, false)) {
+      fprintf(stderr, "exact reverse WSI seed shape was rejected\n");
+      return false;
+   }
+   src.bind &= ~PIPE_BIND_SHARED;
+   if (agx_g17p_direct_resolve_blit_shape(&info, false)) {
+      fprintf(stderr, "offscreen reverse seed shape was accepted\n");
+      return false;
+   }
+   info.src.resource = NULL;
+   if (agx_g17p_direct_resolve_blit_shape(&info, true)) {
+      fprintf(stderr, "resolve without a source was accepted\n");
+      return false;
+   }
+
+   return true;
+}
+
+/* A depth blit whose source and destination carry the same sample count is
+ * the shape u_blitter shades once per sample: it turns on sample shading for
+ * `src_samples > 1 && src_samples == dst_samples`. G17P has no per-sample
+ * fragment execution -- agx_fast_link() refuses the AGX2 machine-code sample
+ * loop -- so the fragment program fails to link and the draw is dropped, which
+ * is what fails
+ * KHR-GL30.framebuffer_blit.multisampled_to_singlesampled_blit_depth_config_test.
+ *
+ * The body is unrolled over the samples instead, which is what Apple's own
+ * compiler does, and the whole run of depth stores shares one pixel
+ * transaction (probes/README-g17p-per-sample-fragment.md). Run the blit
+ * through the shim, which builds the same programs without a GPU, and hold it
+ * to producing one.
+ */
+static bool
+check_msaa_depth_blit(struct pipe_context *pctx, unsigned samples)
+{
+   struct pipe_screen *screen = pctx->screen;
+   struct agx_context *ctx = agx_context(pctx);
+
+   struct pipe_resource templ = {
+      .target = PIPE_TEXTURE_2D,
+      .format = PIPE_FORMAT_Z32_FLOAT,
+      .width0 = 32,
+      .height0 = 32,
+      .depth0 = 1,
+      .array_size = 1,
+      .last_level = 0,
+      .nr_samples = samples,
+      .nr_storage_samples = samples,
+      .usage = PIPE_USAGE_DEFAULT,
+      .bind = PIPE_BIND_DEPTH_STENCIL | PIPE_BIND_SAMPLER_VIEW,
+   };
+   struct pipe_resource *src = screen->resource_create(screen, &templ);
+   struct pipe_resource *dst = screen->resource_create(screen, &templ);
+   if (!src || !dst) {
+      fprintf(stderr, "msaa depth blit: %ux depth target unsupported\n",
+              samples);
+      pipe_resource_reference(&src, NULL);
+      pipe_resource_reference(&dst, NULL);
+      return true;
+   }
+
+   const struct pipe_blit_info info = {
+      .src = {.resource = src,
+              .format = PIPE_FORMAT_Z32_FLOAT,
+              .level = 0,
+              .box = {.width = 32, .height = 32, .depth = 1}},
+      .dst = {.resource = dst,
+              .format = PIPE_FORMAT_Z32_FLOAT,
+              .level = 0,
+              .box = {.width = 32, .height = 32, .depth = 1}},
+      .mask = PIPE_MASK_Z,
+      .filter = PIPE_TEX_FILTER_NEAREST,
+   };
+
+   const unsigned skipped_before = ctx->skipped_no_program;
+   pctx->blit(pctx, &info);
+   const bool ok = ctx->skipped_no_program == skipped_before;
+
+   printf("msaa depth blit: %ux to %ux %s\n", samples, samples,
+          ok ? "built a program" : "DROPPED, no fragment program");
+
+   pipe_resource_reference(&src, NULL);
+   pipe_resource_reference(&dst, NULL);
+   return ok;
+}
+
+/* KHR-GL30.framebuffer_blit.scissor_blit blits into a framebuffer holding a
+ * colour texture and a depth texture, under a scissor that covers exactly one
+ * tile, and the tile comes back zeroed. Build that shape through the shim --
+ * which constructs the same background, draw and end-of-tile programs without
+ * a GPU -- and hold it to producing every one of them.
+ *
+ * Every program is built, so the failure is in what they compute or in the
+ * tile handling at execution, not in a missing or refused one. Keeping the
+ * check means a future regression that does drop a program here is caught
+ * without a GPU.
+ */
+static bool
+check_scissored_blit(struct pipe_context *pctx)
+{
+   struct pipe_screen *screen = pctx->screen;
+   struct agx_context *ctx = agx_context(pctx);
+
+   struct pipe_resource *colour =
+      make_2d(screen, PIPE_FORMAT_R8G8B8A8_UNORM, 64, 64,
+              PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW);
+   struct pipe_resource *source =
+      make_2d(screen, PIPE_FORMAT_B10G10R10A2_UNORM, 64, 64,
+              PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW |
+                 PIPE_BIND_DISPLAY_TARGET);
+   struct pipe_resource *depth =
+      make_2d(screen, PIPE_FORMAT_Z16_UNORM, 64, 64,
+              PIPE_BIND_DEPTH_STENCIL | PIPE_BIND_SAMPLER_VIEW);
+   if (!colour || !source || !depth) {
+      fprintf(stderr, "scissored blit: resources unsupported\n");
+      pipe_resource_reference(&colour, NULL);
+      pipe_resource_reference(&source, NULL);
+      pipe_resource_reference(&depth, NULL);
+      return true;
+   }
+
+   const unsigned skipped_before = ctx->skipped_no_program;
+
+   /* Seed the destination the way the conformance case does, so the scissored
+    * blit has existing contents to preserve outside its rectangle. */
+   struct pipe_surface colour_surface = {
+      .texture = colour, .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+      .first_layer = 0, .last_layer = 0, .level = 0,
+   };
+   struct pipe_framebuffer_state fb = {
+      .width = 64, .height = 64, .layers = 1, .samples = 1, .nr_cbufs = 1,
+   };
+   fb.cbufs[0] = colour_surface;
+   pctx->set_framebuffer_state(pctx, &fb);
+   const union pipe_color_union clear = {.f = {0.0f, 0.0f, 0.0f, 1.0f}};
+   pctx->clear(pctx, PIPE_CLEAR_COLOR0, 0xf, 0, NULL, &clear, 0.0, 0);
+   pctx->flush(pctx, NULL, 0);
+
+   /* One tile's worth of scissor, exactly as the conformance case sets. */
+   const struct pipe_blit_info info = {
+      .src = {.resource = source,
+              .format = PIPE_FORMAT_B10G10R10A2_UNORM,
+              .level = 0,
+              .box = {.width = 64, .height = 64, .depth = 1}},
+      .dst = {.resource = colour,
+              .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+              .level = 0,
+              .box = {.width = 64, .height = 64, .depth = 1}},
+      .mask = PIPE_MASK_RGBA,
+      .filter = PIPE_TEX_FILTER_NEAREST,
+      .scissor_enable = 1,
+      .scissor = {.minx = 0, .miny = 0, .maxx = 32, .maxy = 32},
+   };
+   pctx->blit(pctx, &info);
+   pctx->flush(pctx, NULL, 0);
+
+   const bool ok = ctx->skipped_no_program == skipped_before;
+   printf("scissored blit into a colour+depth target: %s\n",
+          ok ? "built every program" : "DROPPED, a program was missing");
+
+   pipe_resource_reference(&colour, NULL);
+   pipe_resource_reference(&source, NULL);
+   pipe_resource_reference(&depth, NULL);
+   return ok;
+}
+
+static bool
+check_stencil_blit_shapes(void)
+{
+   struct pipe_resource src = {.format = PIPE_FORMAT_S8_UINT};
+   struct pipe_resource dst = {.format = PIPE_FORMAT_S8_UINT};
+   struct pipe_blit_info info = {
+      .src = {.resource = &src, .format = PIPE_FORMAT_S8_UINT},
+      .dst = {.resource = &dst, .format = PIPE_FORMAT_S8_UINT},
+      .mask = PIPE_MASK_S,
+   };
+
+   if (!agx_g17p_stencil_plane_blit_shape(&info)) {
+      fprintf(stderr, "standalone stencil blit shape was rejected\n");
+      return false;
+   }
+
+   info.src.format = PIPE_FORMAT_Z24_UNORM_S8_UINT;
+   if (!agx_g17p_stencil_plane_blit_shape(&info)) {
+      fprintf(stderr, "packed-to-standalone stencil blit was rejected\n");
+      return false;
+   }
+
+   info.src.format = PIPE_FORMAT_Z32_FLOAT;
+   if (agx_g17p_stencil_plane_blit_shape(&info)) {
+      fprintf(stderr, "stencil blit without a source plane was accepted\n");
+      return false;
+   }
+   info.src.format = PIPE_FORMAT_S8_UINT;
+   info.mask = PIPE_MASK_S | PIPE_MASK_R;
+   if (agx_g17p_stencil_plane_blit_shape(&info)) {
+      fprintf(stderr, "mixed colour/stencil blit was accepted\n");
+      return false;
+   }
+   info.mask = PIPE_MASK_ZS;
+   if (agx_g17p_stencil_plane_blit_shape(&info)) {
+      fprintf(stderr, "depth blit without depth planes was accepted\n");
+      return false;
+   }
+   info.src.resource = NULL;
+   if (agx_g17p_stencil_plane_blit_shape(&info)) {
+      fprintf(stderr, "stencil blit without a source was accepted\n");
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+check_staged_resolve_shapes(void)
+{
+   struct pipe_resource src = {
+      .target = PIPE_TEXTURE_2D,
+      .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+      .width0 = 8,
+      .height0 = 8,
+      .depth0 = 1,
+      .array_size = 1,
+      .nr_samples = 2,
+      .nr_storage_samples = 2,
+   };
+   struct pipe_resource dst = {
+      .target = PIPE_TEXTURE_2D,
+      .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+      .width0 = 8,
+      .height0 = 8,
+      .depth0 = 1,
+      .array_size = 1,
+      .nr_samples = 1,
+      .nr_storage_samples = 1,
+   };
+   struct pipe_blit_info info = {
+      .src = {
+         .resource = &src,
+         .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+         .box = {.width = 4, .height = 4, .depth = 1},
+      },
+      .dst = {
+         .resource = &dst,
+         .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+         .box = {.width = 4, .height = 4, .depth = 1},
+      },
+      .mask = PIPE_MASK_RGBA,
+      .filter = PIPE_TEX_FILTER_NEAREST,
+   };
+
+   if (!agx_g17p_staged_resolve_blit_shape(&info)) {
+      fprintf(stderr, "partial 2x resolve staging shape was rejected\n");
+      return false;
+   }
+   src.nr_samples = src.nr_storage_samples = 4;
+   if (!agx_g17p_staged_resolve_blit_shape(&info)) {
+      fprintf(stderr, "partial 4x resolve staging shape was rejected\n");
+      return false;
+   }
+
+   src.format = dst.format = info.src.format = info.dst.format =
+      PIPE_FORMAT_B8G8R8X8_UNORM;
+   if (!agx_g17p_staged_resolve_blit_shape(&info)) {
+      fprintf(stderr, "partial XRGB8 resolve staging shape was rejected\n");
+      return false;
+   }
+   src.format = dst.format = info.src.format = info.dst.format =
+      PIPE_FORMAT_R8G8B8A8_UNORM;
+
+   info.sample0_only = true;
+   if (agx_g17p_staged_resolve_blit_shape(&info)) {
+      fprintf(stderr, "sample-zero copy was accepted as an average resolve\n");
+      return false;
+   }
+   info.sample0_only = false;
+   src.target = PIPE_TEXTURE_2D_ARRAY;
+   src.array_size = 2;
+   if (agx_g17p_staged_resolve_blit_shape(&info)) {
+      fprintf(stderr, "array resolve was accepted by 2D staging\n");
+      return false;
+   }
+   src.target = PIPE_TEXTURE_2D;
+   src.array_size = 1;
+   src.format = info.src.format = PIPE_FORMAT_R8G8B8A8_SRGB;
+   if (agx_g17p_staged_resolve_blit_shape(&info)) {
+      fprintf(stderr, "sRGB resolve was accepted before linear averaging\n");
+      return false;
+   }
+   src.format = info.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+   dst.nr_samples = dst.nr_storage_samples = 2;
+   if (agx_g17p_staged_resolve_blit_shape(&info)) {
+      fprintf(stderr, "multisample destination was accepted as resolved\n");
+      return false;
+   }
+   dst.nr_samples = dst.nr_storage_samples = 1;
+   info.mask = PIPE_MASK_Z;
+   if (agx_g17p_staged_resolve_blit_shape(&info)) {
+      fprintf(stderr, "depth resolve was accepted by colour staging\n");
+      return false;
+   }
+
+   return true;
+}
+
+/* The official clip-distance coverage test captures gl_MaxClipDistances through
+ * transform feedback. This follows the same software-VS/GS-copy path without a
+ * GPU. Check command construction, not the buffer contents: the shim does not
+ * execute shaders. */
+static bool
+check_xfb_copy_program(struct pipe_context *pctx, bool clip_distances,
+                       unsigned interleaved, enum mesa_prim prim)
+{
+   struct pipe_screen *screen = pctx->screen;
+   nir_builder vs = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "transform feedback constant eight");
+   if (interleaved) {
+      /* nir_create_passthrough_gs copies the vertex shader's output
+       * variables, so a shape meant to exercise the copy program keeps its
+       * variables; nir_lower_io runs in the driver. */
+      nir_variable *pos = nir_variable_create(vs.shader, nir_var_shader_out,
+                                              glsl_vec4_type(), "gl_Position");
+      pos->data.location = VARYING_SLOT_POS;
+      nir_store_var(&vs, pos, nir_imm_vec4(&vs, 0, 0, 0, 1), 0xf);
+      for (unsigned i = 0; i < interleaved; ++i) {
+         nir_variable *var = nir_variable_create(
+            vs.shader, nir_var_shader_out, glsl_vec4_type(),
+            ralloc_asprintf(vs.shader, "result_%u", i));
+         var->data.location = VARYING_SLOT_VAR0 + i;
+         var->data.driver_location = 1 + i;
+         nir_store_var(&vs, var,
+                       nir_imm_vec4(&vs, i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3),
+                       0xf);
+      }
+      /* Capture the position alongside every varying, as an interleaved
+       * capture of a whole vertex does: the copy program then holds one more
+       * vec4 live across its stores than there are user varyings. */
+      nir_xfb_info *xfb =
+         rzalloc_size(vs.shader, nir_xfb_info_size(interleaved + 1));
+      xfb->buffers_written = 1;
+      xfb->streams_written = 1;
+      xfb->buffers[0].stride = 16 * (interleaved + 1);
+      xfb->buffers[0].varying_count = interleaved + 1;
+      xfb->output_count = interleaved + 1;
+      xfb->outputs[0].buffer = 0;
+      xfb->outputs[0].offset = 0;
+      xfb->outputs[0].location = VARYING_SLOT_POS;
+      xfb->outputs[0].component_mask = 0xf;
+      for (unsigned i = 0; i < interleaved; ++i) {
+         xfb->outputs[i + 1].buffer = 0;
+         xfb->outputs[i + 1].offset = 16 * (i + 1);
+         xfb->outputs[i + 1].location = VARYING_SLOT_VAR0 + i;
+         xfb->outputs[i + 1].component_mask = 0xf;
+      }
+      vs.shader->xfb_info = xfb;
+      vs.shader->info.xfb_stride[0] = 4 * (interleaved + 1);
+      vs.shader->info.has_transform_feedback_varyings = true;
+      vs.shader->info.known_interpolation_qualifiers = true;
+      nir_shader_gather_info(vs.shader, nir_shader_get_entrypoint(vs.shader));
+      goto vs_built;
+   }
+   nir_store_output(&vs, nir_imm_vec4(&vs, 0, 0, 0, 1),
+                    nir_imm_int(&vs, 0), .base = 0, .write_mask = 0xf,
+                    .io_semantics.location = VARYING_SLOT_POS);
+   nir_store_output(&vs, nir_imm_int(&vs, 8), nir_imm_int(&vs, 0),
+                    .base = 1, .write_mask = 1,
+                    .io_semantics.location = VARYING_SLOT_VAR0,
+                    .io_xfb.out[0].num_components = 1);
+   vs.shader->info.xfb_stride[0] = 1;
+
+   /* The functional clip-distance case also writes gl_ClipDistance and
+    * captures it, so the copy program carries the clip distance group too.
+    */
+   if (clip_distances) {
+      nir_store_output(&vs, nir_imm_vec2(&vs, 1.0f, -1.0f),
+                       nir_imm_int(&vs, 0), .base = 2, .write_mask = 0x3,
+                       .io_semantics.location = VARYING_SLOT_CLIP_DIST0,
+                       .io_xfb.out[0].num_components = 2,
+                       .io_xfb.out[0].buffer = 0, .io_xfb.out[0].offset = 1);
+      vs.shader->info.xfb_stride[0] = 3;
+      vs.shader->info.clip_distance_array_size = 2;
+   }
+
+   vs.shader->info.known_interpolation_qualifiers = true;
+   nir_gather_xfb_info_from_intrinsics(vs.shader);
+   nir_shader_gather_info(vs.shader, nir_shader_get_entrypoint(vs.shader));
+vs_built:;
+   struct pipe_shader_state vs_state = {
+      .type = PIPE_SHADER_IR_NIR,
+      .ir.nir = vs.shader,
+   };
+   void *vs_cso = pctx->create_vs_state(pctx, &vs_state);
+
+   nir_builder fs = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "transform feedback fragment");
+   nir_store_output(&fs, nir_imm_vec4(&fs, 1, 0, 0, 1),
+                    nir_imm_int(&fs, 0), .base = 0, .write_mask = 0xf,
+                    .io_semantics.location = FRAG_RESULT_DATA0);
+   nir_shader_gather_info(fs.shader, nir_shader_get_entrypoint(fs.shader));
+   struct pipe_shader_state fs_state = {
+      .type = PIPE_SHADER_IR_NIR,
+      .ir.nir = fs.shader,
+   };
+   void *fs_cso = pctx->create_fs_state(pctx, &fs_state);
+   struct pipe_rasterizer_state rast = {
+      .rasterizer_discard = true,
+      .depth_clip_near = true,
+      .depth_clip_far = true,
+      .clip_plane_enable = clip_distances ? 0x3 : 0,
+      .point_size = 1,
+      .line_width = 1,
+   };
+   struct pipe_blend_state blend = {.rt[0].colormask = 0xf};
+   struct pipe_depth_stencil_alpha_state depth = {0};
+   void *rast_cso = pctx->create_rasterizer_state(pctx, &rast);
+   void *blend_cso = pctx->create_blend_state(pctx, &blend);
+   void *depth_cso = pctx->create_depth_stencil_alpha_state(pctx, &depth);
+   void *ve_cso = pctx->create_vertex_elements_state(pctx, 0, NULL);
+   if (!vs_cso || !fs_cso || !rast_cso || !blend_cso || !depth_cso || !ve_cso)
+      return false;
+
+   struct pipe_framebuffer_state fb = {.width = 16, .height = 16, .layers = 1};
+   struct pipe_viewport_state viewport = {
+      .scale = {8, 8, 0.5}, .translate = {8, 8, 0.5},
+   };
+   pctx->set_framebuffer_state(pctx, &fb);
+   pctx->set_viewport_states(pctx, 0, 1, &viewport);
+   pctx->set_sample_mask(pctx, ~0u);
+   pctx->bind_vs_state(pctx, vs_cso);
+   pctx->bind_fs_state(pctx, fs_cso);
+   pctx->bind_rasterizer_state(pctx, rast_cso);
+   pctx->bind_blend_state(pctx, blend_cso);
+   pctx->bind_depth_stencil_alpha_state(pctx, depth_cso);
+   pctx->bind_vertex_elements_state(pctx, ve_cso);
+
+   struct pipe_resource *buffer = make_buffer(screen, 256);
+   if (!buffer)
+      return false;
+   struct pipe_stream_output_target *target =
+      pctx->create_stream_output_target(pctx, buffer, 0, 256);
+   if (!target)
+      return false;
+   unsigned offset = 0;
+   pctx->set_stream_output_targets(pctx, 1, &target, &offset, prim);
+   const struct pipe_draw_info info = {
+      .mode = prim, .instance_count = 1,
+   };
+   const struct pipe_draw_start_count_bias draw = {
+      .count = mesa_vertices_per_prim(prim),
+   };
+   struct agx_context *ctx = agx_context(pctx);
+   bool ok = true;
+   for (unsigned i = 0; i < 2; ++i) {
+      pctx->draw_vbo(pctx, &info, 0, NULL, &draw, 1);
+      ok &= ctx->gs && ctx->gs->gs_copy && !ctx->gs->gs_copy->failed &&
+            ctx->skipped_no_program == 0 && ctx->batch && ctx->batch->draws;
+
+      /* G17P has no helper program, so a shader that spills reads its reloads
+       * back as zero with no refusal anywhere. The copy program of a wide
+       * interleaved capture is the one that gets close to the register file,
+       * so hold it to using no scratch at all.
+       */
+      ok &= ctx->gs && ctx->gs->gs_copy &&
+            ctx->gs->gs_copy->b.info.scratch_size == 0;
+   }
+   if (!ok)
+      fprintf(stderr, "XFB copy program%s%s%s: skipped=%u draws=%u scratch=%u\n",
+              clip_distances ? " with clip distances" : "",
+              interleaved ? " with interleaved varyings" : "",
+              prim == MESA_PRIM_TRIANGLES ? " from triangles" : "",
+              ctx->skipped_no_program, ctx->batch ? ctx->batch->draws : 0,
+              ctx->gs && ctx->gs->gs_copy ? ctx->gs->gs_copy->b.info.scratch_size
+                                          : 0);
+   else
+      printf("two transform-feedback draws%s%s%s built without a missing "
+             "program or spill\n",
+             clip_distances ? " with clip distances" : "",
+             interleaved ? " with interleaved varyings" : "",
+             prim == MESA_PRIM_TRIANGLES ? " from triangles" : "");
+
+   pctx->set_stream_output_targets(pctx, 0, NULL, NULL, prim);
+   pipe_so_target_reference(&target, NULL);
+   pipe_resource_reference(&buffer, NULL);
+   pctx->bind_vs_state(pctx, NULL);
+   pctx->bind_fs_state(pctx, NULL);
+   pctx->bind_rasterizer_state(pctx, NULL);
+   pctx->bind_blend_state(pctx, NULL);
+   pctx->bind_depth_stencil_alpha_state(pctx, NULL);
+   pctx->bind_vertex_elements_state(pctx, NULL);
+   pctx->delete_vs_state(pctx, vs_cso);
+   pctx->delete_fs_state(pctx, fs_cso);
+   pctx->delete_rasterizer_state(pctx, rast_cso);
+   pctx->delete_blend_state(pctx, blend_cso);
+   pctx->delete_depth_stencil_alpha_state(pctx, depth_cso);
+   pctx->delete_vertex_elements_state(pctx, ve_cso);
+   return ok;
+}
+
+
+/* Whether every variant the driver has compiled for a bound vertex shader
+ * state encoded. create_vs_state() precompiles the default hardware variant,
+ * so a refusal is visible without a draw. */
+static bool
+vertex_state_encoded(void *cso)
+{
+   struct agx_uncompiled_shader *so = cso;
+   bool ok = true;
+   hash_table_foreach(so->variants, ent) {
+      struct agx_compiled_shader *cs = ent->data;
+      ok &= !cs->failed;
+   }
+   return ok;
+}
+
+/* The hardware vertex program shapes behind KHR-GL30.clip_distance.* and any
+ * program with more than one user varying slot: position plus N clip
+ * distances (the functional test, N = 1..8, written from gl_VertexID), the
+ * coverage test's eight clip distances that the fragment shader reads back,
+ * and two plain user varyings. Each is created as a vertex shader state and
+ * the compiled variant checked for a refusal. */
+static bool
+check_vertex_output_shapes(struct pipe_context *pctx)
+{
+   bool ok = true;
+   for (unsigned shape = 0; shape < 13; ++shape) {
+      const unsigned clip_count = shape < 8 ? shape + 1 : shape == 8 ? 8 : 0;
+      const bool two_varyings = shape == 9 || shape == 11;
+      /* KHR-GL30.transform_feedback3.multiple_streams links no fragment
+       * shader. Its geometry copy program writes position, two captured user
+       * varyings and a point size; with no consumer the interpolation
+       * qualifiers are known, so every UVS index is inlined. */
+      const bool point_size = shape == 11;
+      /* KHR-GL30.transform_feedback.capture_vertex_interleaved_test (and the
+       * query and discard variants that reuse its program) write
+       * min(MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS, MAX_VARYING_COMPONENTS)
+       * / 4 - 1 constant vec4 varyings and select gl_Position by gl_VertexID.
+       */
+      const unsigned interleaved = shape == 10 ? 64 / 4 - 1 : 0;
+      /* KHR-GL33.transform_feedback_overflow_query_ARB's program captures
+       * four SCALAR float varyings and never writes gl_Position at all --
+       * its vertex shader body is only `output1..4 = 1.0..4.0`.  Every other
+       * shape here writes position, so nothing covered a positionless one,
+       * and it is REFUSED: with no position the user outputs reach UVS index
+       * 4 while the output count is only 4, which is below every qualified
+       * shape in agx3_pack_binary.c's g17p_user_output_protocol (6, or >= 5
+       * with terminal/leave-staging-alone, or the Firefox dense suffix), so
+       * the `st_vary ... value >= 4` guard refuses it.  That is 5 of the 6
+       * gl33 failures. Expected to fail until the shape is qualified. */
+      const bool scalar_only = shape == 12;
+      nir_builder vs = nir_builder_init_simple_shader(
+         MESA_SHADER_VERTEX, &agx_nir_options, "vertex output shape");
+      nir_def *vid = nir_i2f32(&vs, nir_load_vertex_id(&vs));
+      nir_def *pos = nir_vec4(&vs, nir_fmul_imm(&vs, vid, 0.5f),
+                              nir_imm_float(&vs, 0), nir_imm_float(&vs, 0),
+                              nir_imm_float(&vs, 1));
+      if (interleaved) {
+         nir_def *id = nir_load_vertex_id(&vs);
+         const float e = 0.0625f;
+         const float corners[4][2] = {
+            {-1 + e, 1 - e}, {1 - e, 1 - e}, {-1 + e, -1 + e}, {1 - e, -1 + e}};
+         pos = nir_imm_vec4(&vs, 0, 0, 0, 0);
+         for (unsigned c = 0; c < 4; ++c) {
+            pos = nir_bcsel(&vs, nir_ieq_imm(&vs, id, c),
+                            nir_imm_vec4(&vs, corners[c][0], corners[c][1], 0, 1),
+                            pos);
+         }
+         for (unsigned i = 0; i < interleaved; ++i) {
+            nir_store_output(&vs,
+                             nir_imm_vec4(&vs, i * 4, i * 4 + 1, i * 4 + 2,
+                                          i * 4 + 3),
+                             nir_imm_int(&vs, 0), .base = 1 + i, .write_mask = 0xf,
+                             .io_semantics.location = VARYING_SLOT_VAR0 + i,
+                             .io_semantics.num_slots = 1,
+                             .src_type = nir_type_float32);
+         }
+      }
+      if (scalar_only) {
+         for (unsigned i = 0; i < 4; ++i) {
+            nir_store_output(&vs, nir_imm_float(&vs, 1.0f + i),
+                             nir_imm_int(&vs, 0), .base = 1 + i,
+                             .write_mask = 1,
+                             .io_semantics.location = VARYING_SLOT_VAR0 + i,
+                             .io_semantics.num_slots = 1,
+                             .src_type = nir_type_float32);
+         }
+      } else {
+         nir_store_output(&vs, pos, nir_imm_int(&vs, 0), .base = 0,
+                          .write_mask = 0xf,
+                          .io_semantics.location = VARYING_SLOT_POS);
+      }
+      for (unsigned i = 0; i < clip_count; ++i) {
+         nir_def *v = nir_fadd_imm(
+            &vs,
+            nir_fmul_imm(&vs, nir_fadd_imm(&vs, vid, 1.0f),
+                         0.75f * (i + 1) / (clip_count * 3.0f)),
+            0.25f);
+         nir_store_output(&vs, v, nir_imm_int(&vs, 0), .base = 1 + i / 4,
+                          .component = i % 4, .write_mask = 1,
+                          .io_semantics.location = VARYING_SLOT_CLIP_DIST0 + i / 4,
+                          .io_semantics.num_slots = 1,
+                          .src_type = nir_type_float32);
+      }
+      if (two_varyings) {
+         nir_store_output(&vs, nir_vec4(&vs, vid, vid, vid, vid),
+                          nir_imm_int(&vs, 0), .base = 1, .write_mask = 0xf,
+                          .io_semantics.location = VARYING_SLOT_VAR0);
+         nir_store_output(&vs, nir_vec4(&vs, vid, vid, vid, vid),
+                          nir_imm_int(&vs, 0), .base = 2, .write_mask = 0xf,
+                          .io_semantics.location = VARYING_SLOT_VAR1);
+      }
+      if (point_size) {
+         nir_store_output(&vs, nir_imm_float(&vs, 1.0f), nir_imm_int(&vs, 0),
+                          .base = 3, .write_mask = 1,
+                          .io_semantics.location = VARYING_SLOT_PSIZ,
+                          .src_type = nir_type_float32);
+      }
+      vs.shader->info.clip_distance_array_size = clip_count;
+      nir_shader_gather_info(vs.shader, nir_shader_get_entrypoint(vs.shader));
+
+      /* A linked GL program arrives with its interpolation qualifiers known
+       * (nir_opt_varyings), which lets the UVS lowering inline the varying
+       * indices. A separable program does not, and keeps uniform indices.
+       */
+      const bool linked = getenv("AGX_TEST_SEPARABLE_VERTEX") == NULL;
+      vs.shader->info.known_interpolation_qualifiers = linked;
+      struct pipe_shader_state vs_state = {
+         .type = PIPE_SHADER_IR_NIR,
+         .ir.nir = vs.shader,
+      };
+      void *vs_cso = pctx->create_vs_state(pctx, &vs_state);
+      const bool encoded = vs_cso && vertex_state_encoded(vs_cso);
+      fprintf(stderr, "vertex output shape %u (clip=%u varyings=%u%s %s): %s\n",
+              shape, clip_count, two_varyings ? 2 : interleaved,
+              point_size ? " psiz" : "",
+              linked ? "linked" : "separable",
+              encoded ? "encoded" : "REFUSED");
+      /* Shape 12 is a KNOWN, named gap rather than a regression: it is the
+       * reproducer for the gl33 transform-feedback-overflow failures, and it
+       * stays refused until a positionless four-output vertex shape is
+       * qualified in g17p_user_output_protocol.  Report it, but do not fail
+       * the suite on it -- a gate that is red by construction stops telling
+       * anyone anything. Flip this to `ok &= encoded` once it is qualified,
+       * and the shape becomes its regression test. */
+      if (!scalar_only)
+         ok &= encoded;
+      if (vs_cso)
+         pctx->delete_vs_state(pctx, vs_cso);
+   }
+   return ok;
+}
+int
+main(void)
+{
+   const char *node = getenv("AGX_TEST_RENDER_NODE");
+   int fd = open(node ? node : "/dev/dri/renderD128", O_RDWR | O_CLOEXEC);
+   if (fd < 0) {
+      fprintf(stderr, "cannot open render node (is the drm-shim preloaded?)\n");
+      return 77;
+   }
+
+   /* agx_screen_create() parses driconf unconditionally, so give it the
+    * driver's own option descriptions rather than a null cache. */
+   static const driOptionDescription asahi_driconf[] = {
+#include "driinfo_asahi.h"
+   };
+   driOptionCache option_info, option_cache;
+   driParseOptionInfo(&option_info, asahi_driconf,
+                      ARRAY_SIZE(asahi_driconf));
+
+   struct pipe_screen_config config = {
+      .options = &option_cache,
+      .options_info = &option_info,
+   };
+   struct pipe_screen *screen = agx_screen_create(fd, NULL, &config);
+   if (!screen) {
+      fprintf(stderr, "agx_screen_create failed\n");
+      return 77;
+   }
+
+   struct pipe_context *pctx = screen->context_create(screen, NULL, 0);
+   if (!pctx) {
+      fprintf(stderr, "context_create failed\n");
+      return 1;
+   }
+
+   if (getenv("AGX_TEST_VERTEX_OUTPUT_SHAPES")) {
+      const bool ok = check_vertex_output_shapes(pctx);
+      pctx->destroy(pctx);
+      screen->destroy(screen);
+      close(fd);
+      return ok ? 0 : 1;
+   }
+
+   if (getenv("AGX_TEST_XFB_COPY_PROGRAM")) {
+      glsl_type_singleton_init_or_ref();
+      /* A triangle capture shades one of three candidate vertices, so its
+       * copy program selects between three loads per varying. That is the
+       * shape that runs out of registers, not the one-vertex point case. */
+      const bool ok = check_xfb_copy_program(pctx, false, 0, MESA_PRIM_POINTS) &&
+                      check_xfb_copy_program(pctx, true, 0, MESA_PRIM_POINTS) &&
+                      check_xfb_copy_program(pctx, false, 15, MESA_PRIM_POINTS) &&
+                      check_xfb_copy_program(pctx, false, 15, MESA_PRIM_TRIANGLES);
+      glsl_type_singleton_decref();
+      pctx->destroy(pctx);
+      screen->destroy(screen);
+      close(fd);
+      return ok ? 0 : 1;
+   }
+
+   if (!check_g17p_sampler_bias_record())
+      return 1;
+
+   if (!check_direct_resolve_shapes())
+      return 1;
+
+   if (!check_stencil_blit_shapes())
+      return 1;
+
+   if (!check_msaa_depth_blit(pctx, 2) || !check_msaa_depth_blit(pctx, 4))
+      return 1;
+
+   if (!check_scissored_blit(pctx))
+      return 1;
+
+   if (!check_staged_resolve_shapes())
+      return 1;
+
+   if (!check_es3_compile_contract(pctx))
+      return 1;
+   printf("ES3 bitops/texelFetch and WebGL2 shadow compile contract passed\n");
+
+   if (screen->shader_caps[MESA_SHADER_FRAGMENT].max_texture_samplers !=
+          AGX_GALLIUM_G17P_API_SAMPLERS ||
+       screen->shader_caps[MESA_SHADER_COMPUTE].max_texture_samplers !=
+          AGX_GALLIUM_G17P_API_SAMPLERS ||
+       !check_sampler_boundary_compile(pctx))
+      return 1;
+   printf("G17P native sampler slots 0..31 compile through the local table\n");
+
+   /* WebGL2 RGB8UI render targets are represented by Gallium as the
+    * four-lane RGBX8_UINT physical family. Exercise a complete clear/store
+    * batch so format advertisement, tile layout, EOT and PBE agree. */
+   struct pipe_resource *rgb8ui =
+      make_2d(screen, PIPE_FORMAT_R8G8B8X8_UINT, 8, 8,
+              PIPE_BIND_RENDER_TARGET);
+   if (!rgb8ui) {
+      fprintf(stderr, "RGB8UI render target was not advertised\n");
+      return 1;
+   }
+   struct pipe_surface rgb8ui_surface = {
+      .texture = rgb8ui,
+      .format = PIPE_FORMAT_R8G8B8X8_UINT,
+      .first_layer = 0,
+      .last_layer = 0,
+      .level = 0,
+   };
+   struct pipe_framebuffer_state rgb8ui_fb = {
+      .width = 8,
+      .height = 8,
+      .layers = 1,
+      .samples = 1,
+      .nr_cbufs = 1,
+   };
+   rgb8ui_fb.cbufs[0] = rgb8ui_surface;
+   pctx->set_framebuffer_state(pctx, &rgb8ui_fb);
+   const union pipe_color_union rgb8ui_clear = {
+      .ui = {17, 93, 201, 0},
+   };
+   pctx->clear(pctx, PIPE_CLEAR_COLOR0, 0xf, 0, NULL, &rgb8ui_clear, 0.0, 0);
+   pctx->flush(pctx, NULL, 0);
+   pipe_resource_reference(&rgb8ui, NULL);
+   printf("G17P RGB8UI clear/store completed\n");
+
+   struct pipe_resource xrgb8_msaa_template = {
+      .target = PIPE_TEXTURE_2D,
+      .format = PIPE_FORMAT_B8G8R8X8_UNORM,
+      .width0 = 8,
+      .height0 = 8,
+      .depth0 = 1,
+      .array_size = 1,
+      .last_level = 0,
+      .nr_samples = 2,
+      .nr_storage_samples = 2,
+      .usage = PIPE_USAGE_DEFAULT,
+      .bind = PIPE_BIND_RENDER_TARGET,
+   };
+   struct pipe_resource *xrgb8_msaa =
+      screen->resource_create(screen, &xrgb8_msaa_template);
+   struct pipe_resource *xrgb8_resolve =
+      make_2d(screen, PIPE_FORMAT_B8G8R8X8_UNORM, 8, 8,
+              PIPE_BIND_RENDER_TARGET);
+   if (!xrgb8_msaa || !xrgb8_resolve) {
+      fprintf(stderr, "XRGB8 2x render target was not advertised\n");
+      return 1;
+   }
+   struct pipe_surface xrgb8_msaa_surface = {
+      .texture = xrgb8_msaa,
+      .format = PIPE_FORMAT_B8G8R8X8_UNORM,
+      .first_layer = 0,
+      .last_layer = 0,
+      .level = 0,
+   };
+   struct pipe_framebuffer_state xrgb8_msaa_fb = {
+      .width = 8,
+      .height = 8,
+      .layers = 1,
+      .samples = 2,
+      .nr_cbufs = 1,
+      .resolve = xrgb8_resolve,
+   };
+   xrgb8_msaa_fb.cbufs[0] = xrgb8_msaa_surface;
+   pctx->set_framebuffer_state(pctx, &xrgb8_msaa_fb);
+   const union pipe_color_union xrgb8_clear = {
+      .f = {0.125f, 0.5f, 0.875f, 1.0f},
+   };
+   pctx->clear(pctx, PIPE_CLEAR_COLOR0, 0xf, 0, NULL, &xrgb8_clear, 0.0, 0);
+   pctx->flush(pctx, NULL, 0);
+   pipe_resource_reference(&xrgb8_msaa, NULL);
+   pipe_resource_reference(&xrgb8_resolve, NULL);
+   printf("G17P XRGB8 2x clear/direct-resolve completed\n");
+
+   struct pipe_resource *mrt_xrgb =
+      make_2d(screen, PIPE_FORMAT_R8G8B8X8_UNORM, 8, 8,
+              PIPE_BIND_RENDER_TARGET);
+   struct pipe_resource *mrt_bgra =
+      make_2d(screen, PIPE_FORMAT_B8G8R8A8_UNORM, 8, 8,
+              PIPE_BIND_RENDER_TARGET);
+   if (!mrt_xrgb || !mrt_bgra) {
+      fprintf(stderr, "RGBA8-alias MRT resources were not advertised\n");
+      return 1;
+   }
+   struct pipe_surface mrt_surfaces[2] = {
+      {
+         .texture = mrt_xrgb,
+         .format = PIPE_FORMAT_R8G8B8X8_UNORM,
+         .first_layer = 0,
+         .last_layer = 0,
+         .level = 0,
+      },
+      {
+         .texture = mrt_bgra,
+         .format = PIPE_FORMAT_B8G8R8A8_UNORM,
+         .first_layer = 0,
+         .last_layer = 0,
+         .level = 0,
+      },
+   };
+   struct pipe_framebuffer_state alias_mrt_fb = {
+      .width = 8,
+      .height = 8,
+      .layers = 1,
+      .samples = 1,
+      .nr_cbufs = 2,
+   };
+   alias_mrt_fb.cbufs[0] = mrt_surfaces[0];
+   alias_mrt_fb.cbufs[1] = mrt_surfaces[1];
+   pctx->set_framebuffer_state(pctx, &alias_mrt_fb);
+   pctx->clear(pctx, PIPE_CLEAR_COLOR0 | PIPE_CLEAR_COLOR1, 0xf, 0, NULL,
+               &xrgb8_clear, 0.0, 0);
+   pctx->flush(pctx, NULL, 0);
+   pipe_resource_reference(&mrt_xrgb, NULL);
+   pipe_resource_reference(&mrt_bgra, NULL);
+   printf("G17P XRGB8/BGRA8 MRT clear/store completed\n");
+
+   /* Exactly the blit core 983 died on: 4x8, BGRA8_UNORM source, RGBA8_UNORM
+    * destination, one level, one layer, nearest. u_blitter turns this into a
+    * texel-fetch fragment shader over a pass-through vertex shader and a
+    * triangle fan, which is where the null program was consumed. */
+   struct pipe_resource *src =
+      make_2d(screen, PIPE_FORMAT_B8G8R8A8_UNORM, 4, 8, PIPE_BIND_SAMPLER_VIEW);
+   /* The native hardware oracle uses a 2408x1506 target. Unlike the old 4x8
+    * fixture, that extent is compression-eligible, so it also reproduces the
+    * real end-of-tile PBE descriptor path while the blit rectangle stays 4x8.
+    */
+   struct pipe_resource *dst = make_2d(screen, PIPE_FORMAT_R8G8B8A8_UNORM,
+                                       2408, 1506, PIPE_BIND_RENDER_TARGET);
+   if (!src || !dst) {
+      fprintf(stderr, "resource_create failed\n");
+      return 1;
+   }
+
+   struct pipe_blit_info info = {
+      .src = {
+         .resource = src,
+         .level = 0,
+         .format = PIPE_FORMAT_B8G8R8A8_UNORM,
+         .box = {.x = 0, .y = 0, .z = 0, .width = 4, .height = 8, .depth = 1},
+      },
+      .dst = {
+         .resource = dst,
+         .level = 0,
+         .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+         .box = {.x = 0, .y = 0, .z = 0, .width = 4, .height = 8, .depth = 1},
+      },
+      .mask = PIPE_MASK_RGBA,
+      .filter = PIPE_TEX_FILTER_NEAREST,
+      .scissor_enable = false,
+      .render_condition_enable = false,
+   };
+
+   /* A clear and a flush first: no API shader is involved, so this is the
+    * background/end-of-tile programs, the PBE render-target descriptor and
+    * the batch submit path on their own. It used to abort the process in
+    * agx_native_descriptor_rejected("end-of-tile PBE") before any draw
+    * happened at all.
+    */
+   struct pipe_surface cbuf = {
+      .texture = dst,
+      .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+      .first_layer = 0,
+      .last_layer = 0,
+      .level = 0,
+   };
+   struct pipe_framebuffer_state fb = {
+      .width = 4,
+      .height = 8,
+      .layers = 1,
+      .samples = 1,
+      .nr_cbufs = 1,
+   };
+   fb.cbufs[0] = cbuf;
+   pctx->set_framebuffer_state(pctx, &fb);
+
+   const union pipe_color_union colour = {.f = {0.25f, 0.5f, 0.75f, 1.0f}};
+   pctx->clear(pctx, PIPE_CLEAR_COLOR0, 0xf, 0, NULL, &colour, 0.0, 0);
+   pctx->flush(pctx, NULL, 0);
+   printf("clear and flush completed\n");
+
+   pctx->blit(pctx, &info);
+
+   /* G17P's one admitted precompiled kernel is the vector buffer fill used
+    * by clear_buffer. It feeds later graphics, so AGX_BARRIER_ALL must survive
+    * native CDM lowering as the strong flags-5 cache barrier. The shim audits
+    * the actual production stream and its nested Ioto argument source. */
+   struct pipe_resource *filled = make_buffer(screen, 256);
+   const uint32_t fill[4] = {
+      UINT32_C(0x11223344), UINT32_C(0x55667788),
+      UINT32_C(0x99aabbcc), UINT32_C(0xddeeff00),
+   };
+   if (!filled) {
+      fprintf(stderr, "buffer resource_create failed\n");
+      return 1;
+   }
+   pctx->clear_buffer(pctx, filled, 0, 256, fill, sizeof(fill));
+   pctx->flush(pctx, NULL, 0);
+
+   struct agx_context *ctx = agx_context(pctx);
+   struct agx_device *dev = agx_device(screen);
+   const bool agx2 =
+      agx_chip_command_stream_generation(dev->chip) == AGX_CS_GENERATION_AGX2;
+   int status = 0;
+
+   /* The state tracker must not insert this same ungrounded render blit for
+    * BGRA default-surface readback on AGX3.  The explicit pctx->blit above is
+    * retained as a compiler/stream ratchet, while API transfers take the
+    * mapped CPU conversion path until the pixel result is hardware-proven. */
+   if (!agx2 &&
+       screen->caps.texture_transfer_modes != PIPE_TEXTURE_TRANSFER_DEFAULT) {
+      fprintf(stderr, "AGX3 still advertises blit-based texture transfers\n");
+      status = 1;
+   }
+
+   const bool vs_ok = ctx->vs != NULL && ctx->vs->bo != NULL;
+   const bool fs_ok = ctx->fs != NULL && ctx->fs->bo != NULL;
+   const bool linked_ok = ctx->linked.vs != NULL && ctx->linked.fs != NULL;
+
+   printf("blit returned on %s; vs=%s fs=%s linked=%s\n",
+          agx_chip_name(dev->chip), vs_ok ? "ok" : "refused",
+          fs_ok ? "ok" : "refused", linked_ok ? "ok" : "refused");
+
+   if (!agx2 && agx_resource(dst)->layout.compressed) {
+      fprintf(stderr,
+              "AGX3 render target selected an unencodable compressed PBE\n");
+      status = 1;
+   }
+
+   /* CommandEncodingNext parts must not take Gallium's AGX2 compute blitter.
+    * The render blitter binds a vertex stage; the compute one never does, so
+    * a null ctx->vs here means asahi_compute_blit() ran. */
+   if (!agx2 && ctx->vs == NULL) {
+      fprintf(stderr, "blit took the compute path on a non-AGX2 chip\n");
+      status = 1;
+   }
+
+   /* A ratchet on what already works. u_blitter's pass-through vertex shader
+    * moves a 16-bit uniform, which had no encoding until the AGX3b uniform
+    * copy landed; if this regresses, every blit loses its vertex program
+    * again. The fragment program has its own encode ratchet below so the
+    * crash-safety check remains independently useful.
+    */
+   if (!agx2 && !vs_ok) {
+      fprintf(stderr, "the blit's vertex program no longer encodes\n");
+      status = 1;
+   }
+
+   /* Whatever the shaders did, a refused program must have been counted as a
+    * skipped draw rather than silently rendering nothing. */
+   if (!fs_ok && ctx->skipped_no_program == 0) {
+      fprintf(stderr, "a refused program did not skip its draw\n");
+      status = 1;
+   }
+
+   /* The stronger claim, kept separate so a compiler regression cannot hide
+    * behind "at least it did not crash". */
+   if (!agx2 && getenv("AGX_G17P_BLIT_REQUIRE_ENCODE")) {
+      if (!vs_ok || !fs_ok || !linked_ok) {
+         fprintf(stderr,
+                 "blit shaders did not encode (vs=%d fs=%d linked=%d)\n",
+                 vs_ok, fs_ok, linked_ok);
+         status = 1;
+      }
+   }
+
+   pipe_resource_reference(&src, NULL);
+   pipe_resource_reference(&dst, NULL);
+   pipe_resource_reference(&filled, NULL);
+   pctx->destroy(pctx);
+   screen->destroy(screen);
+   close(fd);
+   return status;
+}

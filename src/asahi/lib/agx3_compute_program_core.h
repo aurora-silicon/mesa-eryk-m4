@@ -276,3 +276,8 @@ bool agx3_hal200_indirect_compute_append(
 #ifdef __cplusplus
 }
 #endif
+
+bool agx3_g17p_native_compute_dispatch_append_with_barrier(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid, uint8_t flags,
+   struct agx3_compute_dispatch_sink *sink);

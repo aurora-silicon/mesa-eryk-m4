@@ -32,6 +32,7 @@ struct agx_linked_shader {
 
    /* Aggregated main-program resources after fast linking. */
    uint32_t scratch_size;
+   uint8_t g17p_colour_classes;
    uint16_t nr_gprs;
 
    /* Apple's compiler ProgramVariant field 38 describes staging bytes,
@@ -127,6 +128,7 @@ struct agx_vs_prolog_key {
 
    /* Whether running as a hardware vertex shader (versus compute) */
    bool hw;
+   uint8_t uniform_base;
 
    /* Whether the shader uses static vertex input and the prolog just fixes up
     * the vertex ID.
@@ -162,6 +164,7 @@ struct agx_fs_prolog_key {
 
    /* If we discard, whether we need to run Z/S tests */
    bool run_zs_tests;
+   uint8_t nr_samples;
 
    /* If we emulate cull distance, the base offset for our allocated coefficient
     * registers so we don't interfere with the main shader.
@@ -316,9 +319,10 @@ struct agx_fs_epilog_link_info {
     */
    bool sample_mask_after_force_early : 1;
 
-   unsigned padding : 1;
+   unsigned packed_colour : 1;
+   uint32_t colour_comps;
 };
-static_assert(sizeof(struct agx_fs_epilog_link_info) == 4, "packed");
+static_assert(sizeof(struct agx_fs_epilog_link_info) == 8, "packed");
 
 struct agx_fs_epilog_key {
    struct agx_fs_epilog_link_info link;
@@ -349,6 +353,13 @@ struct agx_fs_epilog_key {
    bool preserve_zero_mask;
    bool lower_srgb;
    bool native_spills;
+   enum pipe_format scaled_formats[8];
+   uint8_t max_sample_size_B;
+   uint16_t emrt_heap_base;
+   bool defer_api_sample_mask;
+   uint8_t api_sample_mask;
+   bool defer_monolithic_msaa;
+   uint16_t blend_constant_base;
 
    /* Render targets whose tile value must be stored back unchanged (colour
     * write disabled while raster coverage still makes the tile nonempty).
@@ -384,3 +395,14 @@ bool agx_nir_lower_fs_active_samples_to_register(nir_shader *s);
 bool agx_nir_lower_non_monolithic_uniforms(nir_shader *nir, unsigned nr);
 void agx_nir_reserve_native_vertex_prefix(nir_shader *nir);
 void agx_nir_reserve_native_fragment_prefix(nir_shader *nir);
+
+/* Apply framebuffer rules which are properties of the hardware generation,
+ * not API state. Keep Gallium and Honeykrisp on the same epilog contract. */
+void agx_fs_epilog_apply_device_policy(enum agx_chip chip,
+                                       struct agx_fs_epilog_key *key);
+
+/* Depth/stencil exports run tests in the epilog just like alpha-to-coverage
+ * can discard there. Forced-early main shaders have already run those tests. */
+bool agx_fs_epilog_may_discard(const struct agx_fs_epilog_link_info *link,
+                               bool alpha_to_coverage,
+                               bool nontrivial_force_early);

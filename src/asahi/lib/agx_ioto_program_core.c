@@ -63,13 +63,44 @@ static const uint8_t
       0x03, 0x00, 0x07, 0x00, 0x02, 0x00, 0x00, 0x00, 0x60, 0x00,
 };
 
-/* Valid EXP-G1a ordinary fragment programs, from vary0 through vary8, all
- * place this exact AGX3b PIXREL after the default profile prefix.  The
- * no-resource vary0 form then stops immediately; it does not carry the
- * compute/vertex SETPROFILECTL suffix above. */
-static const uint8_t g17p_fragment_pixrel[] = {
-   0x07, 0x02, 0x54, 0xf3, 0x02, 0x00,
+enum {
+   G17P_FRAGMENT_PIXREL_SIZE = 6,
+   G17P_MAX_COLOUR_PARTITIONS = 3,
 };
+
+/* Fragment __GPU_METADATA_2 root field 1 is a release mask for pixel classes
+ * which the shader does not consume.  Fresh applegpu_g17p one-target programs
+ * carry 0x2f3, while both the two-RGBA8 and mixed RGBA16F+R8 native programs
+ * carry 0x2c3: active partition 1's combined class 0x30 is no longer released
+ * by the loader.  Partition 2 analogously owns class 0xc0.  A multi-target
+ * fragment writing only some targets releases the classes of the others,
+ * class 0x0c included: native fragments writing each subset of two to four
+ * targets carry 0x2cf with only partition 1, 0x23f with only partition 2,
+ * 0x233 for partitions 0 and 2, and 0x20f for partitions 1 and 2.  Coverage
+ * shaders additionally keep class 0 acquired, clearing bit 0 of each form. */
+static bool
+g17p_fragment_pixrel_compose(unsigned colour_classes,
+                             bool writes_sample_mask,
+                             uint8_t out[G17P_FRAGMENT_PIXREL_SIZE])
+{
+   if (!out || colour_classes == 0 ||
+       colour_classes >= (1u << G17P_MAX_COLOUR_PARTITIONS))
+      return false;
+
+   uint16_t descriptor = UINT16_C(0x2ff);
+   for (unsigned c = 0; c < G17P_MAX_COLOUR_PARTITIONS; ++c) {
+      if (colour_classes & (1u << c))
+         descriptor &= ~(UINT16_C(12) << (2 * c));
+   }
+   if (writes_sample_mask)
+      descriptor &= ~UINT16_C(1);
+
+   const uint8_t staged[G17P_FRAGMENT_PIXREL_SIZE] = {
+      0x07, 0x02, 0x54, descriptor, descriptor >> 8, 0x00,
+   };
+   memcpy(out, staged, sizeof(staged));
+   return true;
+}
 
 /* Background programs do not inherit the ordinary fragment release mask.
  * Valid 20260904-194053 doorbell 1 BG and partial-BG Ioto both emit this
@@ -93,7 +124,7 @@ _Static_assert(AGX_IOTO_STATE_TAIL_TYPE0_SIZE +
 
 _Static_assert(AGX_IOTO_STATE_TAIL_TYPE0_SIZE +
                      sizeof(g17p_default_profile_prefix) +
-                     sizeof(g17p_fragment_pixrel) +
+                     G17P_FRAGMENT_PIXREL_SIZE +
                      AGX_IOTO_PROGRAM_TERMINATE_SIZE ==
                   AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE,
                "G17P fragment no-resource Ioto size must remain 86 bytes");
@@ -116,9 +147,20 @@ g17p_ldshdr_has_shader_va(const uint8_t *ldshdr)
 }
 
 static bool
-g17p_type0_tail_valid(const struct agx_ioto_state_tail_output *packed_tail)
+g17p_type0_tail_shape_valid(
+   const struct agx_ioto_state_tail_output *packed_tail)
 {
    if (!packed_tail || packed_tail->length != AGX_IOTO_STATE_TAIL_TYPE0_SIZE)
+      return false;
+
+   return g17p_ldshdr_has_shader_va(packed_tail->bytes +
+                                    AGX_IOTO_SPECLM_SIZE);
+}
+
+static bool
+g17p_type0_tail_valid(const struct agx_ioto_state_tail_output *packed_tail)
+{
+   if (!g17p_type0_tail_shape_valid(packed_tail))
       return false;
 
    static const enum agx_ioto_kind kinds[] = {
@@ -133,14 +175,17 @@ g17p_type0_tail_valid(const struct agx_ioto_state_tail_output *packed_tail)
    };
    size_t offset = 0;
    for (size_t i = 0; i < sizeof(kinds) / sizeof(kinds[0]); ++i) {
-      if (!agx_ioto_check_kind(AGX_CHIP_G17P, kinds[i],
-                                packed_tail->bytes + offset, sizes[i]))
+      struct agx_ioto_record record;
+      size_t consumed = 0;
+      if (!agx_ioto_validate_kind(
+             AGX_CHIP_G17P, kinds[i], packed_tail->bytes + offset,
+             packed_tail->length - offset, &record, &consumed) ||
+          consumed != sizes[i])
          return false;
-      offset += sizes[i];
+      offset += consumed;
    }
 
-   return offset == packed_tail->length &&
-          g17p_ldshdr_has_shader_va(packed_tail->bytes + AGX_IOTO_SPECLM_SIZE);
+   return offset == packed_tail->length;
 }
 
 static const uint8_t g17s_minimal_compute_resource_body[] = {
@@ -254,11 +299,11 @@ agx_ioto_straight_line_body_validate(enum agx_chip chip, const void *body,
          continue;
       }
 
-      enum agx_ioto_kind kind;
+      struct agx_ioto_record record;
       size_t consumed;
-      if (!agx_ioto_decode_kind(chip, bytes + offset, body_size - offset,
-                               &kind, &consumed) ||
-          consumed == 0 || !agx_ioto_straight_line_body_kind(kind))
+      if (!agx_ioto_decode_one(chip, bytes + offset, body_size - offset,
+                               &record, &consumed) ||
+          consumed == 0 || !agx_ioto_straight_line_body_kind(record.kind))
          return false;
 
       offset += consumed;
@@ -283,15 +328,15 @@ agx_ioto_program_copy_suffix_offset(enum agx_chip chip, const void *body,
          suffix = cursor;
          continue;
       }
-      enum agx_ioto_kind kind;
+      struct agx_ioto_record record;
       size_t consumed = 0;
-      if (!agx_ioto_decode_kind(chip, bytes + cursor, body_size - cursor,
-                                 &kind, &consumed) || consumed == 0 ||
-          !agx_ioto_straight_line_body_kind(kind))
+      if (!agx_ioto_decode_one(chip, bytes + cursor, body_size - cursor,
+                                 &record, &consumed) || consumed == 0 ||
+          !agx_ioto_straight_line_body_kind(record.kind))
          return false;
       cursor += consumed;
-      if (kind != AGX_IOTO_KIND_COPY_EP0 &&
-          kind != AGX_IOTO_KIND_COPY_EP1)
+      if (record.kind != AGX_IOTO_KIND_COPY_EP0 &&
+          record.kind != AGX_IOTO_KIND_COPY_EP1)
          suffix = cursor;
    }
    *offset = suffix;
@@ -309,12 +354,12 @@ agx_ioto_g17p_copy_body_validate(const void *body, size_t body_size)
    const uint8_t *bytes = body;
    size_t offset = 0;
    while (offset < body_size) {
-      enum agx_ioto_kind kind;
+      struct agx_ioto_record record;
       size_t consumed = 0;
-      if (!agx_ioto_decode_kind(AGX_CHIP_G17P, bytes + offset,
-                               body_size - offset, &kind, &consumed) ||
-          consumed == 0 || (kind != AGX_IOTO_KIND_COPY_EP0 &&
-                            kind != AGX_IOTO_KIND_COPY_EP1))
+      if (!agx_ioto_decode_one(AGX_CHIP_G17P, bytes + offset,
+                               body_size - offset, &record, &consumed) ||
+          consumed == 0 || (record.kind != AGX_IOTO_KIND_COPY_EP0 &&
+                            record.kind != AGX_IOTO_KIND_COPY_EP1))
          return false;
       offset += consumed;
    }
@@ -476,12 +521,15 @@ agx_ioto_g17p_direct_add3_program_compose(
    return true;
 }
 
-bool
-agx_ioto_g17p_no_resource_program_compose(
+static bool
+g17p_no_resource_program_compose(
    uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
-   void *output, size_t capacity, size_t *written)
+   void *output, size_t capacity, size_t *written, bool validate_tail)
 {
-   if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
+   const bool tail_valid = validate_tail
+                              ? g17p_type0_tail_valid(packed_tail)
+                              : g17p_type0_tail_shape_valid(packed_tail);
+   if (!output || !written || !tail_valid ||
        program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
        (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
        capacity < AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE)
@@ -510,11 +558,35 @@ agx_ioto_g17p_no_resource_program_compose(
 }
 
 bool
-agx_ioto_g17p_fragment_no_resource_program_compose(
+agx_ioto_g17p_no_resource_program_compose(
    uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
    void *output, size_t capacity, size_t *written)
 {
-   if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
+   return g17p_no_resource_program_compose(
+      program_va, packed_tail, output, capacity, written, true);
+}
+
+bool
+agx_ioto_g17p_no_resource_program_compose_trusted(
+   uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
+   void *output, size_t capacity, size_t *written)
+{
+   return g17p_no_resource_program_compose(
+      program_va, packed_tail, output, capacity, written, false);
+}
+
+static bool
+g17p_fragment_no_resource_program_compose(
+   uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
+   unsigned colour_classes, void *output, size_t capacity, size_t *written,
+   bool validate_tail)
+{
+   uint8_t pixrel[G17P_FRAGMENT_PIXREL_SIZE];
+   const bool tail_valid = validate_tail
+                              ? g17p_type0_tail_valid(packed_tail)
+                              : g17p_type0_tail_shape_valid(packed_tail);
+   if (!g17p_fragment_pixrel_compose(colour_classes, false, pixrel) ||
+       !output || !written || !tail_valid ||
        program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
        (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
        capacity < AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE)
@@ -527,9 +599,8 @@ agx_ioto_g17p_fragment_no_resource_program_compose(
    memcpy(staged + offset, g17p_default_profile_prefix,
           sizeof(g17p_default_profile_prefix));
    offset += sizeof(g17p_default_profile_prefix);
-   memcpy(staged + offset, g17p_fragment_pixrel,
-          sizeof(g17p_fragment_pixrel));
-   offset += sizeof(g17p_fragment_pixrel);
+   memcpy(staged + offset, pixrel, sizeof(pixrel));
+   offset += sizeof(pixrel);
    memset(staged + offset, 0, AGX_IOTO_PROGRAM_TERMINATE_SIZE);
    staged[offset] = UINT8_C(0x0e);
    offset += AGX_IOTO_PROGRAM_TERMINATE_SIZE;
@@ -542,21 +613,46 @@ agx_ioto_g17p_fragment_no_resource_program_compose(
    return true;
 }
 
+bool
+agx_ioto_g17p_fragment_no_resource_program_compose(
+   uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
+   unsigned colour_classes, void *output, size_t capacity, size_t *written)
+{
+   return g17p_fragment_no_resource_program_compose(
+      program_va, packed_tail, colour_classes, output, capacity, written,
+      true);
+}
+
+bool
+agx_ioto_g17p_fragment_no_resource_program_compose_trusted(
+   uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
+   unsigned colour_classes, void *output, size_t capacity, size_t *written)
+{
+   return g17p_fragment_no_resource_program_compose(
+      program_va, packed_tail, colour_classes, output, capacity, written,
+      false);
+}
+
 static bool
 g17p_resource_program_compose(
    uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
    const void *copies, size_t copies_size,
    const struct agx_ioto_state_tail_output *packed_tail, void *output,
    size_t capacity, size_t *written, const uint8_t *terminal_protocol,
-   size_t terminal_protocol_size, bool generated)
+   size_t terminal_protocol_size, bool validate_body)
 {
-   if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
+   const bool tail_valid = validate_body
+                              ? g17p_type0_tail_valid(packed_tail)
+                              : g17p_type0_tail_shape_valid(packed_tail);
+   if (!output || !written || !tail_valid ||
        program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
        (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
-       (pre_copy_body_size && !pre_copy_body) || (copies_size && !copies) ||
-       (!generated &&
-        (!agx_ioto_g17p_pre_copy_body_validate(pre_copy_body, pre_copy_body_size) ||
+       (validate_body &&
+        (!agx_ioto_g17p_pre_copy_body_validate(pre_copy_body,
+                                               pre_copy_body_size) ||
          !agx_ioto_g17p_copy_body_validate(copies, copies_size))) ||
+       (pre_copy_body_size && !pre_copy_body) ||
+       (copies_size && !copies) ||
        pre_copy_body_size > SIZE_MAX - packed_tail->length ||
        pre_copy_body_size + packed_tail->length >
           SIZE_MAX - sizeof(g17p_default_profile_prefix) ||
@@ -614,6 +710,19 @@ agx_ioto_g17p_resource_program_compose(
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
       packed_tail, output, capacity, written, g17p_default_profile_suffix,
+      sizeof(g17p_default_profile_suffix), true);
+}
+
+bool
+agx_ioto_g17p_resource_program_compose_trusted(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written)
+{
+   return g17p_resource_program_compose(
+      program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
+      packed_tail, output, capacity, written, g17p_default_profile_suffix,
       sizeof(g17p_default_profile_suffix), false);
 }
 
@@ -621,30 +730,212 @@ bool
 agx_ioto_g17p_fragment_resource_program_compose(
    uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
    const void *copies, size_t copies_size,
-   const struct agx_ioto_state_tail_output *packed_tail, void *output,
-   size_t capacity, size_t *written)
+   const struct agx_ioto_state_tail_output *packed_tail,
+   unsigned colour_classes, void *output, size_t capacity, size_t *written)
 {
+   uint8_t pixrel[G17P_FRAGMENT_PIXREL_SIZE];
+   if (!g17p_fragment_pixrel_compose(colour_classes, false, pixrel))
+      return false;
+
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
-      packed_tail, output, capacity, written, g17p_fragment_pixrel,
-      sizeof(g17p_fragment_pixrel), false);
+      packed_tail, output, capacity, written, pixrel, sizeof(pixrel), true);
+}
+
+bool
+agx_ioto_g17p_fragment_resource_program_compose_trusted(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail,
+   unsigned colour_classes, void *output, size_t capacity, size_t *written)
+{
+   uint8_t pixrel[G17P_FRAGMENT_PIXREL_SIZE];
+   if (!g17p_fragment_pixrel_compose(colour_classes, false, pixrel))
+      return false;
+
+   return g17p_resource_program_compose(
+      program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
+      packed_tail, output, capacity, written, pixrel, sizeof(pixrel), false);
 }
 
 bool
 agx_ioto_g17p_coverage_fragment_program_compose(
    uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
    const void *copies, size_t copies_size,
-   const struct agx_ioto_state_tail_output *packed_tail, void *output,
-   size_t capacity, size_t *written)
+   const struct agx_ioto_state_tail_output *packed_tail,
+   unsigned colour_classes, void *output, size_t capacity, size_t *written)
 {
-   /* Complete native keep, conditional-discard and early-test fragments all
-    * name this mask in __GPU_METADATA_2 root.field1. Releasing class0 here
-    * prematurely allows partial coverage even with the original Apple body. */
-   static const uint8_t coverage_pixrel[] = {0x07,0x02,0x54,0xf2,0x02,0x00};
+   uint8_t pixrel[G17P_FRAGMENT_PIXREL_SIZE];
+   if (!g17p_fragment_pixrel_compose(colour_classes, true, pixrel))
+      return false;
+
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
-      packed_tail, output, capacity, written, coverage_pixrel,
-      sizeof(coverage_pixrel), false);
+      packed_tail, output, capacity, written, pixrel, sizeof(pixrel), true);
+}
+
+bool
+agx_ioto_g17p_coverage_fragment_program_compose_trusted(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail,
+   unsigned colour_classes, void *output, size_t capacity, size_t *written)
+{
+   uint8_t pixrel[G17P_FRAGMENT_PIXREL_SIZE];
+   if (!g17p_fragment_pixrel_compose(colour_classes, true, pixrel))
+      return false;
+
+   return g17p_resource_program_compose(
+      program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
+      packed_tail, output, capacity, written, pixrel, sizeof(pixrel), false);
+}
+
+static bool
+g17p_external_setup_launcher_compose(
+   uint64_t program_va, const void *root_prefix, size_t root_prefix_size,
+   const struct agx_ioto_state_tail_output *packed_tail, uint64_t setup_va,
+   void *output, size_t capacity, size_t *written, bool trusted)
+{
+   if (!output || !written || !root_prefix || root_prefix_size == 0 ||
+       !g17p_type0_tail_shape_valid(packed_tail) || program_va == 0 ||
+       program_va > UINT64_C(0xffffffffffff) ||
+       (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       setup_va == 0 || setup_va >= (UINT64_C(1) << 48) ||
+       (setup_va & 1) != 0 ||
+       (!trusted &&
+        !agx_ioto_straight_line_body_validate(AGX_CHIP_G17P, root_prefix,
+                                              root_prefix_size)))
+      return false;
+
+   const size_t branch_offset = root_prefix_size + packed_tail->length +
+                                sizeof(g17p_default_profile_prefix) +
+                                AGX_IOTO_PRESHADER_PRELUDE_SIZE;
+   if (branch_offset > UINT64_MAX - program_va)
+      return false;
+   const uint64_t branch_va = program_va + branch_offset;
+   const int64_t displacement = (int64_t)setup_va - (int64_t)branch_va;
+   if (displacement < -(INT64_C(1) << 47) ||
+       displacement >= (INT64_C(1) << 47) || (displacement & 1) != 0)
+      return false;
+   const uint64_t encoded_displacement =
+      (uint64_t)displacement & ((UINT64_C(1) << 48) - 1);
+
+   struct agx_ioto_preshader_output branch;
+   if (trusted) {
+      branch = (struct agx_ioto_preshader_output){
+         .mode = AGX_IOTO_PRESHADER_MODE_EXTERNAL,
+         .length = AGX_IOTO_PRESHADER_PRELUDE_SIZE +
+                   AGX_IOTO_PRESHADER_BRANCH_SIZE,
+         .branch_offset = AGX_IOTO_PRESHADER_PRELUDE_SIZE,
+         .bytes = {0x0c, 0x10},
+      };
+      if (!agx_ioto_preshader_pack_branch(
+             AGX_CHIP_G17P, encoded_displacement, false,
+             branch.bytes + branch.branch_offset))
+         return false;
+   } else {
+      const struct agx_ioto_preshader_desc external = {
+         .external_va = encoded_displacement,
+         .force_external = true,
+         .request_prelude = true,
+      };
+      if (!agx_ioto_preshader_emit(AGX_CHIP_G17P, &external, &branch) ||
+          branch.mode != AGX_IOTO_PRESHADER_MODE_EXTERNAL ||
+          branch.branch_offset != AGX_IOTO_PRESHADER_PRELUDE_SIZE)
+         return false;
+   }
+
+   if (root_prefix_size > SIZE_MAX - packed_tail->length ||
+       root_prefix_size + packed_tail->length >
+          SIZE_MAX - sizeof(g17p_default_profile_prefix) ||
+       root_prefix_size + packed_tail->length +
+             sizeof(g17p_default_profile_prefix) >
+          SIZE_MAX - branch.length)
+      return false;
+
+   const size_t total = root_prefix_size + packed_tail->length +
+                        sizeof(g17p_default_profile_prefix) + branch.length;
+   if (capacity < total)
+      return false;
+
+   uint8_t staged[AGX_IOTO_G17P_EXTERNAL_LAUNCHER_MAX_SIZE];
+   if (total > sizeof(staged))
+      return false;
+
+   size_t offset = 0;
+   memcpy(staged + offset, root_prefix, root_prefix_size);
+   offset += root_prefix_size;
+   memcpy(staged + offset, packed_tail->bytes, packed_tail->length);
+   offset += packed_tail->length;
+   memcpy(staged + offset, g17p_default_profile_prefix,
+          sizeof(g17p_default_profile_prefix));
+   offset += sizeof(g17p_default_profile_prefix);
+   memcpy(staged + offset, branch.bytes, branch.length);
+   offset += branch.length;
+   if (offset != total)
+      return false;
+
+   memcpy(output, staged, total);
+   *written = total;
+   return true;
+}
+
+bool
+agx_ioto_g17p_external_setup_launcher_compose(
+   uint64_t program_va, const void *root_prefix, size_t root_prefix_size,
+   const struct agx_ioto_state_tail_output *packed_tail, uint64_t setup_va,
+   void *output, size_t capacity, size_t *written)
+{
+   return g17p_external_setup_launcher_compose(
+      program_va, root_prefix, root_prefix_size, packed_tail, setup_va,
+      output, capacity, written, false);
+}
+
+bool
+agx_ioto_g17p_external_setup_launcher_compose_trusted(
+   uint64_t program_va, const void *root_prefix, size_t root_prefix_size,
+   const struct agx_ioto_state_tail_output *packed_tail, uint64_t setup_va,
+   void *output, size_t capacity, size_t *written)
+{
+   return g17p_external_setup_launcher_compose(
+      program_va, root_prefix, root_prefix_size, packed_tail, setup_va,
+      output, capacity, written, true);
+}
+
+bool
+agx_ioto_g17p_external_setup_suffix_compose(
+   const void *body, size_t body_size, bool fragment, bool coverage,
+   unsigned colour_classes, void *output, size_t capacity, size_t *written)
+{
+   if (!output || !written || (body_size && !body) ||
+       !agx_ioto_straight_line_body_validate(AGX_CHIP_G17P, body, body_size))
+      return false;
+
+   uint8_t terminal[G17P_FRAGMENT_PIXREL_SIZE];
+   const uint8_t *terminal_bytes = g17p_default_profile_suffix;
+   size_t terminal_size = sizeof(g17p_default_profile_suffix);
+   if (fragment) {
+      if (!g17p_fragment_pixrel_compose(colour_classes, coverage, terminal))
+         return false;
+      terminal_bytes = terminal;
+      terminal_size = sizeof(terminal);
+   }
+
+   if (body_size > SIZE_MAX - terminal_size ||
+       body_size + terminal_size > SIZE_MAX - AGX_IOTO_PROGRAM_TERMINATE_SIZE)
+      return false;
+   const size_t total = body_size + terminal_size +
+                        AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+   if (capacity < total)
+      return false;
+
+   memmove(output, body, body_size);
+   memcpy((uint8_t *)output + body_size, terminal_bytes, terminal_size);
+   memset((uint8_t *)output + body_size + terminal_size, 0,
+          AGX_IOTO_PROGRAM_TERMINATE_SIZE);
+   ((uint8_t *)output)[body_size + terminal_size] = UINT8_C(0x0e);
+   *written = total;
+   return true;
 }
 
 bool
@@ -657,29 +948,20 @@ agx_ioto_g17p_background_resource_program_compose(
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
       packed_tail, output, capacity, written, g17p_background_pixrel,
-      sizeof(g17p_background_pixrel), false);
+      sizeof(g17p_background_pixrel), true);
 }
 
-/* Only for a body returned by the typed uniform-load builder. Each emitted
- * record was checked there; generic/captured byte streams use the validating
- * entry points above. Address, state-tail, size and destination checks remain. */
 bool
-agx_ioto_g17p_generated_resource_program_compose(
-   uint64_t program_va, const void *body, size_t body_size, size_t copy_offset,
-   const struct agx_ioto_state_tail_output *tail, bool fragment, bool coverage,
-   void *output, size_t capacity, size_t *written)
+agx_ioto_g17p_background_resource_program_compose_trusted(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written)
 {
-   static const uint8_t coverage_pixrel[] = {0x07,0x02,0x54,0xf2,0x02,0x00};
-   if (copy_offset > body_size || (body_size && !body) || (coverage && !fragment))
-      return false;
-   const uint8_t *copies = body ? (const uint8_t *)body + copy_offset : NULL;
-   const uint8_t *terminal = coverage ? coverage_pixrel : fragment ?
-      g17p_fragment_pixrel : g17p_default_profile_suffix;
-   const size_t terminal_size = fragment ? sizeof(g17p_fragment_pixrel) :
-      sizeof(g17p_default_profile_suffix);
    return g17p_resource_program_compose(
-      program_va, body, copy_offset, copies, body_size - copy_offset,
-      tail, output, capacity, written, terminal, terminal_size, true);
+      program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
+      packed_tail, output, capacity, written, g17p_background_pixrel,
+      sizeof(g17p_background_pixrel), false);
 }
 
 static bool

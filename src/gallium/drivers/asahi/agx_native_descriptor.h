@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "asahi/genxml/agx_pack.h"
 #include "asahi/lib/agx_chip.h"
 
 #include <stdbool.h>
@@ -19,6 +20,19 @@
 #define AGX_GALLIUM_DESCRIPTOR_AGX2_SIZE 24u
 #define AGX_GALLIUM_DESCRIPTOR_AGX3_SIZE 32u
 #define AGX_GALLIUM_DESCRIPTOR_MAX_SIZE  AGX_GALLIUM_DESCRIPTOR_AGX3_SIZE
+#define AGX_GALLIUM_SAMPLER_AGX3_SIZE    32u
+#define AGX_GALLIUM_G17P_API_SAMPLERS    32u
+
+/* Custom borders are implemented like Honeykrisp: the ordinary API sampler
+ * bank clamps to one and a second bank clamps to zero.  The shader combines
+ * those samples with the exact API border colour. */
+#define AGX_GALLIUM_G17P_CUSTOM_BORDER_BASE \
+   (1u + AGX_GALLIUM_G17P_API_SAMPLERS)
+
+/* HAL200's immediate sampler operand names native slots 0..15. Gallium keeps
+ * slot zero for texel fetch, leaving API samplers 0..14 directly encodable.
+ * Later API samplers use an indirect native-table index instead. */
+#define AGX_GALLIUM_G17P_IMMEDIATE_API_SAMPLERS 15u
 
 struct agx_gallium_texture_descriptor {
    uint32_t opaque[AGX_GALLIUM_DESCRIPTOR_MAX_SIZE / 4];
@@ -26,6 +40,10 @@ struct agx_gallium_texture_descriptor {
 
 struct agx_gallium_pbe_descriptor {
    uint32_t opaque[AGX_GALLIUM_DESCRIPTOR_MAX_SIZE / 4];
+};
+
+struct agx_gallium_sampler_descriptor {
+   uint32_t opaque[AGX_GALLIUM_SAMPLER_AGX3_SIZE / 4];
 };
 
 struct agx_gallium_storage_descriptor_layout {
@@ -160,33 +178,77 @@ agx_gallium_native_texture_sample_count_representable(
    return false;
 }
 
-/* The native Gen9/10 PBE words are structurally known, but Gallium's image
- * paths consume AGX2 software sideband state that has not been mapped.  Keep
- * render-target stores and writable images fail-closed until that ABI lands.
+/* Whether the generation has any recovered PBE descriptor encoding at all.
+ *
+ * This is a generation predicate, not a per-image one.  AGX3's recovered PBE
+ * geometry is a bounded subset -- uncompressed, non-sparse, single-layer 2D
+ * with no software addressing sideband -- and that subset is enforced per
+ * descriptor by agx_gallium_pack_native_pbe(), which fails closed for
+ * anything outside it.  Gallium still feeds AGX2 sideband state (image
+ * atomics, EMRT, spilled render targets) through the same packet, so those
+ * images are refused rather than silently encoded with the bits dropped.
  */
 static inline bool
 agx_gallium_native_pbe_supported(
+   enum agx_descriptor_generation generation)
+{
+   return agx_gallium_descriptor_generation_is_agx2(generation) ||
+          agx_gallium_descriptor_generation_is_agx3(generation);
+}
+
+/* Compression is usable only when Gallium can also encode the corresponding
+ * write descriptor. The recovered Gen9/10 PBE subset is uncompressed.
+ */
+static inline bool
+agx_gallium_native_compressed_pbe_supported(
    enum agx_descriptor_generation generation)
 {
    return agx_gallium_descriptor_generation_is_agx2(generation);
 }
 
 struct AGX_TEXTURE;
-struct agx_pbe_packed;
+struct AGX_PBE;
+
+/* Classify the three border colours represented directly by every native AGX
+ * sampler generation. Returns false for colours that require shader-backed
+ * custom-border emulation. */
+bool agx_gallium_classify_standard_border(
+   const uint32_t color[4], bool integer,
+   enum agx_border_colour *out);
 
 bool agx_gallium_pack_native_texture(
    enum agx_descriptor_generation generation,
    struct agx_gallium_texture_descriptor *out,
    const struct AGX_TEXTURE *semantic);
 
+/* Exact sampler zero used by native G17P texture.read()/texel-fetch paths. */
+bool agx_gallium_pack_g17p_txf_sampler(
+   enum agx_chip chip, struct agx_gallium_sampler_descriptor *out);
+
+/* Convert a Gallium API sampler slot to the index in the per-stage HAL200
+ * table. This is deliberately not the legacy global-heap 28+index handle. */
+bool agx_gallium_g17p_sampler_handle(enum agx_chip chip,
+                                    unsigned api_sampler,
+                                    uint16_t *native_handle);
+
+bool agx_gallium_g17p_custom_border_handle(enum agx_chip chip,
+                                           unsigned api_sampler,
+                                           uint16_t *native_handle);
+
 bool agx_gallium_set_null_native_texture(
    enum agx_descriptor_generation generation,
    struct agx_gallium_texture_descriptor *out);
 
+/* Takes the SEMANTIC PBE, not the packed AGX2 bytes.  The AGX2 packet is a
+ * union -- stride aliases levels/layers, and the whole software addressing
+ * sideband aliases the extended word -- so only the producer knows which arm
+ * is live.  Unpacking the bytes back would read the wrong arm and either
+ * refuse a legal descriptor or accept an illegal one.
+ */
 bool agx_gallium_pack_native_pbe(
    enum agx_descriptor_generation generation,
    struct agx_gallium_pbe_descriptor *out,
-   const struct agx_pbe_packed *legacy);
+   const struct AGX_PBE *semantic);
 
 bool agx_gallium_set_null_native_pbe(
    enum agx_descriptor_generation generation,

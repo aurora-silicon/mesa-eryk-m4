@@ -33,6 +33,7 @@ extern "C" {
 
 /* pixwait and pixrel are both six bytes on AGX3b and AGX3c. */
 #define AGX3_PIXEL_MAX_LENGTH 6u
+#define AGX3_G17P_MAX_COLOUR_PARTITIONS 3u
 
 /*
  * Open G17P's colour-tile protocol. This is the f14=512, f15=1 pixwait form

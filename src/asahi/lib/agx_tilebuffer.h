@@ -4,6 +4,7 @@
  */
 
 #pragma once
+#include "agx_abi.h"
 
 #include <assert.h>
 #include <stdbool.h>
@@ -128,7 +129,7 @@ bool agx_nir_lower_sample_intrinsics(struct nir_shader *shader,
 uint32_t agx_tilebuffer_total_size(struct agx_tilebuffer_layout *tib);
 
 enum pipe_format
-agx_tilebuffer_physical_format(struct agx_tilebuffer_layout *tib, unsigned rt);
+agx_tilebuffer_physical_format(const struct agx_tilebuffer_layout *tib, unsigned rt);
 
 bool agx_tilebuffer_supports_mask(struct agx_tilebuffer_layout *tib,
                                   unsigned rt);
@@ -138,3 +139,130 @@ void agx_tilebuffer_pack_usc(struct agx_tilebuffer_layout *tib);
 #ifdef __cplusplus
 } /* extern C */
 #endif
+
+/* Export registers of one sample's colours in a G17P fragment unrolled per
+ * sample: eight halves for each location up to the last one written. */
+static inline unsigned
+agx_g17p_sample_colour_stride(uint8_t loc_written)
+{
+   return 8 * util_last_bit(loc_written);
+}
+
+/* Export base of sample `sample`'s depth (stencil two halves later) in such
+ * a fragment, for every sample after the first: four halves per sample after
+ * every sample's colours. */
+static inline unsigned
+agx_g17p_sample_zs_base(unsigned nr_samples, uint8_t loc_written,
+                        unsigned sample)
+{
+   return AGX_ABI_FOUT_COLOUR(0) +
+          nr_samples * agx_g17p_sample_colour_stride(loc_written) +
+          4 * (sample - 1);
+}
+
+
+struct agx_g17p_colour_layout {
+   /* Halves from AGX_ABI_FOUT_COLOUR(0) to this location's first component */
+   uint8_t offset[8];
+
+   /* Components this location occupies, zero if it exports none */
+   uint8_t comps[8];
+
+   /* Halves one sample's colours occupy in total */
+   uint16_t stride;
+};
+
+/* `colour_comps` holds the components each location exports, four bits per
+ * location, as agx_fs_epilog_link_info records them. It is only consulted for
+ * the packed layout; the ABI layout is fixed by the loc_written mask alone.
+ */
+static inline void
+agx_g17p_colour_layout_init(struct agx_g17p_colour_layout *l,
+                            uint8_t loc_written, uint8_t size_32,
+                            uint32_t colour_comps, bool packed)
+{
+   unsigned offset = 0;
+
+   for (unsigned loc = 0; loc < 8; ++loc) {
+      const bool written = loc_written & BITFIELD_BIT(loc);
+
+      if (packed) {
+         /* Each component is preloaded and exported on its own, so a 32-bit
+          * location has to start on an even half like any register pair. */
+         const unsigned halves_per_comp =
+            (size_32 & BITFIELD_BIT(loc)) ? 2 : 1;
+         const unsigned comps =
+            written ? util_last_bit((colour_comps >> (4 * loc)) & 0xf) : 0;
+
+         offset = ALIGN_POT(offset, halves_per_comp);
+         l->offset[loc] = offset;
+         l->comps[loc] = comps;
+         offset += comps * halves_per_comp;
+      } else {
+         l->offset[loc] = AGX_ABI_FOUT_COLOUR(loc) - AGX_ABI_FOUT_COLOUR(0);
+         l->comps[loc] = 4;
+      }
+   }
+
+   /* Every sample repeats the layout, and AGX_ABI_FOUT_COLOUR(0) is even, so
+    * an even stride is what keeps each sample's pairs aligned too. */
+   l->stride =
+      packed ? ALIGN_POT(offset, 2) : agx_g17p_sample_colour_stride(loc_written);
+}
+
+/* Export base of location `loc`'s first component for sample `sample`. */
+static inline unsigned
+agx_g17p_sample_colour_base(const struct agx_g17p_colour_layout *l,
+                            unsigned sample, unsigned loc)
+{
+   return AGX_ABI_FOUT_COLOUR(0) + (sample * l->stride) + l->offset[loc];
+}
+
+/* As agx_g17p_sample_zs_base, for a laid-out fragment. */
+static inline unsigned
+agx_g17p_sample_zs_base_layout(const struct agx_g17p_colour_layout *l,
+                               unsigned nr_samples, unsigned sample)
+{
+   return AGX_ABI_FOUT_COLOUR(0) + (nr_samples * l->stride) +
+          4 * (sample - 1);
+}
+
+/* Halves of export registers the whole unrolled fragment needs. Passing the
+ * sample count as the sample index names the half one past the last sample's
+ * stencil, which is exactly the count of halves used. */
+static inline unsigned
+agx_g17p_sample_exports_end(const struct agx_g17p_colour_layout *l,
+                            unsigned nr_samples)
+{
+   return agx_g17p_sample_zs_base_layout(l, nr_samples, nr_samples);
+}
+
+
+bool agx_g17p_rt0_tile_layout_supported(
+   const struct agx_tilebuffer_layout *tib);
+
+/* Logical active attachment mask for compact RGBA8 storage in partition zero. */
+unsigned agx_g17p_rgba8_mrt_mask(const struct agx_tilebuffer_layout *tib);
+
+/* Dense, unspilled single-sample RGBA8 layouts with three to eight targets. */
+unsigned
+agx_g17p_wide_rgba8_mrt_count(const struct agx_tilebuffer_layout *tib);
+
+enum agx_g17p_mrt_layout {
+   AGX_G17P_MRT_NONE,
+   AGX_G17P_MRT_WBOIT,
+   AGX_G17P_MRT_RGBA8,
+   AGX_G17P_MRT_R11G11B10,
+   AGX_G17P_MRT_RGBA32,
+   AGX_G17P_MRT_R32_QUAD,
+   AGX_G17P_MRT_MIXED,
+};
+
+/* Classify the byte-grounded G17P multiple-render-target layouts. The
+ * background/EOT frontends use this common result to select their matching
+ * shader, clear-uniform, and PBE-table contracts. */
+enum agx_g17p_mrt_layout
+agx_g17p_classify_mrt(const struct agx_tilebuffer_layout *tib);
+
+
+unsigned agx_tilebuffer_compact(const struct agx_tilebuffer_layout *, struct agx_tilebuffer_layout *, uint8_t map[AGX_MAX_RENDER_TARGETS]);

@@ -175,3 +175,16 @@ libagx_write_u64(global uint64_t *address, uint64_t value)
 {
    *address = value;
 }
+
+KERNEL(1)
+libagx_setup_indirect_dispatch(global uint *api_grid, global uint *grid,
+                               uint32_t local_x, uint32_t local_y,
+                               uint32_t local_z)
+{
+   grid[0] = api_grid[0] * local_x;
+   grid[1] = api_grid[1] * local_y;
+   grid[2] = api_grid[2] * local_z;
+   grid[3] = local_x;
+   grid[4] = local_y;
+   grid[5] = local_z;
+}
