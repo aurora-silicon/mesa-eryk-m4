@@ -15,11 +15,16 @@ import subprocess
 import re
 
 p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('--api', choices=('opengl','vulkan'), default='opengl')
+p.add_argument('--oracle-marker', default='PASS: 48')
 p.add_argument('--source', required=True, type=Path)
 p.add_argument('--prefix', required=True)
 p.add_argument('--sha256', required=True)
 p.add_argument('--gallium-sha256', help='Also verify an isolated Gallium candidate')
 p.add_argument('--cpu-affinity', help='Restrict only the workload to this taskset CPU list')
+p.add_argument('--gpu-uploads', action='store_true', help='Use GL buffer copies to update live UBO contents')
+p.add_argument('--direct-draws', action='store_true', help='Exercise repeated direct draws instead of multi-draw')
+p.add_argument('--profile-loader', action='store_true', help='Record complete loader cache hits/misses')
 p.add_argument('--default-only', action='store_true',
                help='Exercise the driver default with the option absent')
 p.add_argument('--output', required=True, type=Path)
@@ -42,7 +47,7 @@ subprocess.run(ssh + [shlex.join(['mkdir', remote])], check=True)
 subprocess.run(['scp', str(a.source), 'root@fedora-m3:' + remote + '/probe.c'],
                check=True)
 command = ['cc', '-O2', '-Wall', '-Wextra', '-Werror', remote + '/probe.c',
-           '-lEGL', '-lGL', '-o', remote + '/probe']
+           *(['-lEGL','-lGL'] if a.api=='opengl' else ['-lvulkan']), '-o', remote + '/probe']
 with (a.output / 'compile.log').open('w') as f:
     subprocess.run(ssh + [shlex.join(command)], stdout=f,
                    stderr=subprocess.STDOUT, check=True, timeout=60)
@@ -58,6 +63,7 @@ manifest = json.loads(subprocess.check_output(ssh + [shlex.join(
     ['python3', '-c', code, a.prefix, a.sha256, remote + '/probe',
      a.gallium_sha256 or ''])], text=True))
 manifest.update(remote=remote, compile_command=command, option=a.option,
+    api=a.api, oracle_marker=a.oracle_marker, direct_draws=a.direct_draws, gpu_uploads=a.gpu_uploads,
     source_sha256=hashlib.sha256(a.source.read_bytes()).hexdigest(),
     mesa_prefix=a.prefix, mesa_sha256=a.sha256,
     cpu_affinity=a.cpu_affinity,
@@ -77,6 +83,14 @@ for label, option in variants:
         HK_DEBUG_LOG='0', AGX_MESA_DEBUG='nopromote',
         EGL_PLATFORM='surfaceless', MESA_SHADER_CACHE_DIR=remote + '/cache',
         HK_M4_PROGRAM_PROFILE='true')
+    if a.gpu_uploads:
+        env['M3_PROBE_GPU_UPLOADS'] = '1'
+    if a.direct_draws:
+        env['M3_PROBE_DIRECT_DRAWS'] = '1'
+    if a.api=='vulkan':
+        env['HK_ARCHITECTURE_PROFILE']='true'
+    if a.profile_loader:
+        env['HK_NATIVE_PROGRAM_PROFILE'] = 'true'
     if option is not None:
         env[a.option] = option
     if a.option == 'ZINK_PREFER_HIGH_CAPACITY_CPUS':
@@ -96,7 +110,7 @@ for label, option in variants:
     guard = json.loads((a.output / label / 'result.json').read_text())
     workload = (a.output / label / 'workload.log').read_text()
     ok = (not r.returncode and guard['phase'] == 'complete' and
-          guard['boot_id'] == manifest['boot_id'] and 'PASS: 48' in workload)
+          guard['boot_id'] == manifest['boot_id'] and a.oracle_marker in workload)
     results.append(dict(label=label, passed=ok, environment=env, guard=guard))
     (a.output / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
     print(label, 'Pass' if ok else 'FAIL', flush=True)

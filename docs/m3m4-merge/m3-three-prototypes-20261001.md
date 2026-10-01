@@ -29,3 +29,32 @@ barriers, a barrier-only CB, start timestamps, explicit fences and CB reset.
 
 Completion cadence has its own kernel diagnostics and default remains 100 us.
 All hardware experiments require the existing 60-second watchdog and PMP guard.
+
+## Direct parameter follow-up
+
+The first complete-loader prototype used a fresh parameter upload for each
+vertex draw. In the direct-draw oracle it had no vertex hits and its Minecraft
+Zink nine-pair median change was -4.0574% (3/9 positive), so it was not promoted.
+The follow-up reuses only byte-identical CPU direct-draw parameters and DrawID
+uploads; indirect argument contents/addresses are untouched. Cache enablement
+and relaxed CB-entry dependency metadata are restricted to the opt-in M3 path.
+
+Follow-up isolated Vulkan SHA256:
+`375285446a65101f2225db2b0bebee74dc91ecfc2c47e3d5cad3855efad7d6b3`.
+
+Both settings pass 48 direct CPU-update, 48 direct GPU-buffer-copy update and
+48 indexed multi-draw GPU-update pixel oracles. With complete reuse enabled,
+each direct-draw probe records 6158 vertex and 6158 fragment hits, with 50 misses
+per stage. These are oracle hit counts, not application FPS gains.
+All seven overlap oracle scenarios pass on M3 and host lavapipe. Architecture
+logs show one early-tiling permission in the independent-attachment scenario,
+and zero in each of the six ordering scenarios, with the option disabled always
+zero. Both options still default off until application timings are evaluated.
+
+The canonical completion diagnostic module is installed for a normal graphical
+boot (module SHA256 `8f854cbe38946323a69bb451c07f135bc1d43dba3ea6f1266f2e0f77204f4b39`).
+Nine alternating same-binary Zink pairs show a -0.0300% median paired change for
+25 versus 100 us (4/9 positive); all saved images match exactly. Keep 100 us.
+Two wrapper preflight errors happened before GPU execution; their guard receipts
+remain recorded, the cadence was restored, and there was no driver fault/reboot.
+Full evidence: `build/m3-three-20261001/` and the local benchmark runs.

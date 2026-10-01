@@ -197,6 +197,7 @@ hk_free_resettable_cmd_buffer(struct hk_cmd_buffer *cmd)
               " fs_hits=%" PRIu64 " fs_misses=%" PRIu64 "\n",
               cmd->native_program_hits[0], cmd->native_program_misses[0],
               cmd->native_program_hits[1], cmd->native_program_misses[1]);
+   memset(&cmd->native_draw, 0, sizeof(cmd->native_draw));
    memset(cmd->native_program_hits, 0, sizeof(cmd->native_program_hits));
    memset(cmd->native_program_misses, 0, sizeof(cmd->native_program_misses));
    cmd->vdm_lookup_bo = NULL;
@@ -327,7 +328,8 @@ hk_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    /* No implicit vertex execution dependency at CB entry. queue_submit still
     * keeps ordinary CB boundaries conservative; opt-in cross-CB tiling also
     * checks the preceding CB's trailing barriers and memory writes. */
-   cmd->graphics_dependency_stages = 0;
+   cmd->graphics_dependency_stages = hk_cmd_buffer_device(cmd)->cross_cb_tiling
+      ? 0 : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
    memset(&cmd->state, 0, sizeof(cmd->state));
 }

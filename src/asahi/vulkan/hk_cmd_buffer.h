@@ -662,6 +662,10 @@ struct hk_cmd_buffer {
    /* Recording-only, owns no shader pointers. Invalidated before upload reset. */
    struct hk_native_program_cache *native_programs[2];
    uint64_t native_program_hits[2], native_program_misses[2];
+   struct {
+      uint32_t params[2], draw_id;
+      uint64_t params_va, draw_id_va;
+   } native_draw;
    /* Stack-owned only during one indexed indirect multi-draw API call. */
    struct hk_multidraw_resource_cache *multidraw_resources;
 

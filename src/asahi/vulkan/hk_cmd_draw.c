@@ -4517,7 +4517,19 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
             draw.start_instance,
          };
 
-         gfx->draw_params = hk_pool_upload(cmd, params, sizeof(params), 4);
+         /* Direct-draw parameters are immutable CPU values, unlike indirect
+          * argument buffers. Reuse an identical command-owned upload so a
+          * complete vertex loader can keep its original source address. */
+         if (dev->cache_native_programs && cmd->native_draw.params_va &&
+             !memcmp(cmd->native_draw.params, params, sizeof(params))) {
+            gfx->draw_params = cmd->native_draw.params_va;
+         } else {
+            gfx->draw_params = hk_pool_upload(cmd, params, sizeof(params), 4);
+            if (dev->cache_native_programs) {
+               memcpy(cmd->native_draw.params, params, sizeof(params));
+               cmd->native_draw.params_va = gfx->draw_params;
+            }
+         }
       }
    } else {
       gfx->draw_params = 0;
@@ -4525,7 +4537,16 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
    if (sw_vs->b.info.uses_draw_id) {
       /* The native vertex uniform ABI loads a full 32-bit DrawID. */
-      gfx->draw_id_ptr = hk_pool_upload(cmd, &draw_id, sizeof(draw_id), 4);
+      if (dev->cache_native_programs && cmd->native_draw.draw_id_va &&
+          cmd->native_draw.draw_id == draw_id) {
+         gfx->draw_id_ptr = cmd->native_draw.draw_id_va;
+      } else {
+         gfx->draw_id_ptr = hk_pool_upload(cmd, &draw_id, sizeof(draw_id), 4);
+         if (dev->cache_native_programs) {
+            cmd->native_draw.draw_id = draw_id;
+            cmd->native_draw.draw_id_va = gfx->draw_id_ptr;
+         }
+      }
    } else {
       gfx->draw_id_ptr = 0;
    }

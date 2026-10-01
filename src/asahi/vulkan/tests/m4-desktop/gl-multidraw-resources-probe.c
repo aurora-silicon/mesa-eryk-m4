@@ -215,6 +215,13 @@ main(void)
    glViewport(0, 0, 256, 4);
    glBindTexture(GL_TEXTURE_2D, input);
 
+   const unsigned gpu_uploads = getenv("M3_PROBE_GPU_UPLOADS") != NULL;
+   GLuint staging = 0;
+   if (gpu_uploads) {
+      glGenBuffers(1, &staging);
+      glBindBuffer(GL_COPY_READ_BUFFER, staging);
+      glBufferData(GL_COPY_READ_BUFFER, 32, NULL, GL_DYNAMIC_DRAW);
+   }
    unsigned char pixels[256 * 4 * 4];
    unsigned bad = 0;
    const unsigned direct_draws = getenv("M3_PROBE_DIRECT_DRAWS") != NULL;
@@ -229,10 +236,22 @@ main(void)
       unsigned mask[4] = {(round * 17) & 255,
          (round * 59) & 255, (round * 101) & 255, 0};
       glBindBuffer(GL_UNIFORM_BUFFER, buffers[sparse]);
-      glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(value), value);
+      if (gpu_uploads) {
+         glBufferSubData(GL_COPY_READ_BUFFER, 0, sizeof(value), value);
+         glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_UNIFORM_BUFFER, 0, offset,
+                            sizeof(value));
+      } else {
+         glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(value), value);
+      }
       glBindBufferRange(GL_UNIFORM_BUFFER, 0, buffers[sparse], offset, 16);
       glBindBuffer(GL_UNIFORM_BUFFER, buffers[2]);
-      glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(mask), mask);
+      if (gpu_uploads) {
+         glBufferSubData(GL_COPY_READ_BUFFER, 16, sizeof(mask), mask);
+         glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_UNIFORM_BUFFER, 16, offset,
+                            sizeof(mask));
+      } else {
+         glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeof(mask), mask);
+      }
       if (round & 1) {
          /* The argument BO is simultaneously a UBO. Its first command stays
           * fixed while per-draw ABI addresses advance through other records. */
