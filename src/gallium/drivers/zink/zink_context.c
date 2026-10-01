@@ -3414,7 +3414,12 @@ begin_rendering(struct zink_context *ctx, bool check_attachment_shadow)
          if (screen->driver_workarounds.general_layout)
             layout = VK_IMAGE_LAYOUT_GENERAL;
          unsigned idx = is_depth ? PIPE_MAX_COLOR_BUFS : 0;
-         screen->image_barrier(ctx, res, layout, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+         screen->image_barrier(ctx, res, layout,
+                               is_depth ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT :
+                                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                               is_depth ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT :
+                                          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
          res->obj->unordered_read = res->obj->unordered_write = false;
          ctx->dynamic_fb.attachments[idx].resolveMode =
             is_depth || util_format_is_pure_integer(format) ?
