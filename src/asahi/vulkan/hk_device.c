@@ -538,6 +538,12 @@ hk_CreateDevice(VkPhysicalDevice physicalDevice,
       debug_get_bool_option("HK_CACHE_RECORDING_OPTIONS",
                             dev->dev.chip == AGX_CHIP_G15S);
    dev->ioto_templates = hk_ioto_templates_enabled(dev->dev.chip);
+   dev->cache_native_programs =
+      debug_get_bool_option("HK_CACHE_NATIVE_PROGRAMS", false);
+   dev->native_program_profile =
+      debug_get_bool_option("HK_NATIVE_PROGRAM_PROFILE", false);
+   dev->cross_cb_tiling = dev->dev.chip == AGX_CHIP_G15S &&
+      debug_get_bool_option("HK_M3_CROSS_CB_TILING", false);
    dev->native_statistics_uniform =
       debug_get_bool_option("HK_M4_STATISTICS_UNIFORM", true);
    dev->native_statistics =

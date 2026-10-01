@@ -36,6 +36,7 @@
 
 #include <stdio.h>
 
+struct hk_native_program_cache;
 struct hk_buffer;
 struct hk_cmd_bo;
 struct hk_cmd_pool;
@@ -548,6 +549,7 @@ struct hk_cs {
    bool writes_memory;
    bool writes_statistics;
    bool fragment_only_dependency;
+   bool independent_tiling;
 
    /* Active restart index if one is set. Zero if there is no restart index set
     * yet, since Vulkan does not allow zero restart indices (unlike OpenGL).
@@ -657,6 +659,9 @@ struct hk_fragment_count {
 struct hk_cmd_buffer {
    struct vk_command_buffer vk;
    struct agx3_ioto_uniform_template *uniform_templates[2];
+   /* Recording-only, owns no shader pointers. Invalidated before upload reset. */
+   struct hk_native_program_cache *native_programs[2];
+   uint64_t native_program_hits[2], native_program_misses[2];
    /* Stack-owned only during one indexed indirect multi-draw API call. */
    struct hk_multidraw_resource_cache *multidraw_resources;
 
@@ -918,6 +923,7 @@ hk_cmd_buffer_get_cs_general(struct hk_cmd_buffer *cmd, struct hk_cs **ptr,
           * engine and kernel capability before requesting any overlap. */
          const VkPipelineStageFlags2 graphics_stages =
             cmd->graphics_dependency_stages & ~VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+         cs->independent_tiling = !(graphics_stages & ~fragment_stages);
          cs->fragment_only_dependency = graphics_stages &&
             !(graphics_stages & ~fragment_stages);
          cmd->graphics_dependency_stages = 0;

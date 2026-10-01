@@ -132,11 +132,79 @@ hk_descriptor_state_fini(struct hk_cmd_buffer *cmd,
    }
 }
 
+/* A complete loader remains immutable in the command buffer's USC pool.
+ * Recompute descriptor metadata/ranges on every lookup: GPU-written UBO data
+ * stays live and mutable descriptor bindings cannot reuse stale source VAs.
+ * The last loader per stage bounds CPU memory and lookup cost. */
+struct hk_native_program_cache {
+   uint64_t key[5];
+   uint64_t root_va, program;
+   struct hk_root_descriptor_table root;
+   struct agx3_ioto_uniform_range ranges[HK_AGX3_G17P_GRAPHICS_MAX_RANGES];
+};
+
+static void
+hk_native_program_key(const struct hk_agx3_g17p_graphics_program_desc *d,
+                      uint64_t key[5])
+{
+   key[0] = d->shader_va;
+   key[1] = ((uint64_t)d->shader_binary_size << 32) | d->scratch_size;
+   key[2] = d->nr_gprs | ((uint64_t)d->compiler_d_valid << 16) |
+            ((uint64_t)d->compiler_d << 32);
+   key[3] = d->sample_size_B | ((uint64_t)d->tile_size << 16) |
+            ((uint64_t)d->nr_samples << 32) | ((uint64_t)d->fragment << 40) |
+            ((uint64_t)d->writes_sample_mask << 41);
+   key[4] = d->uniform_range_count;
+}
+
+static bool
+hk_native_program_matches(const struct hk_native_program_cache *cache,
+                          const struct hk_agx3_g17p_graphics_program_desc *desc,
+                          const struct hk_graphics_state *gfx)
+{
+   uint64_t key[5];
+   hk_native_program_key(desc, key);
+   if (!cache->program || memcmp(cache->key, key, sizeof(key)))
+      return false;
+   const bool root_equal = desc->fragment
+      ? hk_multidraw_fragment_root_equal(&cache->root, &gfx->descriptors.root)
+      : !memcmp((const uint8_t *)&cache->root + sizeof(uint64_t),
+                (const uint8_t *)&gfx->descriptors.root + sizeof(uint64_t),
+                sizeof(cache->root) - sizeof(uint64_t));
+   for (unsigned i = 0; i < desc->uniform_range_count; ++i) {
+      const struct agx3_ioto_uniform_range *a = &desc->uniform_ranges[i];
+      const struct agx3_ioto_uniform_range *b = &cache->ranges[i];
+      uint64_t address = a->address;
+      /* Equivalent immutable roots may have a different upload address.
+       * Reusing the old loader retains its old root, including self pointer.
+       * No other source address or descriptor/UBO bytes are canonicalized. */
+      if (root_equal && gfx->root && cache->root_va && address >= gfx->root &&
+          address - gfx->root < sizeof(cache->root) &&
+          a->size_halfs * 2u <= sizeof(cache->root) - (address - gfx->root))
+         address = cache->root_va + (address - gfx->root);
+      if (a->start_halfs != b->start_halfs || a->size_halfs != b->size_halfs ||
+          address != b->address)
+         return false;
+   }
+   return true;
+}
+
 static void
 hk_free_resettable_cmd_buffer(struct hk_cmd_buffer *cmd)
 {
+   if (hk_cmd_buffer_device(cmd)->native_program_profile)
+      fprintf(stderr, "HK_NATIVE_PROGRAM_CACHE vs_hits=%" PRIu64 " vs_misses=%" PRIu64
+              " fs_hits=%" PRIu64 " fs_misses=%" PRIu64 "\n",
+              cmd->native_program_hits[0], cmd->native_program_misses[0],
+              cmd->native_program_hits[1], cmd->native_program_misses[1]);
+   memset(cmd->native_program_hits, 0, sizeof(cmd->native_program_hits));
+   memset(cmd->native_program_misses, 0, sizeof(cmd->native_program_misses));
    cmd->vdm_lookup_bo = NULL;
    cmd->multidraw_resources = NULL;
+   for (unsigned i = 0; i < 2; ++i) {
+      vk_free(&hk_cmd_buffer_pool(cmd)->vk.alloc, cmd->native_programs[i]);
+      cmd->native_programs[i] = NULL;
+   }
    memset(cmd->native_pointer_uploads, 0, sizeof(cmd->native_pointer_uploads));
    memset(cmd->native_prefetch_eligible, 0, sizeof(cmd->native_prefetch_eligible));
    struct hk_cmd_pool *pool = hk_cmd_buffer_pool(cmd);
@@ -256,7 +324,10 @@ hk_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    cmd->geom_index_count = 0;
    cmd->geom_instance_count = 0;
    cmd->uses_heap = false;
-   cmd->graphics_dependency_stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+   /* No implicit vertex execution dependency at CB entry. queue_submit still
+    * keeps ordinary CB boundaries conservative; opt-in cross-CB tiling also
+    * checks the preceding CB's trailing barriers and memory writes. */
+   cmd->graphics_dependency_stages = 0;
 
    memset(&cmd->state, 0, sizeof(cmd->state));
 }
@@ -1874,6 +1945,48 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          return 0;
       }
 
+      struct hk_agx3_g17p_graphics_program_desc desc = {
+         .uniform_template = NULL,
+         .sample_size_B = s->info.stage == MESA_SHADER_FRAGMENT
+            ? cmd->state.gfx.render.tilebuffer.sample_size_B : 0,
+         .tile_size = cmd->state.gfx.render.tilebuffer.tile_size,
+         .nr_samples = MAX2(cmd->state.gfx.render.tilebuffer.nr_samples, 1),
+         .program_va = 0,
+         /* The container's entry point, not the allocation base: the
+       * shader loader reads the block-size dword at entry - 0x80. */
+      .shader_va = linked->b.bo->va->addr + linked->b.entry_offset,
+         .uniform_ranges = ranges,
+         .uniform_range_count = range_count,
+         .shader_binary_size = linked->b.size,
+         .scratch_size = linked->b.scratch_size,
+         .nr_gprs = linked->b.nr_gprs,
+         .compiler_d_valid = linked->b.g17p_compiler_d_valid,
+         .compiler_d = linked->b.g17p_compiler_d,
+         .fragment = s->info.stage == MESA_SHADER_FRAGMENT,
+         .writes_sample_mask = s->info.stage == MESA_SHADER_FRAGMENT &&
+            ((linked->b.fragment_control.opaque[0] >> 29) == AGX_PASS_TYPE_PUNCH_THROUGH ||
+             (linked->b.fragment_control.opaque[0] >> 29) == AGX_PASS_TYPE_TRANSLUCENT_PUNCH_THROUGH),
+      };
+
+      const bool full_reusable = dev->cache_native_programs &&
+         dev->dev.chip == AGX_CHIP_G15S && !cmd->in_meta &&
+         !s->info.writes_memory && !s->b.info.has_preamble &&
+         (s->info.stage == MESA_SHADER_VERTEX || s->info.stage == MESA_SHADER_FRAGMENT) &&
+         !gfx->descriptors.root.draw.pipeline_stats_flags &&
+         !gfx->shaders[MESA_SHADER_GEOMETRY] &&
+         !gfx->shaders[MESA_SHADER_TESS_CTRL] &&
+         !gfx->shaders[MESA_SHADER_TESS_EVAL];
+      const unsigned stage_index = desc.fragment;
+      struct hk_native_program_cache *full_cache =
+         full_reusable ? cmd->native_programs[stage_index] : NULL;
+      if (full_cache && hk_native_program_matches(full_cache, &desc, gfx)) {
+         if (dev->native_program_profile)
+            cmd->native_program_hits[stage_index]++;
+         return full_cache->program;
+      }
+      if (dev->native_program_profile)
+         cmd->native_program_misses[stage_index]++;
+
       size_t program_capacity;
       if (!hk_agx3_g17p_graphics_program_bound(dev->dev.chip, ranges,
                                               range_count, &program_capacity)) {
@@ -1965,28 +2078,8 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          uniform_template = cmd->uniform_templates[index];
       }
 
-      const struct hk_agx3_g17p_graphics_program_desc desc = {
-         .uniform_template = uniform_template,
-         .sample_size_B = s->info.stage == MESA_SHADER_FRAGMENT
-            ? cmd->state.gfx.render.tilebuffer.sample_size_B : 0,
-         .tile_size = cmd->state.gfx.render.tilebuffer.tile_size,
-         .nr_samples = MAX2(cmd->state.gfx.render.tilebuffer.nr_samples, 1),
-         .program_va = upload.gpu,
-         /* The container's entry point, not the allocation base: the
-       * shader loader reads the block-size dword at entry - 0x80. */
-      .shader_va = linked->b.bo->va->addr + linked->b.entry_offset,
-         .uniform_ranges = ranges,
-         .uniform_range_count = range_count,
-         .shader_binary_size = linked->b.size,
-         .scratch_size = linked->b.scratch_size,
-         .nr_gprs = linked->b.nr_gprs,
-         .compiler_d_valid = linked->b.g17p_compiler_d_valid,
-         .compiler_d = linked->b.g17p_compiler_d,
-         .fragment = s->info.stage == MESA_SHADER_FRAGMENT,
-         .writes_sample_mask = s->info.stage == MESA_SHADER_FRAGMENT &&
-            ((linked->b.fragment_control.opaque[0] >> 29) == AGX_PASS_TYPE_PUNCH_THROUGH ||
-             (linked->b.fragment_control.opaque[0] >> 29) == AGX_PASS_TYPE_TRANSLUCENT_PUNCH_THROUGH),
-      };
+      desc.program_va = upload.gpu;
+      desc.uniform_template = uniform_template;
       struct hk_agx3_g17p_graphics_program program;
       if (!hk_agx3_g17p_basic_graphics_program_generate(dev->dev.chip, &desc,
                                                         &program)) {
@@ -2016,6 +2109,21 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       if (!pooled && agx_bo_sync_for_device(program_bo, 0, program_length)) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
          return 0;
+      }
+      if (full_reusable) {
+         if (!full_cache)
+            full_cache = cmd->native_programs[stage_index] =
+               vk_zalloc(&hk_cmd_buffer_pool(cmd)->vk.alloc, sizeof(*full_cache),
+                         8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+         /* Allocation failure is only a cache miss; the loader already exists. */
+         if (full_cache) {
+            hk_native_program_key(&desc, full_cache->key);
+            full_cache->root_va = gfx->root;
+            full_cache->root = gfx->descriptors.root;
+            full_cache->program = upload.gpu;
+            for (unsigned i = 0; i < range_count; ++i)
+               full_cache->ranges[i] = ranges[i];
+         }
       }
       if (reusable) {
          cache->cs = cmd->current_cs.gfx;

@@ -119,6 +119,9 @@ struct hk_device {
     * process environment for each draw's resource program/statistics state. */
    bool recording_options_cached;
    bool ioto_templates;
+   bool cache_native_programs;
+   bool native_program_profile;
+   bool cross_cb_tiling;
    bool native_statistics_uniform;
    bool native_statistics;
 

@@ -217,6 +217,7 @@ main(void)
 
    unsigned char pixels[256 * 4 * 4];
    unsigned bad = 0;
+   const unsigned direct_draws = getenv("M3_PROBE_DIRECT_DRAWS") != NULL;
    for (unsigned round = 0; round < 48; ++round) {
       const unsigned sparse = (round / 2) & 1;
       const unsigned border = (round / 4) & 1;
@@ -243,15 +244,21 @@ main(void)
       glBindSampler(0, samplers[border]);
       glClearColor(0.75, 0.5, 0.25, 0);
       glClear(GL_COLOR_BUFFER_BIT);
-      glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL,
-                                  count, sizeof(draws[0]));
+      if (direct_draws) {
+         for (unsigned i = 0; i < count; ++i)
+            glDrawElementsInstancedBaseVertexBaseInstance(
+               GL_TRIANGLES, 3, GL_UNSIGNED_INT, NULL, 1, 0, 7);
+      } else {
+         glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL,
+                                     count, sizeof(draws[0]));
+      }
       glReadPixels(0, 0, 256, 4, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
       CHECK(glGetError() == GL_NO_ERROR);
       unsigned expected[4];
       for (unsigned component = 0; component < 4; ++component) {
          /* Border components are exactly 1, 1/4, 0, 1. */
          const unsigned scale[] = {4, 1, 0, 4};
-         const unsigned id = count - 1;
+         const unsigned id = direct_draws ? 0 : count - 1;
          const unsigned tag[] = {(id ^ (id >> 8) ^ (id >> 16) ^ (id >> 24)) & 255,
                                  id % 13, (id * 2 + 7) & 255, 0};
          const unsigned color = value[component] ^ mask[component] ^ tag[component];
@@ -269,6 +276,7 @@ main(void)
    }
    CHECK(!bad);
    check_worker_affinity(&caller);
-   puts("PASS: 48 indexed multi-draw buffer/sampler/content/range switches");
+   puts(direct_draws ? "PASS: 48 direct-draw buffer/sampler/content/range switches" :
+        "PASS: 48 indexed multi-draw buffer/sampler/content/range switches");
    return 0;
 }

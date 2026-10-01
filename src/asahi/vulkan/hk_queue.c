@@ -1359,10 +1359,18 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
 
    unsigned nr_vdm = 0, nr_cdm = 0;
 
+   const struct hk_cs *previous_cs = NULL;
+   VkPipelineStageFlags2 trailing_stages = 0;
    for (unsigned i = 0; i < submit->command_buffer_count; ++i) {
       struct hk_cmd_buffer *cmdbuf =
          (struct hk_cmd_buffer *)submit->command_buffers[i];
-      const struct hk_cs *previous_cs = NULL;
+      /* A CB boundary does not itself imply a vertex dependency. Permit TA
+       * overlap only within this one DRM packet/VM, with fully owned native
+       * pass slots. Preserve every FS header dependency and fence. Trailing
+       * barriers (including barrier-only CBs) block boundary overlap. */
+      if (!dev->cross_cb_tiling || trailing_stages)
+         previous_cs = NULL;
+      bool first_cs = true;
 
       list_for_each_entry(struct hk_cs, cs, &cmdbuf->control_streams, node) {
          if (architecture_profile)
@@ -1436,10 +1444,14 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
                debug_get_bool_option("HK_M4_EARLY_TILING", true) :
                (dev->dev.chip == AGX_CHIP_G15S &&
                 debug_get_bool_option("HK_M3_EARLY_TILING", false));
-            if (early_tiling &&
+            const bool boundary_tiling = dev->cross_cb_tiling && first_cs &&
+               previous_cs && previous_cs->type == HK_CS_VDM &&
+               cs->independent_tiling;
+            if ((early_tiling || boundary_tiling) &&
                 (dev->dev.params.features & DRM_ASAHI_FEATURE_FRAGMENT_DEPENDENCY) &&
                 previous_cs && (previous_cs->type == HK_CS_VDM || across_compute) &&
-                !previous_cs->writes_memory && cs->fragment_only_dependency &&
+                !previous_cs->writes_memory &&
+                (cs->fragment_only_dependency || boundary_tiling) &&
                 !cs->timestamp.start.handle) {
                /* API dependencies since the last pass target fragment stages
                 * only. Keep the full header dependencies for FS, while TA
@@ -1464,7 +1476,13 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
             nr_vdm++;
          }
          previous_cs = cs;
+         first_cs = false;
       }
+      /* A barrier-only CB must not erase an earlier pending barrier. */
+      if (list_is_empty(&cmdbuf->control_streams))
+         trailing_stages |= cmdbuf->graphics_dependency_stages;
+      else
+         trailing_stages = cmdbuf->graphics_dependency_stages;
    }
 
    if (dev->dev.debug & AGX_DBG_TRACE) {
