@@ -295,8 +295,10 @@ test_agx3_pbe(void)
       msaa.samples = samples == 4 ? AGX_SAMPLE_COUNT_4 : AGX_SAMPLE_COUNT_2;
       CHECK(agx_gallium_pack_native_pbe(AGX_DESCRIPTOR_GENERATION_9,
                                          &native, &msaa));
-      CHECK(agx_pbe_agx3_2d_multisample_pack(
-         AGX_PBE_AGX3_GENERATION_9, &fields, samples, &expected));
+      struct agx_pbe_agx3_2d_fields msaa_fields = fields;
+      msaa_fields.samples_log2 = samples == 4 ? 2 : 1;
+      CHECK(agx_pbe_agx3_2d_pack(
+         AGX_PBE_AGX3_GENERATION_9, &msaa_fields, &expected));
       CHECK(memcmp(native.opaque, expected.bytes, sizeof(expected.bytes)) == 0);
       CHECK(!agx_gallium_pack_native_pbe(AGX_DESCRIPTOR_GENERATION_10,
                                           &native, &msaa));
@@ -427,8 +429,8 @@ test_agx3_pbe(void)
                                      &array));
    struct agx_pbe_agx3_2d_fields array_fields = fields;
    array_fields.page_aligned_layers = true;
-   CHECK(agx_pbe_agx3_2d_array_pack(AGX_PBE_AGX3_GENERATION_9,
-                                    &array_fields, 2, &expected_array));
+   CHECK(agx_pbe_agx3_array_pack(AGX_PBE_AGX3_GENERATION_9,
+                               &array_fields, 2, 0, 1, &expected_array));
    CHECK(memcmp(native.opaque, expected_array.bytes,
                 sizeof(expected_array.bytes)) == 0);
 
@@ -864,6 +866,43 @@ test_gen9_uncompressed_dimensions(void)
    }
 }
 
+static void
+test_gen9_buffer_bounds(void)
+{
+   struct AGX_TEXTURE semantic = {AGX_TEXTURE_header};
+   semantic.dimension = AGX_TEXTURE_DIMENSION_2D;
+   semantic.layout = AGX_LAYOUT_LINEAR;
+   semantic.channels = AGX_CHANNELS_R8;
+   semantic.type = AGX_TEXTURE_TYPE_SINT;
+   semantic.width = 1024;
+   semantic.height = 2;
+   semantic.depth = 1;
+   semantic.address = UINT64_C(0x5ffff20000);
+   semantic.stride = 1024 - 16;
+   semantic.buffer_size_sw = 1500;
+   struct agx_gallium_texture_descriptor native;
+   CHECK(agx_gallium_pack_native_texture(
+      AGX_DESCRIPTOR_GENERATION_9, &native, &semantic));
+   struct AGX_TEXTURE_GEN9 decoded;
+   CHECK(AGX_TEXTURE_GEN9_unpack(NULL, (const uint8_t *)native.opaque,
+                               &decoded));
+   CHECK(decoded.buffer_size_sw == 1500);
+   CHECK(decoded.buffer_offset_sw == 0);
+   CHECK(decoded.address == semantic.address && !decoded.extended);
+
+   semantic.extended = true;
+   CHECK(!agx_gallium_pack_native_texture(
+      AGX_DESCRIPTOR_GENERATION_9, &native, &semantic));
+   semantic.extended = false;
+   semantic.first_level = 1;
+   CHECK(!agx_gallium_pack_native_texture(
+      AGX_DESCRIPTOR_GENERATION_9, &native, &semantic));
+   semantic.first_level = 0;
+   semantic.layout = AGX_LAYOUT_GPU;
+   CHECK(!agx_gallium_pack_native_texture(
+      AGX_DESCRIPTOR_GENERATION_9, &native, &semantic));
+}
+
 int
 main(void)
 {
@@ -874,6 +913,7 @@ main(void)
    test_standard_border_colours();
    test_gen9_uncompressed_mip_views();
    test_gen9_uncompressed_dimensions();
+   test_gen9_buffer_bounds();
    test_native_packers();
    test_agx3_pbe();
    printf("Gallium AGX native descriptors: %u checks passed\n", checks);

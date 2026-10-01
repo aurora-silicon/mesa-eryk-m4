@@ -31,7 +31,9 @@ if with_tests
       # src/asahi/lib, the same object Honeykrisp and the D3D12 UMD drive.
       # Compile it in rather than linking libasahi_lib, which would pull the
       # whole device/BO layer into a pure descriptor test.
-      objects : [libasahi_lib.extract_objects('agx_pbe_agx3_core.c')],
+      objects : [libasahi_lib.extract_objects(
+        'agx_pbe_agx3_core.c', 'agx_native_sampler.c', 'agx_chip.c',
+      )],
       include_directories : [inc_src, inc_asahi],
       dependencies : [idep_agx_pack, idep_mesautil],
     ),
