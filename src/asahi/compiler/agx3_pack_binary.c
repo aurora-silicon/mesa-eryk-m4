@@ -1671,19 +1671,26 @@ agx3_emit_normflt(struct util_dynarray *emission, enum agx_isa_encoding enc,
    if (!agx3_src_is_register(dest) || dest.memory || dest.size != AGX_SIZE_32 ||
        agx_channels(dest) > 2 || agx_channels(dest) < 1)
       return false;
-   if (!agx3_src_is_register(src) || src.memory || src.abs || src.neg ||
-       src.size != AGX_SIZE_16 || agx_channels(src) != 1)
+   const bool norm16 = I->format == AGX_FORMAT_U16NORM ||
+                       I->format == AGX_FORMAT_S16NORM;
+   if (I->format != AGX_FORMAT_U8NORM && I->format != AGX_FORMAT_S8NORM &&
+       I->format != AGX_FORMAT_U16NORM && I->format != AGX_FORMAT_S16NORM)
       return false;
-   if (I->format != AGX_FORMAT_U8NORM && I->format != AGX_FORMAT_S8NORM)
+   const bool two_lanes = agx_channels(dest) == 2;
+   if (!agx3_src_is_register(src) || src.memory || src.abs || src.neg ||
+       src.size != AGX_SIZE_16 ||
+       agx_channels(src) != (norm16 && two_lanes ? 2 : 1))
       return false;
 
    const struct agx3_normflt_desc d = {
       .dest = dest.value,
       .dest_hint = true,
       .src = src.value,
-      .two_lanes = agx_channels(dest) == 2,
+      .two_lanes = two_lanes,
+      .snorm = I->format == AGX_FORMAT_S8NORM ||
+               I->format == AGX_FORMAT_S16NORM,
+      .is_16bit = norm16,
       .wait_mask = wait_mask,
-      .snorm = I->format == AGX_FORMAT_S8NORM,
    };
 
    uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH];
