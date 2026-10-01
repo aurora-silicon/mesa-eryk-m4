@@ -56,3 +56,5 @@ bool agx_vdm_hal200_bind_tail_unpack(
 #ifdef __cplusplus
 }
 #endif
+
+uint32_t agx_vdm_hal200_bind_viewport_control(size_t viewport_bytes);

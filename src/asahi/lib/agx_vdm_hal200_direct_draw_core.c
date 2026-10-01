@@ -273,3 +273,33 @@ agx_vdm_hal200_indirect_draw_pack(
                              ? AGX_VDM_HAL200_INDIRECT_INDEXED_DRAW_LENGTH
                              : AGX_VDM_HAL200_INDIRECT_NONINDEXED_DRAW_LENGTH);
 }
+
+bool
+agx_vdm_hal200_direct_draw_body_pack(enum agx_chip chip,
+   const struct agx_vdm_hal200_direct_draw_fields *fields,
+   struct agx_vdm_hal200_direct_draw_body *out)
+{
+   if (!out || !fields) return false;
+   struct agx_vdm_hal200_direct_draw_fields checked = *fields;
+   checked.draw_state_context_offset = 4;
+   struct agx_vdm_hal200_direct_draw full;
+   if (!agx_vdm_hal200_direct_draw_pack(chip, &checked, &full)) return false;
+   memcpy(out->bytes, full.bytes + 4, sizeof(out->bytes));
+   out->length = sizeof(out->bytes);
+   return true;
+}
+
+bool
+agx_vdm_hal200_indexed_draw_body_pack(enum agx_chip chip,
+   const struct agx_vdm_hal200_indexed_draw_fields *fields,
+   struct agx_vdm_hal200_indexed_draw_body *out)
+{
+   if (!out || !fields) return false;
+   struct agx_vdm_hal200_indexed_draw_fields checked = *fields;
+   checked.draw_state_context_offset = 4;
+   struct agx_vdm_hal200_indexed_draw full;
+   if (!agx_vdm_hal200_indexed_draw_pack(chip, &checked, &full)) return false;
+   memcpy(out->bytes, full.bytes + 4, sizeof(out->bytes));
+   out->length = sizeof(out->bytes);
+   return true;
+}

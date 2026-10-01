@@ -153,6 +153,13 @@ agx_chip_uses_hal200_ioto(enum agx_chip chip)
    return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G || chip == AGX_CHIP_G17P;
 }
 
+/* Native Gallium is initially qualified separately from Vulkan. */
+static inline bool
+agx_chip_uses_native_gallium(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G17P;
+}
+
 /* G15S and G16G share AGX3b shader encodings, native sample-loop ABI and
  * Gen9 texture operations. This selects shader lowerings, not firmware
  * packets, VM permissions, sparse support or layered render admission. */

@@ -6,6 +6,7 @@
 #include "agx_bg_eot.h"
 #include "util/simple_mtx.h"
 #include "util/u_debug.h"
+#include "util/blob.h"
 #include "agx_compile.h"
 #include "agx3_code_container_core.h"
 #include "agx_device.h"
@@ -16,6 +17,7 @@
 #include "agx_usc.h"
 #include "libagx_shaders.h"
 #include "nir.h"
+#include "nir_serialize.h"
 #include "nir_builder.h"
 #include "pool.h"
 
@@ -505,6 +507,100 @@ agx_bg_eot_cleanup(struct agx_bg_eot_cache *cache)
    cache->dev = NULL;
 }
 
+
+/* Native Gallium internal kernels retain the portable NIR from this exact
+ * compiler build. Compile against the real chip and the explicit argument
+ * prefix instead of executing an AGX2 precompiled binary. */
+struct native_precomp_inputs {
+   struct agx_device *dev;
+   unsigned end_half;
+};
+
+static bool
+lower_native_precomp_inputs(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   struct native_precomp_inputs *inputs = data;
+   if (intr->intrinsic == nir_intrinsic_load_preamble) {
+      unsigned base = nir_intrinsic_base(intr) + AGX_ABI_AGX3_PRECOMP_ARG_HALFS;
+      nir_intrinsic_set_base(intr, base);
+      inputs->end_half = MAX2(inputs->end_half, base +
+         intr->def.num_components * intr->def.bit_size / 16);
+      return true;
+   }
+   if (intr->intrinsic == nir_intrinsic_load_printf_buffer_address) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def, nir_imm_int64(b, inputs->dev->printf_buffer_address));
+      return true;
+   }
+   return false;
+}
+
+static struct agx_precompiled_shader *
+agx_get_native_precompiled_locked(struct agx_bg_eot_cache *cache, unsigned program)
+{
+   if (program == LIBAGX_HELPER || program >= LIBAGX_NUM_PROGRAMS || !libagx_nir[program])
+      return NULL;
+   const uint32_t *serialized = libagx_nir[program];
+   struct blob_reader reader;
+   blob_reader_init(&reader, serialized + 1, serialized[0]);
+   nir_shader *nir = nir_deserialize(NULL, &agx_nir_options, &reader);
+   if (!nir || reader.overrun) {
+      ralloc_free(nir);
+      return NULL;
+   }
+   struct native_precomp_inputs inputs = {
+      .dev = cache->dev, .end_half = AGX_ABI_AGX3_PRECOMP_ARG_HALFS,
+   };
+   NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_native_precomp_inputs,
+            nir_metadata_control_flow, &inputs);
+   struct agx_shader_key key = {
+      .dev = agx_gather_device_key(cache->dev),
+      .reserved_preamble = inputs.end_half,
+      .no_preamble = true,
+      .promote_constants = true,
+   };
+   struct agx_shader_part bin;
+   bool compiled = agx_compile_shader_nir(nir, &key, &bin);
+   ralloc_free(nir);
+   if (!compiled)
+      return NULL;
+   const size_t span = MAX2(bin.info.main_size, bin.info.binary_size);
+   const size_t block_size = agx3_code_block_size(span);
+   const size_t lead = AGX3_CONTAINER_LEAD_SIZE;
+   const size_t rodata = bin.info.rodata.size_16 * 2;
+   if (!block_size || bin.info.has_preamble || bin.info.main_offset ||
+       (rodata && (bin.info.rodata.offset > bin.info.binary_size ||
+        rodata > bin.info.binary_size - bin.info.rodata.offset))) {
+      free(bin.binary);
+      return NULL;
+   }
+   const size_t size = lead + block_size + ALIGN_POT(rodata, 16);
+   uint8_t *image = calloc(1, size);
+   struct agx_precompiled_shader *p = rzalloc(cache->ht, struct agx_precompiled_shader);
+   if (!image || !p) {
+      free(image); free(bin.binary); ralloc_free(p);
+      return NULL;
+   }
+   agx3_build_container_lead_for_chip(image, cache->dev->chip);
+   bool built = agx3_build_code_block(image + lead, block_size,
+      bin.binary, bin.info.main_size, span, NULL, false);
+   if (rodata) {
+      p->rodata_offset = lead + block_size;
+      memcpy(image + p->rodata_offset, (uint8_t *)bin.binary + bin.info.rodata.offset, rodata);
+   }
+   p->ptr = built ? agx_pool_upload_aligned_with_bo(&cache->pool, image, size, 128, &p->bo) : 0;
+   p->info = bin.info;
+   p->entry_offset = lead + AGX3_CODE_BLOCK_ENTRY_OFFSET;
+   p->b.workgroup = agx_workgroup(bin.info.workgroup_size[0], bin.info.workgroup_size[1], bin.info.workgroup_size[2]);
+   free(image); free(bin.binary);
+   if (!p->ptr) {
+      ralloc_free(p);
+      return NULL;
+   }
+   p_atomic_set(&cache->precomp[program], p);
+   return p;
+}
+
 static struct agx_precompiled_shader *
 agx_get_precompiled_locked(struct agx_bg_eot_cache *cache, unsigned program)
 {
@@ -516,6 +612,8 @@ agx_get_precompiled_locked(struct agx_bg_eot_cache *cache, unsigned program)
    if (cache->precomp[program])
       return cache->precomp[program];
 
+   if (agx_chip_uses_native_gallium(cache->dev->chip))
+      return agx_get_native_precompiled_locked(cache, program);
    if (!cache->dev->libagx_programs)
       return NULL;
 
@@ -526,6 +624,9 @@ agx_get_precompiled_locked(struct agx_bg_eot_cache *cache, unsigned program)
    const uint32_t *bin = cache->dev->libagx_programs[program];
    const struct agx_precompiled_kernel_info *info = (void *)bin;
    const void *binary = (const uint8_t *)bin + sizeof(*info);
+   p->info = (struct agx_shader_info){0};
+   p->entry_offset = info->main_offset;
+   p->rodata_offset = info->rodata.offset;
 
    assert(info->main_offset == 0 || program != LIBAGX_HELPER);
 

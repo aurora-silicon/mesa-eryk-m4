@@ -599,3 +599,24 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    return agx_fast_link_checked(linked, dev, fragment, main, prolog, epilog,
                                 nr_samples_shaded) == AGX_LINK_SUCCESS;
 }
+
+void
+agx_fs_epilog_apply_device_policy(enum agx_chip chip,
+                                  struct agx_fs_epilog_key *key)
+{
+   if (!key)
+      return;
+
+   const bool g17p = agx_chip_uses_native_gallium(chip);
+   key->preserve_zero_mask = g17p;
+   key->lower_srgb = g17p;
+}
+
+bool
+agx_fs_epilog_may_discard(const struct agx_fs_epilog_link_info *link,
+                          bool alpha_to_coverage,
+                          bool nontrivial_force_early)
+{
+   return !nontrivial_force_early &&
+          (alpha_to_coverage || (link && (link->write_z || link->write_s)));
+}

@@ -612,3 +612,22 @@ agx3_hal200_indirect_compute_append(
    sink->length += length;
    return true;
 }
+
+bool
+agx3_g17p_native_compute_dispatch_append_with_barrier(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid, uint8_t flags,
+   struct agx3_compute_dispatch_sink *sink)
+{
+   uint8_t staged[AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE];
+   struct agx3_compute_dispatch_sink temporary = { .data = staged, .capacity = sizeof(staged) };
+   const struct agx3_cdm_barrier_info barrier = { .chip = program ? program->chip : 0, .flags = flags };
+   if (!sink || !sink->data || sink->length > sink->capacity ||
+       sizeof(staged) > sink->capacity - sink->length ||
+       !agx3_g17p_native_compute_dispatch_append(program, grid, &temporary) ||
+       !agx3_cdm_barrier_pack(&barrier, staged + AGX3_CDM_DIRECT_LAUNCH_SIZE))
+      return false;
+   memcpy(sink->data + sink->length, staged, sizeof(staged));
+   sink->length += sizeof(staged);
+   return true;
+}

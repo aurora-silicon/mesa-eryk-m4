@@ -10,6 +10,7 @@
 #include <xf86drm.h>
 #include "asahi/compiler/agx_compile.h"
 #include "asahi/layout/layout.h"
+#include "asahi/genxml/agx3_cmdstream.h"
 #include "asahi/lib/decode.h"
 #include "drm-uapi/asahi_drm.h"
 #include "drm-uapi/drm_fourcc.h"
@@ -48,6 +49,7 @@
 #include "agx_disk_cache.h"
 #include "agx_fence.h"
 #include "agx_helpers.h"
+#include "agx_native_descriptor.h"
 #include "agx_pack.h"
 #include "agx_public.h"
 #include "agx_state.h"
@@ -159,6 +161,27 @@ agx_resource_setup(struct agx_device *dev, struct agx_resource *nresource)
    };
 }
 
+static void
+agx_resource_set_damage_region(struct pipe_screen *screen,
+                               struct pipe_resource *resource,
+                               unsigned int nrects,
+                               const struct pipe_box *rects)
+{
+   /* A valid Asahi render target is conservatively reloaded in full when a
+    * batch starts. That is already the strongest implementation of
+    * KHR_partial_update's preservation contract: pixels outside the supplied
+    * region survive even when an application underestimates its damage.
+    *
+    * Keep the hint side-effect free until the command stream has a native
+    * tile-enable map. Restricting the render area without one would skip the
+    * stores needed to preserve untouched tiles across GBM buffer reuse.
+    */
+   (void)screen;
+   (void)resource;
+   (void)nrects;
+   (void)rects;
+}
+
 static struct pipe_resource *
 agx_resource_from_handle(struct pipe_screen *pscreen,
                          const struct pipe_resource *templat,
@@ -199,15 +222,6 @@ agx_resource_from_handle(struct pipe_screen *pscreen,
     */
    prsc->bind |= PIPE_BIND_SHARED | PIPE_BIND_SCANOUT;
 
-   rsc->bo = agx_bo_import(dev, whandle->handle);
-   /* Sometimes an import can fail e.g. on an invalid buffer fd, out of
-    * memory space to mmap it etc.
-    */
-   if (!rsc->bo) {
-      FREE(rsc);
-      return NULL;
-   }
-
    agx_resource_setup(dev, rsc);
 
    if (rsc->layout.tiling == AIL_TILING_LINEAR) {
@@ -220,6 +234,28 @@ agx_resource_from_handle(struct pipe_screen *pscreen,
    }
 
    ail_make_miptree(&rsc->layout);
+
+   /* Validate all modifier geometry before acquiring a BO reference.  A
+    * rejected Wayland/X11 dma-buf import is routine during resize and format
+    * renegotiation; importing first leaked one reference for every malformed
+    * tiled stride or offset.
+    */
+   rsc->bo = agx_bo_import(dev, whandle->handle);
+   /* Sometimes an import can fail e.g. on an invalid buffer fd, out of
+    * memory space to mmap it etc.
+    */
+   if (!rsc->bo) {
+      FREE(rsc);
+      return NULL;
+   }
+
+   /* The modifier layout includes metadata and any external base offset. Do
+    * not let a short dma-buf become a GPU out-of-bounds access. */
+   if (rsc->layout.size_B > rsc->bo->size) {
+      agx_bo_unreference(dev, rsc->bo);
+      FREE(rsc);
+      return NULL;
+   }
 
    if (prsc->target == PIPE_BUFFER) {
       assert(rsc->layout.tiling == AIL_TILING_LINEAR);
@@ -267,7 +303,8 @@ agx_resource_get_handle(struct pipe_screen *pscreen, struct pipe_context *ctx,
       rsrc_debug(rsrc, "Get handle: %p (KMS)\n", rsrc);
 
       /* BO must be considered shared at this point. */
-      agx_bo_make_shared(dev, rsrc->bo);
+      if (!agx_bo_make_shared(dev, rsrc->bo))
+         return false;
 
       handle->handle = rsrc->bo->handle;
    } else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
@@ -401,9 +438,24 @@ agx_twiddled_allowed(const struct agx_resource *pres)
 static bool
 agx_compression_allowed(const struct agx_resource *pres)
 {
+   const enum agx_descriptor_generation generation =
+      agx_gallium_descriptor_generation(
+         agx_device(pres->base.screen)->chip);
+
    /* Allow disabling compression for debugging */
    if (agx_device(pres->base.screen)->debug & AGX_DBG_NOCOMPRESS) {
       rsrc_debug(pres, "No compression: disabled\n");
+      return false;
+   }
+
+   /* Compression changes both the image allocation and its PBE write
+    * descriptor. Gen9/10 texture reads are grounded, but the matching
+    * compressed PBE is not. Selecting compressed tiling here would therefore
+    * make every real-sized render target fail at end-of-tile. Keep the image
+    * uncompressed, as Honeykrisp does, until that write descriptor is known.
+    */
+   if (!agx_gallium_native_compressed_pbe_supported(generation)) {
+      rsrc_debug(pres, "No compression: no native PBE encoding\n");
       return false;
    }
 
@@ -1102,6 +1154,7 @@ agx_clear(struct pipe_context *pctx, unsigned buffers,
       union pipe_color_union clamped =
          util_clamp_color(batch->key.cbufs[rt].format, color);
 
+      batch->clear_color[rt] = clamped;
       batch->uploaded_clear_color[rt] = agx_pool_upload_aligned(
          &batch->pool, clamped.f, sizeof(clamped.f), 16);
    }
@@ -1356,20 +1409,27 @@ agx_cmdbuf(struct agx_device *dev, struct drm_asahi_cmd_render *c,
                         zres ? &zres->layout : NULL,
                         sres ? &sres->layout : NULL, &zls);
 
-   if (dev->debug & AGX_DBG_NOCLUSTER)
+   /* G17P treats an absent ZLS allocation as an inactive depth surface.  Its
+    * native render command keeps the clear register at 1.0 in that state;
+    * zero is only a real clear value when depth or stencil storage exists. */
+   if (agx_chip_uses_native_gallium(dev->chip) && !zres && !sres)
+      c->isp_bgobjdepth = fui(1.0f);
+
+   if ((dev->debug & AGX_DBG_NOCLUSTER) && !agx_chip_uses_native_gallium(dev->chip))
       c->flags |= DRM_ASAHI_RENDER_NO_VERTEX_CLUSTERING;
 
-   memcpy(&c->bg.rsrc_spec, &pipeline_clear.counts,
-          sizeof(struct agx_counts_packed));
-
-   memcpy(&c->eot.rsrc_spec, &pipeline_store.counts,
-          sizeof(struct agx_counts_packed));
-
-   memcpy(&c->partial_bg.rsrc_spec, &pipeline_load.counts,
-          sizeof(struct agx_counts_packed));
-
-   memcpy(&c->partial_eot.rsrc_spec, &pipeline_store.counts,
-          sizeof(struct agx_counts_packed));
+   c->bg.rsrc_spec = (uint32_t)pipeline_clear.rsrc_spec;
+   c->eot.rsrc_spec = (uint32_t)pipeline_store.rsrc_spec;
+   c->partial_bg.rsrc_spec = (uint32_t)pipeline_load.rsrc_spec;
+   c->partial_eot.rsrc_spec = (uint32_t)pipeline_store.rsrc_spec;
+   c->bg_rsrc_spec_hi = (uint32_t)(pipeline_clear.rsrc_spec >> 32);
+   c->bg_eot_rsrc_spec_hi = (uint32_t)(pipeline_store.rsrc_spec >> 32);
+   c->bg_partial_rsrc_spec_hi = (uint32_t)(pipeline_load.rsrc_spec >> 32);
+   c->bg_eot_partial_rsrc_spec_hi =
+      (uint32_t)(pipeline_store.rsrc_spec >> 32);
+   if (c->bg_rsrc_spec_hi || c->bg_eot_rsrc_spec_hi ||
+       c->bg_partial_rsrc_spec_hi || c->bg_eot_partial_rsrc_spec_hi)
+      c->flags |= DRM_ASAHI_RENDER_RSRC_SPEC_HI;
 
    /* XXX is this correct? */
    c->bg.usc = pipeline_clear.usc | (framebuffer->nr_cbufs >= 4 ? 8 : 4);
@@ -1507,8 +1567,17 @@ agx_flush_compute(struct agx_context *ctx, struct agx_batch *batch,
                   struct drm_asahi_cmd_compute *cmdbuf)
 {
    /* Finalize the encoder */
-   agx_pack(batch->cdm.current, CDM_STREAM_TERMINATE, _)
-      ;
+   struct agx_device *dev = agx_device(ctx->base.screen);
+   if (agx_chip_uses_native_gallium(dev->chip)) {
+      uint8_t terminate[AGX3_CDM_STREAM_TERMINATE_SIZE];
+      if (!agx3_cdm_stream_terminate_pack(dev->chip, terminate))
+         UNREACHABLE("G17P CDM terminate must be grounded");
+      memcpy(batch->cdm.current, terminate, sizeof(terminate));
+      batch->cdm.current += sizeof(terminate);
+   } else {
+      agx_pack(batch->cdm.current, CDM_STREAM_TERMINATE, _)
+         ;
+   }
 
    agx_batch_add_bo(batch, batch->cdm.bo);
 
@@ -1598,7 +1667,9 @@ agx_flush_render(struct agx_context *ctx, struct agx_batch *batch,
    agx_batch_add_bo(batch, batch->vdm.bo);
 
    agx_cmdbuf(
-      dev, cmdbuf, &batch->pool, batch, &batch->key, batch->vdm.bo->va->addr,
+      dev, cmdbuf, &batch->pool, batch, &batch->key,
+      batch->vdm.g17p_vdm_alias ? batch->vdm.g17p_vdm_alias
+                                : batch->vdm.bo->va->addr,
       scissor, zbias, agx_get_occlusion_heap(batch), pipeline_background,
       pipeline_background_partial, pipeline_store, clear_pipeline_textures,
       batch->clear_depth, batch->clear_stencil, &batch->tilebuffer_layout);
@@ -1717,6 +1788,18 @@ asahi_get_device_reset_status(struct pipe_context *pipe)
 }
 
 static void
+asahi_set_device_reset_callback(struct pipe_context *pipe,
+                                const struct pipe_device_reset_callback *cb)
+{
+   struct agx_context *ctx = agx_context(pipe);
+
+   if (cb)
+      ctx->reset = *cb;
+   else
+      memset(&ctx->reset, 0, sizeof(ctx->reset));
+}
+
+static void
 asahi_clear_buffer(struct pipe_context *pipe, struct pipe_resource *resource,
                    unsigned offset, unsigned size, const void *clear_value,
                    int clear_value_size)
@@ -1823,6 +1906,7 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    pctx->fence_server_sync = agx_fence_server_sync;
 
    pctx->get_device_reset_status = asahi_get_device_reset_status;
+   pctx->set_device_reset_callback = asahi_set_device_reset_callback;
 
    agx_init_state_functions(pctx);
    agx_init_query_functions(pctx);
@@ -1860,6 +1944,16 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    /* By default all samples are enabled */
    ctx->sample_mask = ~0;
 
+   /* The sampler descriptor's level-of-detail bias is an eleven-bit field in
+    * 1/64 steps, and the hardware quantises the level it finally samples at to
+    * 1/64 as well. Rounding the API bias into the descriptor therefore costs a
+    * step the hardware was going to take anyway, and the two compound: a
+    * sampler bias of 0.629921 and a shader bias of 1.889764 should sample at
+    * 2.519685 and sampled at 2.500000, two steps low, which is what
+    * KHR-GL30.texture_lod_bias.texture_lod_bias_all reports. Summing the two
+    * biases in floating point first leaves the hardware's single step, so
+    * every chip takes nir_lower_tex's software path and no descriptor carries
+    * the bias. */
    ctx->support_lod_bias = !(flags & PIPE_CONTEXT_NO_LOD_BIAS);
    ctx->robust = (flags & PIPE_CONTEXT_ROBUST_BUFFER_ACCESS);
 
@@ -1949,8 +2043,16 @@ agx_init_shader_caps(struct pipe_screen *pscreen)
       caps->fp16_const_buffers = false;
       caps->glsl_16bit_load_dst = true;
 
+      /* G17P's Ioto path publishes a native 32-byte per-stage sampler table.
+       * Slots 15+ are selected indirectly after accounting for the reserved
+       * texel-fetch entry, so native graphics and compute can expose
+       * Gallium's complete API table without the legacy heap. */
+      if (agx_chip_uses_native_gallium(agx_device(pscreen)->chip) &&
+          (i == MESA_SHADER_VERTEX || i == MESA_SHADER_FRAGMENT ||
+           i == MESA_SHADER_COMPUTE))
+         caps->max_texture_samplers = PIPE_MAX_SAMPLERS;
       /* TODO: Enable when fully baked */
-      if (strcmp(util_get_process_name(), "blender") == 0)
+      else if (strcmp(util_get_process_name(), "blender") == 0)
          caps->max_texture_samplers = PIPE_MAX_SAMPLERS;
       else if (strcmp(util_get_process_name(), "run") == 0)
          caps->max_texture_samplers = PIPE_MAX_SAMPLERS;
@@ -2138,7 +2240,23 @@ agx_init_screen_caps(struct pipe_screen *pscreen)
 
    caps->max_vertex_element_src_offset = 0xffff;
 
-   caps->texture_transfer_modes = PIPE_TEXTURE_TRANSFER_BLIT;
+   /* On AGX3, advertising blit-based transfers routes a format-mismatched
+    * glReadPixels through u_blitter.  In particular, the WSI-native
+    * B8G8R8A8_UNORM -> API R8G8B8A8_UNORM conversion silently returns zero on
+    * G17P even though the same drawable is byte-exact through a dma-buf CPU
+    * map after both CPU upload and GPU clear.  Keep using the ordinary mapped
+    * transfer path, which performs the format conversion on the CPU, until
+    * the AGX3 render-blitter pixel path is hardware-grounded.
+    *
+    * This is correctness-critical for every default EGL surface: the DRI
+    * pbuffer/window colour buffer is BGRA while GLES glReadPixels(GL_RGBA)
+    * requests RGBA.  AGX2 retains its established accelerated path.
+    */
+   caps->texture_transfer_modes =
+      agx_chip_command_stream_generation(agx_device(pscreen)->chip) ==
+            AGX_CS_GENERATION_AGX2
+         ? PIPE_TEXTURE_TRANSFER_BLIT
+         : PIPE_TEXTURE_TRANSFER_DEFAULT;
 
    caps->endianness = PIPE_ENDIAN_LITTLE;
 
@@ -2294,6 +2412,18 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
    return true;
 }
 
+static bool
+agx_dmabuf_modifier_external_only(struct pipe_screen *screen, uint64_t modifier)
+{
+   /* AGX3 can sample imported compressed images, but its compressed PBE
+    * encoding is not recovered.  Advertising this modifier as renderable
+    * lets EGL/GBM allocate a surface that will fail at end-of-tile.
+    */
+   return modifier == DRM_FORMAT_MOD_APPLE_GPU_TILED_COMPRESSED &&
+          !agx_gallium_native_compressed_pbe_supported(
+             agx_gallium_descriptor_generation(agx_device(screen)->chip));
+}
+
 static void
 agx_query_dmabuf_modifiers(struct pipe_screen *screen, enum pipe_format format,
                            int max, uint64_t *modifiers,
@@ -2308,7 +2438,8 @@ agx_query_dmabuf_modifiers(struct pipe_screen *screen, enum pipe_format format,
 
    for (i = 0; i < ARRAY_SIZE(agx_best_modifiers) && i < max; i++) {
       if (external_only)
-         external_only[i] = 0;
+         external_only[i] =
+            agx_dmabuf_modifier_external_only(screen, agx_best_modifiers[i]);
 
       modifiers[i] = agx_best_modifiers[i];
    }
@@ -2321,13 +2452,18 @@ static bool
 agx_is_dmabuf_modifier_supported(struct pipe_screen *screen, uint64_t modifier,
                                  enum pipe_format format, bool *external_only)
 {
+   for (unsigned i = 0; i < ARRAY_SIZE(agx_best_modifiers); ++i) {
+      if (agx_best_modifiers[i] == modifier) {
+         if (external_only)
+            *external_only =
+               agx_dmabuf_modifier_external_only(screen, modifier);
+
+         return true;
+      }
+   }
+
    if (external_only)
       *external_only = false;
-
-   for (unsigned i = 0; i < ARRAY_SIZE(agx_best_modifiers); ++i) {
-      if (agx_best_modifiers[i] == modifier)
-         return true;
-   }
 
    return false;
 }
@@ -2477,6 +2613,7 @@ agx_screen_create(int fd, struct renderonly *ro,
    screen->resource_get_handle = agx_resource_get_handle;
    screen->resource_get_param = agx_resource_get_param;
    screen->resource_create_with_modifiers = agx_resource_create_with_modifiers;
+   screen->set_damage_region = agx_resource_set_damage_region;
    screen->get_timestamp = agx_get_timestamp;
    screen->fence_reference = agx_fence_reference;
    screen->fence_finish = agx_fence_finish;

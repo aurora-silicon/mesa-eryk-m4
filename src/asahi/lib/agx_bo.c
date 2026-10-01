@@ -438,7 +438,7 @@ agx_bo_unreference(struct agx_device *dev, struct agx_bo *bo)
    if (p_atomic_read(&bo->refcnt) == 0) {
       assert(!p_atomic_read_relaxed(&bo->writer));
 
-      if (dev->debug & AGX_DBG_TRACE)
+      if (dev->debug & (AGX_DBG_TRACE | AGX_DBG_FAULTTRACE | AGX_DBG_ASYNCTRACE))
          agxdecode_track_free(dev->agxdecode, bo);
 
       if (!agx_bo_cache_put(dev, bo))
@@ -499,7 +499,7 @@ agx_bo_create(struct agx_device *dev, size_t size, unsigned align,
    if (reused && (flags & AGX_BO_ZERO_ON_REUSE))
       memset(agx_bo_map(bo), 0, bo->size);
 
-   if (dev->debug & AGX_DBG_TRACE) {
+   if (dev->debug & (AGX_DBG_TRACE | AGX_DBG_FAULTTRACE | AGX_DBG_ASYNCTRACE)) {
       agx_bo_map(bo);
       agxdecode_track_alloc(dev->agxdecode, bo);
    }

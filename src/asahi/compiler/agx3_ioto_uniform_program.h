@@ -9,6 +9,7 @@
 
 #include "asahi/lib/agx_ioto_program_core.h"
 #include "agx3_ioto_load_packer.h"
+#include "agx3_cprog_input.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -34,6 +35,14 @@ struct agx3_ioto_uniform_program_desc {
 
    uint8_t initial_gpr_dwords;
    bool fast_path_enabled;
+   const struct agx3_cprog_inputs *cprog_inputs;
+
+   /* Optional caller-owned 64-bit base, materialized before entering this
+    * body.  Ranges at/above preloaded_base_address reuse it without emitting
+    * LDIMM and the base survives every complete loader round. */
+   bool preloaded_base_valid;
+   uint16_t preloaded_base_half;
+   uint64_t preloaded_base_address;
 
    struct agx_ioto_state_tail tail;
    uint16_t profile_payload0;
@@ -54,6 +63,9 @@ struct agx3_ioto_uniform_program_workspace {
    size_t sort_capacity;
    struct agx_ioto_load_cache_entry *cache;
    size_t cache_capacity;
+   struct agx_ioto_load_relocation *relocations;
+   size_t relocation_capacity;
+   size_t *relocation_count;
 };
 
 /* CPU-only relocation template. It owns no GPU memory and may be reused
@@ -88,6 +100,12 @@ bool agx3_ioto_uniform_program_body_generate_cached(
 bool agx3_ioto_uniform_program_body_bound(
    enum agx_chip chip, const struct agx3_ioto_uniform_range *ranges,
    size_t range_count, size_t *bytes, size_t *chunks);
+
+/* Includes native input publication and validates that each selected half
+ * is supplied exactly once by these ranges. */
+bool agx3_ioto_uniform_program_desc_body_bound(
+   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
+   size_t *bytes, size_t *chunks);
 
 /* Build only the scheduled resource-load body. copy_offset marks the first
  * trailing COPY record emitted by finishRound(), so a target-specific program

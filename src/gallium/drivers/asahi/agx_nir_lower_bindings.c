@@ -4,6 +4,7 @@
  */
 
 #include "asahi/compiler/agx_nir.h"
+#include "compiler/nir/nir_builtin_builder.h"
 #include "compiler/nir/nir_builder.h"
 #include "util/bitset.h"
 #include "agx_state.h"
@@ -21,27 +22,159 @@
  *    2. Images (read/write interleaved)
  */
 
+static mesa_shader_stage
+stage_for_descriptors(nir_shader *shader)
+{
+   mesa_shader_stage stage = shader->info.stage;
+
+   if (stage == MESA_SHADER_VERTEX && shader->info.vs.tes_poly)
+      stage = MESA_SHADER_TESS_EVAL;
+
+   assert(stage < MESA_SHADER_STAGES);
+   return stage;
+}
+
+static nir_def *
+load_stage_array(nir_builder *b, nir_def *index, unsigned components,
+                 unsigned bit_size, uintptr_t binding, unsigned stride,
+                 unsigned align)
+{
+   const unsigned table = AGX_SYSVAL_STAGE(stage_for_descriptors(b->shader));
+   nir_scalar scalar = nir_scalar_resolved(index, 0);
+
+   if (nir_scalar_is_const(scalar)) {
+      const unsigned slot = nir_scalar_as_uint(scalar);
+      assert(slot < PIPE_MAX_SAMPLERS);
+      return nir_load_sysval_agx(b, components, bit_size, .desc_set = table,
+                                 .binding = binding + (slot * stride));
+   }
+
+   /* Keep a bad dynamic GL index from escaping the fixed driver table. */
+   index = nir_umin(b, index,
+                    nir_imm_intN_t(b, PIPE_MAX_SAMPLERS - 1,
+                                   index->bit_size));
+
+   struct agx_draw_uniforms *u = NULL;
+   nir_def *table_base = nir_load_sysval_agx(
+      b, 1, 64, .desc_set = AGX_SYSVAL_TABLE_ROOT,
+      .binding = (uintptr_t)&u->tables[table]);
+   nir_def *offset = nir_iadd_imm(b, nir_imul_imm(b, index, stride), binding);
+   nir_def *address = nir_iadd(b, table_base, nir_u2u64(b, offset));
+   return nir_load_global_constant(b, components, bit_size, address,
+                                   .align_mul = align);
+}
+
+static nir_def *
+sampler_index(nir_builder *b, nir_tex_instr *tex)
+{
+   nir_def *index = nir_steal_tex_src(tex, nir_tex_src_sampler_offset);
+   if (index)
+      return index;
+
+   const int handle_idx =
+      nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle);
+   if (handle_idx >= 0) {
+      nir_scalar handle =
+         nir_scalar_chase_movs(nir_get_scalar(tex->src[handle_idx].src.ssa, 0));
+      if (nir_scalar_is_alu(handle) &&
+          nir_scalar_alu_op(handle) == nir_op_u2u64)
+         handle = nir_scalar_chase_alu_src(handle, 0);
+
+      nir_intrinsic_instr *load = nir_def_as_intrinsic_or_null(handle.def);
+      if (handle.comp == 0 && load &&
+          load->intrinsic == nir_intrinsic_load_sampler_handle_agx)
+         return load->src[0].ssa;
+   }
+
+   return nir_imm_int(b, tex->sampler_index);
+}
+
+static nir_def *
+load_custom_border_sampler(nir_builder *b, nir_def *index)
+{
+   struct agx_stage_uniforms *s = NULL;
+   return load_stage_array(
+      b, index, 1, 16, (uintptr_t)&s->custom_border_sampler_handle,
+      sizeof(s->custom_border_sampler_handle[0]), 2);
+}
+
 static bool
-lower_sampler(nir_builder *b, nir_tex_instr *tex)
+lower_custom_border_query(nir_builder *b, nir_tex_instr *tex)
+{
+   if (tex->op != nir_texop_has_custom_border_color_agx &&
+       tex->op != nir_texop_custom_border_color_agx)
+      return false;
+
+   nir_def *index = sampler_index(b, tex);
+   nir_def *replacement;
+
+   if (tex->op == nir_texop_has_custom_border_color_agx) {
+      replacement = nir_ige_imm(b, load_custom_border_sampler(b, index), 0);
+   } else {
+      struct agx_stage_uniforms *s = NULL;
+      nir_def *border = load_stage_array(
+         b, index, 4, 32, (uintptr_t)&s->custom_border,
+         sizeof(s->custom_border[0]), 4);
+      replacement = nir_convert_to_bit_size(
+         b, border, nir_alu_type_get_base_type(tex->dest_type),
+         tex->def.bit_size);
+   }
+
+   nir_def_replace(&tex->def, replacement);
+   return true;
+}
+
+static bool
+lower_sampler(nir_builder *b, nir_tex_instr *tex, bool wide_native_handle,
+              bool clamp_to_zero)
 {
    if (!nir_tex_instr_need_sampler(tex))
       return false;
 
-   nir_def *index = nir_steal_tex_src(tex, nir_tex_src_sampler_offset);
-   if (!index)
-      index = nir_imm_int(b, tex->sampler_index);
+   nir_def *index = sampler_index(b, tex);
 
-   nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle,
-                         nir_load_sampler_handle_agx(b, index));
+   if (clamp_to_zero)
+      nir_steal_tex_src(tex, nir_tex_src_sampler_handle);
+
+   nir_def *handle = clamp_to_zero ? load_custom_border_sampler(b, index)
+                                   : nir_load_sampler_handle_agx(b, index);
+   if (wide_native_handle)
+      handle = nir_u2u64(b, handle);
+
+   nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle, handle);
    return true;
 }
 
 static bool
 lower(nir_builder *b, nir_instr *instr, void *data)
 {
-   bool *uses_bindless_samplers = data;
+   struct agx_lower_bindings_options *options = data;
+   bool *uses_bindless_samplers = options->uses_bindless_samplers;
    bool progress = false;
    bool force_bindless = agx_nir_needs_texture_crawl(instr);
+   if (options->g17p_plain_txf_crawl && instr->type == nir_instr_type_tex) {
+      nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+      /* agx_nir_lower_texture() crawls a G17P integer fetch's descriptor to
+       * predicate it: the explicit out-of-bounds path reads the size of a two-
+       * or three-dimensional fetch, and the older robustness path reads the
+       * descriptor for a fetch carrying a minimum level. A crawl needs the
+       * descriptor, and only a bindless fetch has one, so every fetch that
+       * lowering will crawl has to be made bindless here.
+       *
+       * agx_nir_needs_texture_crawl() already covers the shapes that crawl on
+       * every chip -- a non-zero level, an array layer, a buffer texture --
+       * so this adds the two that are particular to G17P. Keep it in step with
+       * the conditions in agx_nir_lower_texture(): a fetch that reaches a
+       * crawl without a descriptor asserts rather than falls back.
+       */
+      force_bindless |=
+         tex->op == nir_texop_txf &&
+         !(tex->backend_flags & AGX_TEXTURE_FLAG_NO_CLAMP) &&
+         (tex->sampler_dim == GLSL_SAMPLER_DIM_2D ||
+          tex->sampler_dim == GLSL_SAMPLER_DIM_3D ||
+          nir_tex_instr_src_index(tex, nir_tex_src_min_lod) >= 0);
+   }
    b->cursor = nir_before_instr(instr);
 
    if (instr->type == nir_instr_type_intrinsic) {
@@ -105,12 +238,27 @@ lower(nir_builder *b, nir_instr *instr, void *data)
    } else if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
 
-      if (((BITSET_COUNT(b->shader->info.samplers_used) > 16) &&
-           (nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset) >= 0 ||
-            tex->sampler_index >= 16)) &&
-          lower_sampler(b, tex)) {
+      if (lower_custom_border_query(b, tex))
+         return true;
+
+      const unsigned bindful_sampler_count =
+         options->bindful_sampler_count ? options->bindful_sampler_count : 16;
+      const bool dynamic_sampler =
+         nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset) >= 0;
+      const bool clamp_to_zero =
+         tex->backend_flags & AGX_TEXTURE_FLAG_CLAMP_TO_0;
+      const bool sampler_outside_bindful =
+         tex->sampler_index >= bindful_sampler_count ||
+         (dynamic_sampler &&
+          BITSET_LAST_BIT(b->shader->info.samplers_used) >
+             bindful_sampler_count);
+
+      if ((sampler_outside_bindful || clamp_to_zero) &&
+          lower_sampler(b, tex, options->g17p_native_sampler_handles,
+                        clamp_to_zero)) {
          progress = true;
-         *uses_bindless_samplers = true;
+         if (!clamp_to_zero)
+            *uses_bindless_samplers = true;
       }
 
       /* Nothing to do for "real" bindless */
@@ -142,8 +290,96 @@ lower(nir_builder *b, nir_instr *instr, void *data)
    return true;
 }
 
+static nir_def *
+query_custom_border(nir_builder *b, nir_tex_instr *tex)
+{
+   return nir_build_texture_query(b, tex, nir_texop_custom_border_color_agx, 4,
+                                  tex->dest_type, false, false);
+}
+
+static nir_def *
+has_custom_border(nir_builder *b, nir_tex_instr *tex)
+{
+   return nir_build_texture_query(b, tex,
+                                  nir_texop_has_custom_border_color_agx, 1,
+                                  nir_type_bool1, false, false);
+}
+
+static bool
+lower_custom_border(nir_builder *b, nir_tex_instr *tex, UNUSED void *data)
+{
+   if (!nir_tex_instr_need_sampler(tex) || nir_tex_instr_is_query(tex) ||
+       tex->is_shadow)
+      return false;
+
+   b->cursor = nir_after_instr(&tex->instr);
+   nir_def *has_custom = has_custom_border(b, tex);
+
+   nir_instr *ordinary_instr = nir_instr_clone(b->shader, &tex->instr);
+   nir_builder_instr_insert(b, ordinary_instr);
+   nir_def *clamp_to_one = &nir_instr_as_tex(ordinary_instr)->def;
+
+   nir_push_if(b, has_custom);
+   nir_def *replaced;
+   {
+      nir_instr *zero_instr = nir_instr_clone(b->shader, &tex->instr);
+      nir_builder_instr_insert(b, zero_instr);
+      nir_tex_instr *tex_zero = nir_instr_as_tex(zero_instr);
+      nir_def *clamp_to_zero = &tex_zero->def;
+      tex_zero->backend_flags |= AGX_TEXTURE_FLAG_CLAMP_TO_0;
+
+      nir_def *border = query_custom_border(b, tex_zero);
+      if (tex->op == nir_texop_tg4)
+         border = nir_replicate(b, nir_channel(b, border, tex->component), 4);
+
+      if (nir_alu_type_get_base_type(tex->dest_type) == nir_type_float &&
+          tex->op != nir_texop_tg4) {
+         replaced = nir_flrp(b, clamp_to_zero, clamp_to_one, border);
+         b->shader->info.flrp_lowered = false;
+      } else {
+         replaced = nir_bcsel(b, nir_ieq(b, clamp_to_zero, clamp_to_one),
+                              clamp_to_zero, border);
+      }
+   }
+   nir_pop_if(b, NULL);
+
+   nir_def *result = nir_if_phi(b, replaced, clamp_to_one);
+   nir_def_replace(&tex->def, result);
+   return true;
+}
+
 bool
-agx_nir_lower_bindings(nir_shader *shader, bool *uses_bindless_samplers)
+agx_nir_lower_custom_border_g17p(nir_shader *shader)
+{
+   bool progress = nir_shader_tex_pass(shader, lower_custom_border,
+                                       nir_metadata_none, NULL);
+
+   if (progress) {
+      bool uses_bindless_samplers = false;
+      struct agx_lower_bindings_options options = {
+         .uses_bindless_samplers = &uses_bindless_samplers,
+         .g17p_native_sampler_handles = true,
+         .bindful_sampler_count = AGX_GALLIUM_G17P_API_SAMPLERS,
+      };
+      progress |= nir_shader_instructions_pass(
+         shader, lower, nir_metadata_control_flow, &options);
+
+      /* Gallium variants apply this pass after the common AGX preprocess so
+       * ordinary shaders do not pay for border emulation. Lower the small
+       * amount of high-level NIR introduced above before handing the variant
+       * to the backend. */
+      NIR_PASS(_, shader, nir_lower_flrp, 16 | 32 | 64, false);
+      NIR_PASS(_, shader, nir_lower_alu_to_scalar, NULL, NULL);
+      NIR_PASS(_, shader, nir_lower_all_phis_to_scalar);
+      NIR_PASS(_, shader, nir_opt_dce);
+   }
+
+   return progress;
+}
+
+bool
+agx_nir_lower_bindings(nir_shader *shader,
+                       struct agx_lower_bindings_options *options)
 {
    /* First lower index to offset so we can lower more naturally */
    bool progress = nir_lower_tex(
@@ -155,6 +391,111 @@ agx_nir_lower_bindings(nir_shader *shader, bool *uses_bindless_samplers)
    progress |= nir_opt_constant_folding(shader);
 
    progress |= nir_shader_instructions_pass(
-      shader, lower, nir_metadata_control_flow, uses_bindless_samplers);
+      shader, lower, nir_metadata_control_flow, options);
+   return progress;
+}
+
+static nir_def *
+load_g17p_texture_index(nir_builder *b, nir_def *index)
+{
+   struct agx_stage_uniforms *s = NULL;
+   nir_scalar scalar = nir_scalar_resolved(index, 0);
+   mesa_shader_stage stage = b->shader->info.stage;
+
+   if (stage == MESA_SHADER_VERTEX && b->shader->info.vs.tes_poly)
+      stage = MESA_SHADER_TESS_EVAL;
+
+   assert(stage < MESA_SHADER_STAGES);
+   const unsigned table = AGX_SYSVAL_STAGE(stage);
+
+   if (nir_scalar_is_const(scalar)) {
+      const unsigned slot = nir_scalar_as_uint(scalar);
+      assert(slot < PIPE_MAX_SAMPLERS);
+      return nir_u2u64(
+         b, nir_load_sysval_agx(
+               b, 1, 16, .desc_set = table,
+               .binding = (uintptr_t)&s->texture_handle[slot]));
+   }
+
+   /* Dynamic Gallium sampler arrays select the matching texture table slot.
+    * Load the stage-table address from the root, then index the compact
+    * uint16_t identity table just like indirect sampler handles. */
+   struct agx_draw_uniforms *u = NULL;
+   nir_def *table_base = nir_load_sysval_agx(
+      b, 1, 64, .desc_set = AGX_SYSVAL_TABLE_ROOT,
+      .binding = (uintptr_t)&u->tables[table]);
+   nir_def *offset = nir_iadd_imm(
+      b, nir_imul_imm(b, index, sizeof(s->texture_handle[0])),
+      (uintptr_t)&s->texture_handle);
+   nir_def *address = nir_iadd(b, table_base, nir_u2u64(b, offset));
+   return nir_u2u64(
+      b, nir_load_global_constant(b, 1, 16, address, .align_mul = 2));
+}
+
+/*
+ * A descriptor crawl needs an address, so binding lowering temporarily turns
+ * an otherwise bindful texture into a bindless handle.  On AGX2 the texture
+ * instruction itself can consume that base-plus-byte-offset pair.  G17P
+ * cannot: its indirect operand is a native table index.
+ *
+ * Once texture lowering has made the crawl explicit, put a statically bound
+ * access in the native texture table. Slots 0..15 use the immediate field;
+ * larger or dynamically selected slots use a zero-extended native table
+ * index. Keep the handle alive for independent
+ * load_from_texture_handle_agx users which implement the Gen9 clamp. This
+ * preserves the bounds operation without presenting AGX2's base-plus-byte-
+ * offset pair to HAL200's fetch/sample instruction. Filtered array samples
+ * need the same treatment because their layer clamp forces a crawl.
+ */
+bool
+agx_nir_rebind_g17p_texture_crawls(nir_shader *shader)
+{
+   bool progress = false;
+
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
+      bool impl_progress = false;
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+            const int handle_idx =
+               nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
+            if (handle_idx < 0)
+               continue;
+
+            nir_intrinsic_instr *handle =
+               nir_src_as_intrinsic(tex->src[handle_idx].src);
+            if (!handle ||
+                handle->intrinsic != nir_intrinsic_load_texture_handle_agx)
+               continue;
+
+            b.cursor = nir_before_instr(instr);
+            nir_steal_tex_src(tex, nir_tex_src_texture_handle);
+            if (nir_src_is_const(handle->src[0]) &&
+                nir_src_as_uint(handle->src[0]) <
+                   AGX_NUM_TEXTURE_STATE_REGS) {
+               tex->texture_index = nir_src_as_uint(handle->src[0]);
+            } else {
+               tex->texture_index = 0;
+               nir_tex_instr_add_src(
+                  tex, nir_tex_src_texture_offset,
+                  load_g17p_texture_index(&b, handle->src[0].ssa));
+            }
+            impl_progress = true;
+            progress = true;
+         }
+      }
+
+      if (impl_progress)
+         nir_progress(true, impl, nir_metadata_control_flow);
+   }
+
+   if (progress)
+      NIR_PASS(_, shader, nir_opt_dce);
+
    return progress;
 }

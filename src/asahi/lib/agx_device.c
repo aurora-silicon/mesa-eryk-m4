@@ -135,6 +135,8 @@ static const struct debug_named_value agx_debug_options[] = {
    {"nosoft",    AGX_DBG_NOSOFT,   "Disable soft fault optimizations"},
    {"nomerge",   AGX_DBG_NOMERGE,  "Disable control stream merging"},
    {"bodumpverbose", AGX_DBG_BODUMPVERBOSE,   "Include extra info with dumps"},
+   {"faulttrace", AGX_DBG_FAULTTRACE, "Decode only failed command streams"},
+   {"asynctrace", AGX_DBG_ASYNCTRACE, "Trace without synchronous waits"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
@@ -495,7 +497,7 @@ agx_bo_import(struct agx_device *dev, int fd)
 
    assert(bo->dev != NULL && "post-condition");
 
-   if (dev->debug & AGX_DBG_TRACE) {
+   if (dev->debug & (AGX_DBG_TRACE | AGX_DBG_FAULTTRACE | AGX_DBG_ASYNCTRACE)) {
       agx_bo_map(bo);
       agxdecode_track_alloc(dev->agxdecode, bo);
    }
@@ -512,22 +514,44 @@ error:
    return NULL;
 }
 
-void
+bool
 agx_bo_make_shared(struct agx_device *dev, struct agx_bo *bo)
 {
-   assert(bo->flags & AGX_BO_SHAREABLE);
-   if (bo->flags & AGX_BO_SHARED) {
-      assert(bo->prime_fd >= 0);
-      return;
+   bool success = false;
+   int error = 0;
+
+   /* Export is a one-way state transition shared by every pipe context on the
+    * screen. Serialize both the PRIME fd creation and implicit-writer handoff:
+    * two compositor threads must not overwrite/close each other's prime_fd or
+    * publish AGX_BO_SHARED before the handoff is complete. */
+   simple_mtx_lock(&dev->bo_map_lock);
+
+   if (!(bo->flags & AGX_BO_SHAREABLE)) {
+      error = EINVAL;
+      goto out;
    }
 
-   bo->flags |= AGX_BO_SHARED;
+   if (bo->flags & AGX_BO_SHARED) {
+      success = bo->prime_fd >= 0;
+      if (!success)
+         error = EIO;
+      goto out;
+   }
+
    assert(bo->prime_fd == -1);
 
+   int prime_fd = -1;
    int ret = drmPrimeHandleToFD(dev->fd, bo->handle, DRM_CLOEXEC | DRM_RDWR,
-                                &bo->prime_fd);
-   assert(ret == 0);
-   assert(bo->prime_fd >= 0);
+                                &prime_fd);
+   if (ret || prime_fd < 0) {
+      error = ret < -1 ? -ret : (errno ? errno : EIO);
+      goto out;
+   }
+
+   /* Keep the transition transactional. In particular, a recoverable fd
+    * exhaustion must not leave AGX_BO_SHARED set with no dma-buf fd, because
+    * every later export and implicit-sync operation is allowed to retry. */
+   bo->prime_fd = prime_fd;
 
    /* If there is a pending writer to this BO, import it into the buffer
     * for implicit sync.
@@ -535,23 +559,44 @@ agx_bo_make_shared(struct agx_device *dev, struct agx_bo *bo)
    uint64_t writer = p_atomic_read_relaxed(&bo->writer);
    if (writer) {
       int out_sync_fd = -1;
-      int ret = drmSyncobjExportSyncFile(dev->fd, agx_bo_writer_syncobj(writer),
-                                         &out_sync_fd);
-      assert(ret >= 0);
-      assert(out_sync_fd >= 0);
+      ret = drmSyncobjExportSyncFile(dev->fd, agx_bo_writer_syncobj(writer),
+                                     &out_sync_fd);
+      if (ret || out_sync_fd < 0) {
+         error = ret < -1 ? -ret : (errno ? errno : EIO);
+         if (out_sync_fd >= 0)
+            close(out_sync_fd);
+         goto error;
+      }
 
       ret = agx_import_sync_file(dev, bo, out_sync_fd);
-      assert(ret >= 0);
       close(out_sync_fd);
+      if (ret) {
+         error = ret < -1 ? -ret : (errno ? errno : EIO);
+         goto error;
+      }
    }
+
+   bo->flags |= AGX_BO_SHARED;
+   success = true;
+   goto out;
+
+error:
+   close(bo->prime_fd);
+   bo->prime_fd = -1;
+
+out:
+   simple_mtx_unlock(&dev->bo_map_lock);
+   if (error)
+      errno = error;
+   return success;
 }
 
 int
 agx_bo_export(struct agx_device *dev, struct agx_bo *bo)
 {
-   agx_bo_make_shared(dev, bo);
+   if (!agx_bo_make_shared(dev, bo))
+      return -1;
 
-   assert(bo->prime_fd >= 0);
    return os_dupfd_cloexec(bo->prime_fd);
 }
 

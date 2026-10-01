@@ -3,6 +3,9 @@
 # SPDX-License-Identifier: MIT
 
 libasahi_agx_files = files(
+  'agx3_cprog_input.c',
+  'agx3_compute_program.c',
+  'agx3_graphics_program.c',
   'agx_compile.c',
   'agx_dce.c',
   'agx_liveness.c',

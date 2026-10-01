@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MIT
 
 libasahi_lib_files = files(
+  'agx3_g17p_grid_helper_core.c',
   'agx3_cdm_decode_core.c',
   'agx3_cdm_decode_core.h',
   'agx3_cdm_direct_launch_semantic_core.c',
@@ -33,8 +34,10 @@ libasahi_lib_files = files(
   'agx_border.c',
   'agx_chip.c',
   'agx_device.c',
+  'agx_native_sampler.c',
   'agx_linker.c',
   'agx_bg_eot.c',
+  'agx_bg_eot_key.c',
   'agx_tilebuffer.c',
   'agx_nir_lower_msaa.c',
   'agx_nir_lower_sample_intrinsics.c',
@@ -42,6 +45,7 @@ libasahi_lib_files = files(
   'agx_nir_lower_uvs.c',
   'agx_nir_lower_vbo.c',
   'agx_nir_prolog_epilog.c',
+  'agx_gallium_prolog_epilog.c',
   'agx_ppp.h',
   'agx_ppp_hal200_graphics_core.c',
   'agx_ppp_hal200_graphics_core.h',

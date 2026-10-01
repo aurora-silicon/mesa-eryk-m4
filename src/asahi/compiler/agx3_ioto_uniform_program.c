@@ -39,21 +39,22 @@ agx3_ioto_uniform_program_body_bound(
    enum agx_chip chip, const struct agx3_ioto_uniform_range *ranges,
    size_t range_count, size_t *bytes, size_t *chunks)
 {
-   const enum agx_ioto_load_encoding encoding =
-      agx_ioto_load_target_encoding(chip);
    if (bytes == NULL || chunks == NULL ||
-       encoding == AGX_IOTO_LOAD_ENCODING_UNSUPPORTED ||
+       agx_ioto_load_target_encoding(chip) ==
+          AGX_IOTO_LOAD_ENCODING_UNSUPPORTED ||
        (range_count != 0 && ranges == NULL))
       return false;
 
    size_t staged_bytes =
-      range_count == 0 && encoding == AGX_IOTO_LOAD_ENCODING_GPU0
+      range_count == 0 &&
+            agx_ioto_load_target_encoding(chip) == AGX_IOTO_LOAD_ENCODING_GPU0
          ? AGX_IOTO_LOAD_GPU0_ROUND_NOP_SIZE
          : 0;
    size_t staged_chunks = 0;
    const size_t per_chunk =
-      encoding == AGX_IOTO_LOAD_ENCODING_GPU0 ? GPU0_CHUNK_BODY_BOUND
-                                             : GPU1_CHUNK_BODY_BOUND;
+      agx_ioto_load_target_encoding(chip) == AGX_IOTO_LOAD_ENCODING_GPU0
+         ? GPU0_CHUNK_BODY_BOUND
+         : GPU1_CHUNK_BODY_BOUND;
 
    for (size_t i = 0; i < range_count; ++i) {
       if (!uniform_range_valid(&ranges[i]))
@@ -68,6 +69,50 @@ agx3_ioto_uniform_program_body_bound(
 
    *bytes = staged_bytes;
    *chunks = staged_chunks;
+   return true;
+}
+
+bool
+agx3_ioto_uniform_program_desc_body_bound(
+   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
+   size_t *bytes, size_t *chunks)
+{
+   size_t bound, count;
+   if (!desc || !bytes || !chunks ||
+       !agx3_ioto_uniform_program_body_bound(chip, desc->ranges,
+          desc->range_count, &bound, &count))
+      return false;
+   if (desc->cprog_inputs) {
+      struct agx3_cprog_inputs checked;
+      const struct agx3_cprog_inputs *inputs = desc->cprog_inputs;
+      if (!agx3_cprog_inputs_init(inputs->halves, &checked) ||
+          checked.count != inputs->count ||
+          checked.storage_bytes != inputs->storage_bytes ||
+          (inputs->count && (chip != AGX_CHIP_G17P || desc->fast_path_enabled)))
+         return false;
+      uint64_t covered[AGX3_CPROG_INPUT_WORDS] = {0};
+      for (size_t i = 0; i < desc->range_count; ++i) {
+         const struct agx3_ioto_uniform_range *range = &desc->ranges[i];
+         for (unsigned h = range->start_halfs;
+              h < range->start_halfs + range->size_halfs; ++h) {
+            const uint64_t bit = UINT64_C(1) << (h % 64);
+            if (!(inputs->halves[h / 64] & bit))
+               continue;
+            if (covered[h / 64] & bit)
+               return false;
+            covered[h / 64] |= bit;
+         }
+      }
+      for (unsigned w = 0; w < AGX3_CPROG_INPUT_WORDS; ++w) {
+         if (covered[w] != inputs->halves[w])
+            return false;
+      }
+      /* At worst each selected half uses its own extended COPY. */
+      if (!add_size(&bound, 10u * inputs->count))
+         return false;
+   }
+   *bytes = bound;
+   *chunks = count;
    return true;
 }
 
@@ -124,8 +169,147 @@ workspace_overlaps(struct agx3_ioto_uniform_program_workspace workspace)
           spans_overlap(workspace.sort, sort_size, workspace.cache, cache_size);
 }
 
+bool
+agx3_ioto_uniform_program_body_generate(
+   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
+   struct agx3_ioto_uniform_program_workspace workspace, size_t *written,
+   size_t *copy_offset)
+{
+   size_t body_bound, chunk_count;
+   if (desc == NULL || written == NULL || copy_offset == NULL ||
+       !agx3_ioto_uniform_program_desc_body_bound(
+          chip, desc, &body_bound, &chunk_count) ||
+       (body_bound > workspace.body_capacity &&
+        !(desc->cprog_inputs && desc->cprog_inputs->count)) ||
+       (workspace.body_capacity != 0 && workspace.body == NULL) ||
+       workspace_overlaps(workspace) ||
+       (workspace.relocation_capacity && !workspace.relocations) ||
+       (workspace.relocations && !workspace.relocation_count))
+      return false;
+
+   (void)chunk_count;
+   struct agx_ioto_load_core core;
+   if (!agx_ioto_load_core_init(
+          &core, chip,
+          (struct agx_ioto_load_sink){workspace.body, workspace.body_capacity,
+                                      0},
+          workspace.loads, workspace.load_capacity, workspace.cache,
+          workspace.cache_capacity, desc->initial_gpr_dwords,
+          desc->fast_path_enabled,
+          agx_ioto_load_target_encoding(chip) == AGX_IOTO_LOAD_ENCODING_GPU0))
+      return false;
+
+   core.relocations = workspace.relocations;
+   core.relocation_capacity = workspace.relocation_capacity;
+   if (desc->preloaded_base_valid &&
+       !agx_ioto_load_core_set_fixed_base(
+          &core, desc->preloaded_base_address,
+          desc->preloaded_base_half))
+      return false;
+
+   const struct agx_ioto_load_workspace sort = {
+      workspace.sort,
+      workspace.sort_capacity,
+   };
+   uint32_t cprog_dest_half = 0;
+
+   for (size_t i = 0; i < desc->range_count; ++i) {
+      const struct agx3_ioto_uniform_range *range = &desc->ranges[i];
+      uint32_t dword = 0;
+      const uint32_t dword_count = range->size_halfs / 2;
+      while (dword < dword_count) {
+         const uint8_t count =
+            (uint8_t)((dword_count - dword) < 4 ? dword_count - dword : 4);
+         const uint8_t lane_mask = (uint8_t)((1u << (2u * count)) - 1u);
+         if (cprog_dest_half > UINT16_MAX)
+            return false;
+
+         struct agx_ioto_load_absolute load = {
+            .native_slot = range->start_halfs / 2 + dword,
+            .count_dwords = count,
+            .address = range->address + (uint64_t)dword * 4,
+            .lane_mask = lane_mask,
+            .cprog_dest_half = (uint16_t)cprog_dest_half,
+         };
+         if (desc->cprog_inputs) {
+            for (unsigned h = 0; h < 2u * count; ++h) {
+               uint16_t tps;
+               if (!agx3_cprog_input_tps_half(desc->cprog_inputs,
+                          range->start_halfs + 2u * dword + h, &tps))
+                  continue;
+               if (!load.cprog_input_mask)
+                  load.cprog_input_tps_half = tps;
+               load.cprog_input_mask |= 1u << h;
+            }
+         }
+         struct agx_ioto_load_allocation allocation;
+         if (!agx3_ioto_load_absolute_native(&core, &load, sort, &allocation))
+            return false;
+
+         cprog_dest_half += 2u * (2u * count);
+         dword += count;
+      }
+   }
+
+   if (!agx3_ioto_load_finish_round_native(&core, true, sort))
+      return false;
+
+   *written = core.sink.length;
+   *copy_offset = core.copy_suffix_offset;
+   if (workspace.relocations)
+      *workspace.relocation_count = core.relocation_count;
+   return true;
+}
+
+bool
+agx3_ioto_uniform_program_generate(
+   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
+   struct agx3_ioto_uniform_program_workspace workspace, void *output,
+   size_t capacity, size_t *written)
+{
+   size_t body_bound, chunk_count;
+   if (desc == NULL || output == NULL || written == NULL ||
+       !agx3_ioto_uniform_program_desc_body_bound(
+          chip, desc, &body_bound, &chunk_count) ||
+       (body_bound > workspace.body_capacity &&
+        !(desc->cprog_inputs && desc->cprog_inputs->count)) ||
+       (workspace.body_capacity != 0 && workspace.body == NULL) ||
+       workspace_overlaps(workspace) ||
+       spans_overlap(workspace.body, workspace.body_capacity, output,
+                     capacity) ||
+       array_overlaps(workspace.loads, workspace.load_capacity,
+                      sizeof(workspace.loads[0]), output, capacity) ||
+       array_overlaps(workspace.sort, workspace.sort_capacity,
+                      sizeof(workspace.sort[0]), output, capacity) ||
+       array_overlaps(workspace.cache, workspace.cache_capacity,
+                      sizeof(workspace.cache[0]), output, capacity))
+      return false;
+
+   (void)body_bound;
+   (void)chunk_count;
+   size_t body_size, copy_offset;
+   if (!agx3_ioto_uniform_program_body_generate(chip, desc, workspace,
+                                                &body_size, &copy_offset))
+      return false;
+   (void)copy_offset;
+
+   const struct agx_ioto_profile_control profile = {
+      .chip = chip,
+      .payload0 = desc->profile_payload0,
+      .payload1 = desc->profile_payload1,
+   };
+   return agx_ioto_program_compose_no_pixrel(
+      chip, desc->program_va, workspace.body, body_size, &desc->tail, &profile,
+      &desc->preshader, output, capacity, written);
+}
+
+/* Compatibility entry for the established M3/M4 Vulkan loader. Native
+ * Gallium and Vulkan share the scheduled encoder; frozen relocation caching
+ * can be restored once the new relocation ABI is reconciled. */
+
+/* Preserve the qualified M3/M4 relocation cache for absolute loaders. */
 static bool
-uniform_program_body_generate(
+legacy_uniform_program_body_generate(
    enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
    struct agx3_ioto_uniform_program_workspace workspace, size_t *written,
    size_t *copy_offset, struct agx3_ioto_uniform_template *cache)
@@ -216,17 +400,8 @@ uniform_program_body_generate(
    /* The builder already knows record boundaries, including variable-size
     * COPYs and allocation rollovers. Do not decode its output on every draw. */
    *written = core.sink.length;
-   *copy_offset = core.copy_offset;
+   *copy_offset = core.copy_suffix_offset;
    return true;
-}
-
-bool
-agx3_ioto_uniform_program_body_generate(
-   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
-   struct agx3_ioto_uniform_program_workspace ws, size_t *written,
-   size_t *copy_offset)
-{
-   return uniform_program_body_generate(chip, desc, ws, written, copy_offset, NULL);
 }
 
 static bool
@@ -277,8 +452,12 @@ agx3_ioto_uniform_program_body_generate_cached(
    size_t *copy_offset, struct agx3_ioto_uniform_template *cache)
 {
    size_t bound, chunks;
+   if (desc && (desc->cprog_inputs || desc->preloaded_base_valid)) {
+      if (cache) cache->valid = false;
+      return agx3_ioto_uniform_program_body_generate(chip, desc, ws, written, copy_offset);
+   }
    if (!cache)
-      return uniform_program_body_generate(chip, desc, ws, written, copy_offset, NULL);
+      return legacy_uniform_program_body_generate(chip, desc, ws, written, copy_offset, NULL);
    if (!desc || !written || !copy_offset || !ws.body || workspace_overlaps(ws) ||
        !agx3_ioto_uniform_program_body_bound(chip, desc->ranges, desc->range_count,
                                              &bound, &chunks))
@@ -289,8 +468,8 @@ agx3_ioto_uniform_program_body_generate_cached(
    cache->load_count = 0;
    if (desc->range_count > AGX3_IOTO_TEMPLATE_RANGES ||
        chunks > AGX3_IOTO_TEMPLATE_LOADS || bound > AGX3_IOTO_TEMPLATE_BYTES)
-      return uniform_program_body_generate(chip, desc, ws, written, copy_offset, NULL);
-   if (!uniform_program_body_generate(chip, desc, ws, written, copy_offset, cache))
+      return legacy_uniform_program_body_generate(chip, desc, ws, written, copy_offset, NULL);
+   if (!legacy_uniform_program_body_generate(chip, desc, ws, written, copy_offset, cache))
       return false;
    cache->chip = chip;
    cache->initial_gprs = desc->initial_gpr_dwords;
@@ -303,46 +482,4 @@ agx3_ioto_uniform_program_body_generate_cached(
    memcpy(cache->body, ws.body, *written);
    cache->valid = true;
    return true;
-}
-
-bool
-agx3_ioto_uniform_program_generate(
-   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
-   struct agx3_ioto_uniform_program_workspace workspace, void *output,
-   size_t capacity, size_t *written)
-{
-   size_t body_bound, chunk_count;
-   if (desc == NULL || output == NULL || written == NULL ||
-       !agx3_ioto_uniform_program_body_bound(
-          chip, desc != NULL ? desc->ranges : NULL,
-          desc != NULL ? desc->range_count : 0, &body_bound, &chunk_count) ||
-       body_bound > workspace.body_capacity ||
-       (workspace.body_capacity != 0 && workspace.body == NULL) ||
-       workspace_overlaps(workspace) ||
-       spans_overlap(workspace.body, workspace.body_capacity, output,
-                     capacity) ||
-       array_overlaps(workspace.loads, workspace.load_capacity,
-                      sizeof(workspace.loads[0]), output, capacity) ||
-       array_overlaps(workspace.sort, workspace.sort_capacity,
-                      sizeof(workspace.sort[0]), output, capacity) ||
-       array_overlaps(workspace.cache, workspace.cache_capacity,
-                      sizeof(workspace.cache[0]), output, capacity))
-      return false;
-
-   (void)body_bound;
-   (void)chunk_count;
-   size_t body_size, copy_offset;
-   if (!agx3_ioto_uniform_program_body_generate(chip, desc, workspace,
-                                                &body_size, &copy_offset))
-      return false;
-   (void)copy_offset;
-
-   const struct agx_ioto_profile_control profile = {
-      .chip = chip,
-      .payload0 = desc->profile_payload0,
-      .payload1 = desc->profile_payload1,
-   };
-   return agx_ioto_program_compose_no_pixrel(
-      chip, desc->program_va, workspace.body, body_size, &desc->tail, &profile,
-      &desc->preshader, output, capacity, written);
 }

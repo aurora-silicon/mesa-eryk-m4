@@ -1,0 +1,118 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx_bg_eot_key.h"
+#include "util/format/u_format.h"
+
+enum pipe_format
+agx_g17p_rt0_pbe_format(enum pipe_format format)
+{
+   /* R11G11B10 and R9G9B9E5 are packed explicitly into one tile word on
+    * G17P. Store that word without another format conversion. Other formats
+    * retain the existing raw-sRGB rule. */
+   return (format == PIPE_FORMAT_R11G11B10_FLOAT ||
+           format == PIPE_FORMAT_R9G9B9E5_FLOAT)
+             ? PIPE_FORMAT_R32_UINT
+             : util_format_linear(format);
+}
+
+uint8_t
+agx_g17p_mrt_eot_selector(enum pipe_format format)
+{
+   switch (format) {
+   case PIPE_FORMAT_R8_UNORM:
+   case PIPE_FORMAT_R8G8_UNORM:
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
+   case PIPE_FORMAT_R8G8B8X8_UNORM:
+   case PIPE_FORMAT_B8G8R8A8_UNORM:
+   case PIPE_FORMAT_B8G8R8X8_UNORM:
+   case PIPE_FORMAT_R8_SNORM:
+   case PIPE_FORMAT_R8G8_SNORM:
+   case PIPE_FORMAT_R8G8B8A8_SNORM:
+   case PIPE_FORMAT_R8G8B8X8_SNORM:
+   case PIPE_FORMAT_B8G8R8A8_SNORM:
+   case PIPE_FORMAT_R8_SRGB:
+   case PIPE_FORMAT_R8G8_SRGB:
+   case PIPE_FORMAT_R8G8B8A8_SRGB:
+   case PIPE_FORMAT_R8G8B8X8_SRGB:
+   case PIPE_FORMAT_B8G8R8A8_SRGB:
+   case PIPE_FORMAT_B8G8R8X8_SRGB:
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
+   case PIPE_FORMAT_B10G10R10A2_UNORM:
+      return 0x75;
+
+   case PIPE_FORMAT_R8_UINT:
+   case PIPE_FORMAT_R8G8_UINT:
+   case PIPE_FORMAT_R8G8B8A8_UINT:
+   case PIPE_FORMAT_R8G8B8X8_UINT:
+   case PIPE_FORMAT_B8G8R8A8_UINT:
+   case PIPE_FORMAT_R8_SINT:
+   case PIPE_FORMAT_R8G8_SINT:
+   case PIPE_FORMAT_R8G8B8A8_SINT:
+   case PIPE_FORMAT_R8G8B8X8_SINT:
+   case PIPE_FORMAT_B8G8R8A8_SINT:
+      return 0x55;
+
+   case PIPE_FORMAT_R16_UNORM:
+   case PIPE_FORMAT_R16G16_UNORM:
+   case PIPE_FORMAT_R16G16B16A16_UNORM:
+   case PIPE_FORMAT_R16_SNORM:
+   case PIPE_FORMAT_R16G16_SNORM:
+   case PIPE_FORMAT_R16G16B16A16_SNORM:
+      return 0x95;
+
+   case PIPE_FORMAT_R16_UINT:
+   case PIPE_FORMAT_R16G16_UINT:
+   case PIPE_FORMAT_R16G16B16A16_UINT:
+   case PIPE_FORMAT_R16G16B16X16_UINT:
+   case PIPE_FORMAT_R16_SINT:
+   case PIPE_FORMAT_R16G16_SINT:
+   case PIPE_FORMAT_R16G16B16A16_SINT:
+   case PIPE_FORMAT_R16G16B16X16_SINT:
+   case PIPE_FORMAT_R16_FLOAT:
+   case PIPE_FORMAT_R16G16_FLOAT:
+   case PIPE_FORMAT_R16G16B16A16_FLOAT:
+   case PIPE_FORMAT_R16G16B16X16_FLOAT:
+   case PIPE_FORMAT_R10G10B10A2_UINT:
+   case PIPE_FORMAT_B10G10R10A2_UINT:
+   case PIPE_FORMAT_R5G6B5_UNORM:
+   case PIPE_FORMAT_B5G6R5_UNORM:
+   case PIPE_FORMAT_A1B5G5R5_UNORM:
+   case PIPE_FORMAT_A1R5G5B5_UNORM:
+   case PIPE_FORMAT_R5G5B5A1_UNORM:
+   case PIPE_FORMAT_B5G5R5A1_UNORM:
+   case PIPE_FORMAT_R5G5B5X1_UNORM:
+   case PIPE_FORMAT_B5G5R5X1_UNORM:
+   case PIPE_FORMAT_R4G4B4A4_UNORM:
+   case PIPE_FORMAT_B4G4R4A4_UNORM:
+   case PIPE_FORMAT_A4B4G4R4_UNORM:
+   case PIPE_FORMAT_A4R4G4B4_UNORM:
+      return 0x15;
+
+   case PIPE_FORMAT_R32_UINT:
+   case PIPE_FORMAT_R32G32_UINT:
+   case PIPE_FORMAT_R32G32B32A32_UINT:
+   case PIPE_FORMAT_R32G32B32X32_UINT:
+   case PIPE_FORMAT_R32_SINT:
+   case PIPE_FORMAT_R32G32_SINT:
+   case PIPE_FORMAT_R32G32B32A32_SINT:
+   case PIPE_FORMAT_R32G32B32X32_SINT:
+   case PIPE_FORMAT_R32_FLOAT:
+   case PIPE_FORMAT_R32G32_FLOAT:
+   case PIPE_FORMAT_R32G32B32A32_FLOAT:
+   case PIPE_FORMAT_R32G32B32X32_FLOAT:
+   /* RGB9E5 and R11G11B10 are packed into one raw R32 word before the tile
+    * store, and their PBE is likewise R32_UINT. Multi-target EOT therefore
+    * uses the grounded W32 integer selector rather than asking IMGWBLK to
+    * convert it again. */
+   case PIPE_FORMAT_R11G11B10_FLOAT:
+   case PIPE_FORMAT_R9G9B9E5_FLOAT:
+      return 0x35;
+
+   default:
+      return 0;
+   }
+}
+

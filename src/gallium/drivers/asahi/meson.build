@@ -27,11 +27,19 @@ if with_tests
         'agx_native_descriptor.c',
         'tests/test-agx-native-descriptor.c',
       ),
+      # The AGX3 PBE encoder is the shared byte-grounded one in
+      # src/asahi/lib, the same object Honeykrisp and the D3D12 UMD drive.
+      # Compile it in rather than linking libasahi_lib, which would pull the
+      # whole device/BO layer into a pure descriptor test.
+      objects : [libasahi_lib.extract_objects('agx_pbe_agx3_core.c')],
       include_directories : [inc_src, inc_asahi],
       dependencies : [idep_agx_pack, idep_mesautil],
     ),
     suite : ['asahi'],
   )
+
+  # Offline reproduction of the G17P blit path under the no-op DRM shim. It
+  # links the whole driver, so it lives after libasahi below.
 endif
 
 libasahi = static_library(
@@ -47,3 +55,112 @@ driver_asahi = declare_dependency(
   compile_args : '-DGALLIUM_ASAHI',
   link_with : [libasahi, libasahiwinsys, libasahi_compiler, libasahi_lib, libasahi_layout, libasahi_decode]
 )
+
+if with_tests and with_tools.contains('drm-shim')
+  test(
+    'asahi-g17p-texture-crawl',
+    executable(
+      'asahi-g17p-texture-crawl',
+      files('tests/test-agx-g17p-texture-crawl.c'),
+      include_directories : [
+        inc_gallium_aux, inc_gallium, inc_include, inc_src, inc_asahi,
+        inc_virtio_gpu, inc_virtio_vdrm,
+      ],
+      dependencies : [
+        idep_nir, idep_mesautil, idep_agx_pack, dep_libdrm, idep_libagx,
+        idep_libagx_shaders_h, idep_xmlconfig,
+      ],
+      link_with : [
+        libasahi, libasahiwinsys, libasahi_compiler, libasahi_lib,
+        libasahi_layout, libasahi_decode, libgallium, libgalliumvl_stub,
+      ],
+    ),
+    suite : ['asahi'],
+  )
+
+  asahi_g17p_blit_test = executable(
+    'asahi-g17p-blit',
+    files('tests/test-agx-g17p-blit.c'),
+    include_directories : [
+      inc_gallium_aux, inc_gallium, inc_include, inc_src, inc_asahi,
+      inc_virtio_gpu, inc_virtio_vdrm,
+    ],
+    dependencies : [
+      idep_nir, idep_mesautil, idep_agx_pack, dep_libdrm, idep_libagx,
+      idep_libagx_shaders_h, idep_xmlconfig,
+    ],
+    link_with : [
+      libasahi, libasahiwinsys, libasahi_compiler, libasahi_lib,
+      libasahi_layout, libasahi_decode, libgallium, libgalliumvl_stub,
+    ],
+    build_by_default : false,
+  )
+
+  # The shim has to be preloaded before libc's open(), so the test runs the
+  # binary through a wrapper that sets LD_PRELOAD and the chip selector.
+  foreach chip : ['g13g', 'g17p']
+    test(
+      'asahi-' + chip + '-gallium-xfb-program',
+      prog_python,
+      args : [
+        files('tests/run-shim.py'),
+        libasahi_noop_drm_shim,
+        asahi_g17p_blit_test,
+      ],
+      env : [
+        'ASAHI_SHIM_CHIP=' + chip,
+        'AGX_TEST_XFB_COPY_PROGRAM=1',
+      ],
+      suite : ['asahi'],
+    )
+
+    # Linked-program vertex output shapes: clip distances and multiple user
+    # varyings must reach the AGX3 vertex writeout with inlined UVS indices.
+    test(
+      'asahi-' + chip + '-gallium-vertex-output-shapes',
+      prog_python,
+      args : [
+        files('tests/run-shim.py'),
+        libasahi_noop_drm_shim,
+        asahi_g17p_blit_test,
+      ],
+      env : [
+        'ASAHI_SHIM_CHIP=' + chip,
+        'AGX_TEST_VERTEX_OUTPUT_SHAPES=1',
+      ],
+      suite : ['asahi'],
+    )
+  endforeach
+
+  test(
+    'asahi-g17p-gallium-blit',
+    prog_python,
+    args : [
+      files('tests/run-shim.py'),
+      libasahi_noop_drm_shim,
+      asahi_g17p_blit_test,
+    ],
+    env : [
+      'ASAHI_SHIM_CHIP=g17p',
+      'ASAHI_SHIM_VALIDATE_G17P_STREAM=1',
+      'ASAHI_SHIM_G17P_EXPECT_COMPUTE=1',
+      'ASAHI_SHIM_G17P_EXPECT_STRONG_COMPUTE_BARRIER=1',
+    ],
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-g17p-gallium-blit-encode',
+    prog_python,
+    args : [
+      files('tests/run-shim.py'),
+      libasahi_noop_drm_shim,
+      asahi_g17p_blit_test,
+    ],
+    env : [
+      'ASAHI_SHIM_CHIP=g17p',
+      'AGX_G17P_BLIT_REQUIRE_ENCODE=1',
+    ],
+    suite : ['asahi'],
+  )
+endif

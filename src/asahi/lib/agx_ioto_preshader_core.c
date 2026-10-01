@@ -18,15 +18,29 @@ enum agx_ioto_preshader_encoding {
 static enum agx_ioto_preshader_encoding
 agx_ioto_preshader_target_encoding(enum agx_chip chip)
 {
-   if (agx_ioto_kind_size(chip, AGX_IOTO_KIND_B_EP0) ==
-       AGX_IOTO_PRESHADER_BRANCH_SIZE)
+   /* This is an ISA-generation property, not a runtime record property.  Do
+    * not rediscover it through two decoder table walks for every graphics
+    * launcher branch.  The exhaustive preshader tests still validate every
+    * listed chip's result through the independent record decoder. */
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
       return AGX_IOTO_PRESHADER_ENCODING_GPU0;
 
-   if (agx_ioto_kind_size(chip, AGX_IOTO_KIND_B_EP1) ==
-       AGX_IOTO_PRESHADER_BRANCH_SIZE)
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
       return AGX_IOTO_PRESHADER_ENCODING_GPU1;
 
-   return AGX_IOTO_PRESHADER_ENCODING_UNSUPPORTED;
+   default:
+      return AGX_IOTO_PRESHADER_ENCODING_UNSUPPORTED;
+   }
 }
 
 bool
@@ -68,12 +82,12 @@ agx_ioto_preshader_pack_branch(enum agx_chip chip, uint64_t target_va,
                                bool link,
                                uint8_t out[AGX_IOTO_PRESHADER_BRANCH_SIZE])
 {
-   if (!out || target_va >= (UINT64_C(1) << 48) || (target_va & 1) != 0)
-      return false;
-
    const enum agx_ioto_preshader_encoding encoding =
       agx_ioto_preshader_target_encoding(chip);
    if (encoding == AGX_IOTO_PRESHADER_ENCODING_UNSUPPORTED)
+      return false;
+
+   if (!out || target_va >= (UINT64_C(1) << 48) || (target_va & 1) != 0)
       return false;
 
    uint8_t staged[AGX_IOTO_PRESHADER_BRANCH_SIZE] = {0};
@@ -84,11 +98,17 @@ agx_ioto_preshader_pack_branch(enum agx_chip chip, uint64_t target_va,
       staged[0] = link ? 0x8f : 0x0f;
       /* Zero-valued f12/f13/f14 pass through the classic [1, 2, 0] LUT. */
       staged[2] = 0x54;
-      kind = link ? AGX_IOTO_KIND_BL_EP0 : AGX_IOTO_KIND_B_EP0;
+      /* GPU0's complete 47-bit halfword target is contiguous at bits25..71.
+       * Deposit the six bytes directly: compact graphics launchers build one
+       * branch per draw, and the former bit loop plus decoder validation was
+       * a measurable hot path.  The preshader test exhausts the input bits
+       * and still decodes every result through the independent oracle. */
+      const uint64_t shifted = half_target << 1;
+      for (unsigned byte = 0; byte < 6; ++byte)
+         staged[3 + byte] = shifted >> (8 * byte);
 
-      for (unsigned source = 0; source < 47; ++source)
-         agx_ioto_preshader_set_bit(staged, 25 + source,
-                                    (half_target >> source) & 1);
+      memcpy(out, staged, sizeof(staged));
+      return true;
    } else {
       static const uint8_t target_bits[47] = {
          7,  12, 13, 14, 17, 19, 21, 22, 23, 8,  9,  10, 11, 28, 32, 33,
@@ -106,10 +126,14 @@ agx_ioto_preshader_pack_branch(enum agx_chip chip, uint64_t target_va,
                                     (half_target >> source) & 1);
    }
 
-   if (!agx_ioto_check_kind(chip, kind, staged, sizeof(staged)))
+   struct agx_ioto_record record;
+   size_t consumed = 0;
+   if (!agx_ioto_validate_kind(chip, kind, staged, sizeof(staged), &record,
+                               &consumed) ||
+       consumed != sizeof(staged) || record.length != sizeof(staged))
       return false;
 
-   memcpy(out, staged, sizeof(staged));
+   memcpy(out, record.bytes, sizeof(staged));
    return true;
 }
 
@@ -180,8 +204,12 @@ agx_ioto_preshader_emit(enum agx_chip chip,
       staged.bytes[0] = gpu1 ? 0x04 : 0x0c;
       staged.bytes[1] = 0x10;
 
-      if (!agx_ioto_check_kind(chip, AGX_IOTO_KIND_LDIMM_EP0, staged.bytes,
-                                AGX_IOTO_PRESHADER_PRELUDE_SIZE))
+      struct agx_ioto_record record;
+      size_t consumed = 0;
+      if (!agx_ioto_validate_kind(chip, AGX_IOTO_KIND_LDIMM_EP0, staged.bytes,
+                                  AGX_IOTO_PRESHADER_PRELUDE_SIZE, &record,
+                                  &consumed) ||
+          consumed != AGX_IOTO_PRESHADER_PRELUDE_SIZE)
          return false;
 
       staged.length = AGX_IOTO_PRESHADER_PRELUDE_SIZE;
@@ -193,6 +221,75 @@ agx_ioto_preshader_emit(enum agx_chip chip,
       return false;
 
    staged.length += AGX_IOTO_PRESHADER_BRANCH_SIZE;
+   *output = staged;
+   return true;
+}
+
+bool
+agx_ioto_constant_program_emit(
+   enum agx_chip chip, const struct agx_ioto_constant_program *program,
+   uint64_t suffix_va, struct agx_ioto_preshader_output *output)
+{
+   const uint64_t address_limit = UINT64_C(1) << 48;
+   if (!program || !output || !suffix_va || suffix_va >= address_limit ||
+       (suffix_va & 1) || (program->code_size & 1))
+      return false;
+
+   struct agx_ioto_preshader_desc desc = {
+      .code = program->code,
+      .code_size = program->code_size,
+      .external_va = AGX_IOTO_PRESHADER_NO_VA,
+      .force_external = program->force_external,
+      .request_prelude = program->request_prelude,
+      .suppress_prelude = program->suppress_prelude,
+   };
+
+   if (program->code_size &&
+       (program->force_external ||
+        program->code_size > AGX_IOTO_PRESHADER_INLINE_LIMIT)) {
+      if (!program->code_va || program->code_va >= address_limit ||
+          (program->code_va & 1) ||
+          program->code_size > address_limit - program->code_va)
+         return false;
+
+      const unsigned branch_offset =
+         program->request_prelude && !program->suppress_prelude
+            ? AGX_IOTO_PRESHADER_PRELUDE_SIZE : 0;
+      if (branch_offset + AGX_IOTO_PRESHADER_BRANCH_SIZE >
+          address_limit - suffix_va)
+         return false;
+
+      if (program->absolute_branch) {
+         if (chip != AGX_CHIP_G17P)
+            return false;
+         desc.external_va = program->code_va;
+      } else {
+         const int64_t displacement =
+            (int64_t)program->code_va - (int64_t)(suffix_va + branch_offset);
+         if (displacement < -(INT64_C(1) << 47) ||
+             displacement >= (INT64_C(1) << 47))
+            return false;
+
+         desc.external_va = (uint64_t)displacement & (address_limit - 1);
+      }
+   }
+
+   struct agx_ioto_preshader_output staged;
+   if (!agx_ioto_preshader_emit(chip, &desc, &staged) ||
+       staged.length > address_limit - suffix_va)
+      return false;
+
+   if (staged.mode == AGX_IOTO_PRESHADER_MODE_EXTERNAL &&
+       program->absolute_branch) {
+      /* Current G17P finish() places absolute code_va at object bits 1..48
+       * and sets object bit 0. AGXIotoInstruction_B_0::emit deposits that
+       * selector at instruction bit 24 (f11); target bits occupy 25..71.
+       * cloneProgramInfo changes the code VA without subtracting a B PC.
+       * Witnesses: 0x218780f48/f4c, 0x218737b8c, 0x2188416d8/e0/e4 in
+       * AGXMetalG17P UUID 4A1B0ACE-B7E3-3B5B-A594-84289B937288. */
+      staged.bytes[staged.branch_offset + 3] |= 1;
+   }
+
    *output = staged;
    return true;
 }

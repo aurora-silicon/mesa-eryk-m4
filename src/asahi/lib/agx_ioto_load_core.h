@@ -61,6 +61,11 @@ struct agx_ioto_inflight_load {
    uint8_t lane_mask;
    uint16_t cprog_dest_half;
 
+   /* Optional native constant-program TPS publication, independent of the
+    * ordinary uniform lane mask. Selected halves compact from this base. */
+   uint8_t cprog_input_mask;
+   uint16_t cprog_input_tps_half;
+
    uint32_t sequence;
    uint8_t signal_slot;
    bool processed;
@@ -69,6 +74,16 @@ struct agx_ioto_inflight_load {
 struct agx_ioto_load_cache_entry {
    uint64_t address;
    uint16_t base_half;
+};
+
+/* One absolute address materialized by an LDIMM low/high pair.  Consumers
+ * may relocate that pair only after proving the load schedule is unchanged. */
+struct agx_ioto_load_relocation {
+   size_t offset;
+   uint64_t address;
+   uint16_t dest_half;
+   uint8_t low_length;
+   uint8_t high_length;
 };
 
 struct agx_ioto_load_workspace {
@@ -113,14 +128,31 @@ struct agx_ioto_load_emit_ops {
                      uint8_t lane_code,
                      struct agx_ioto_load_raw_record *record);
    void *context;
+
+   /* Only the in-tree native packer may set this. Its callbacks construct
+    * records from already range-checked fields and their exhaustive tests
+    * compare every supported form against the independent composer. Custom
+    * callbacks remain fully decoded and validated before publication. */
+   bool trusted_records;
+
+   /* Zero, one or two additional COPY records after the uniform COPY. The
+    * ordinary COPY must preserve source halves consumed by these records. */
+   bool (*pack_cprog_copy)(void *context, enum agx_chip chip,
+                          const struct agx_ioto_inflight_load *load,
+                          uint8_t dword,
+                          struct agx_ioto_load_raw_record records[2],
+                          uint8_t *count);
 };
 
 struct agx_ioto_load_core {
    enum agx_chip chip;
    enum agx_ioto_load_encoding encoding;
    struct agx_ioto_load_sink sink;
-   /* First COPY in the most recently completed round. */
-   size_t copy_offset;
+
+   /* First COPY in the final completed round. The emitter knows this exact
+    * record boundary; consumers must not decode the finished body to recover
+    * information already established transactionally here. */
+   size_t copy_suffix_offset;
 
    struct agx_ioto_inflight_load *loads;
    size_t load_count;
@@ -129,6 +161,18 @@ struct agx_ioto_load_core {
    struct agx_ioto_load_cache_entry *cache;
    size_t cache_count;
    size_t cache_capacity;
+
+   /* A launcher may materialize one immutable base before branching into a
+    * persistent load program.  Keep that base reserved and re-seed it at
+    * every complete round boundary; unlike ordinary address-cache entries it
+    * is part of the caller ABI and is not owned by the round allocator. */
+   uint64_t fixed_base_address;
+   uint16_t fixed_base_half;
+   bool fixed_base_valid;
+
+   struct agx_ioto_load_relocation *relocations;
+   size_t relocation_count;
+   size_t relocation_capacity;
 
    uint32_t next_sequence;
    uint8_t initial_gpr_dwords;
@@ -150,6 +194,8 @@ struct agx_ioto_load_absolute {
    uint64_t address;
    uint8_t lane_mask;
    uint16_t cprog_dest_half;
+   uint8_t cprog_input_mask;
+   uint16_t cprog_input_tps_half;
 };
 
 #define AGX_IOTO_LOAD_SCS_BASE_HALF 8u
@@ -202,6 +248,14 @@ bool agx_ioto_load_core_init(struct agx_ioto_load_core *core,
                              struct agx_ioto_load_cache_entry *cache,
                              size_t cache_capacity, uint8_t initial_gpr_dwords,
                              bool fast_path_enabled, bool gpu0_round_nops);
+
+/* Register a 64-bit base already materialized by the caller.  Its four
+ * half-registers must lie wholly inside the initial reserved GPR prefix.
+ * The address cache is seeded transactionally and remains seeded across
+ * finishRound(true). */
+bool agx_ioto_load_core_set_fixed_base(struct agx_ioto_load_core *core,
+                                       uint64_t address,
+                                       uint16_t base_half);
 
 bool agx_ioto_load_pack_ldimm(enum agx_chip chip, uint16_t dest_half,
                               uint32_t immediate,

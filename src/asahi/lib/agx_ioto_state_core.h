@@ -65,6 +65,27 @@ struct agx_ioto_state_tail_output {
    uint8_t bytes[AGX_IOTO_STATE_TAIL_MAX_SIZE];
 };
 
+/* Physical imageblock geometry consumed by HAL200's fragment LoadShader
+ * transform.  tile_size_px is one of Mesa's three rectangular tile areas;
+ * 32x16 is the only 512-pixel spelling. */
+struct agx_ioto_g17p_imageblock {
+   uint8_t sample_size_B;
+   uint8_t nr_samples;
+   uint16_t tile_size_px;
+};
+
+#define AGX_IOTO_G17P_IMAGEBLOCK_8B_1X_32X32                                \
+   { .sample_size_B = 8, .nr_samples = 1, .tile_size_px = 32 * 32 }
+
+/* Build the exact fragment SPECLM record emitted by HAL200's
+ * LdShdrTransformFragment for the supplied physical imageblock.  Unlike the
+ * generic anonymous-field packer, this retains the recovered dimension bits
+ * which are still opaque to the field graph.  `output` is unchanged on every
+ * failure. */
+bool agx_ioto_g17p_fragment_speclm_build(
+   const struct agx_ioto_g17p_imageblock *imageblock, void *output,
+   size_t capacity);
+
 /*
  * Type 0 packs SPECLM, LDSHDR, SPECTPR in that order.  Type 1 packs only
  * LDSHDR and SPECTPR and requires every SPECLM field to be zero.  Other type
@@ -95,13 +116,19 @@ bool agx_ioto_g17s_minimal_compute_tail_build(
 bool agx_ioto_g17p_compute_ldshdr_build(
    uint64_t shader_va, struct agx_ioto_state *state);
 
-/* Raw LDSHDR f1 values from output-positive native compute witnesses:
- * three G17P probes and the M4 array write captured on 2026-09-13. These names
- * identify witnesses, not inferred hardware semantics of the field. */
+/* Pack the minimal G17P LDSHDR used by compiler-generated graphics and
+ * compute programs directly. This is equivalent to the semantic state with
+ * only f0=shader_va, f1=fetch_span and required f23=1 populated. `output` is
+ * unchanged on failure. */
+bool agx_ioto_g17p_compiler_ldshdr_pack(
+   uint64_t shader_va, uint32_t fetch_span, void *output, size_t capacity);
+
+/* Raw LDSHDR f1 values from three explicitly MIT-licensed, output-positive
+ * G17P compute witnesses. The names identify those witnesses; they do not
+ * assign inferred hardware semantics to the anonymous field. */
 enum agx_ioto_g17p_compute_ldshdr_f1 {
    AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3 = 0,
    AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_GRID_HELPER = 1,
-   AGX_IOTO_G16G_COMPUTE_LDSHDR_F1_ARRAY_WRITE = 2,
    AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_INDIRECT_ADD3 = 3,
 };
 
@@ -126,6 +153,12 @@ bool agx_ioto_g17p_runtime_compute_tail_build_shared(
  * scratch_size: the runtime may subsequently overwrite f10/f11/f20/f22. */
 bool agx_ioto_g17p_compiler_spectpr_build(
    uint32_t spill_bytes, uint32_t d_value, struct agx_ioto_state *state);
+
+/* Pack those same compiler fields directly into the exact G17P SPECTPR
+ * record. This is equivalent to build + generic pack without materializing a
+ * 27-field semantic state. `output` is unchanged on failure. */
+bool agx_ioto_g17p_compiler_spectpr_pack(
+   uint32_t spill_bytes, uint32_t d_value, void *output, size_t capacity);
 
 #ifdef __cplusplus
 }

@@ -940,3 +940,15 @@ agx_nir_needs_texture_crawl(nir_instr *instr)
 
    return false;
 }
+
+/* Native Gallium has no integer-offset TXF operand. Make it explicit before
+ * descriptor binding and reuse the qualified M3/M4 early lowering. */
+bool
+agx_nir_lower_g17p_texture_early(nir_shader *s, bool support_lod_bias)
+{
+   bool progress = false;
+   NIR_PASS(progress, s, nir_lower_tex,
+            &(nir_lower_tex_options){.lower_txf_offset = true});
+   progress |= agx_nir_lower_texture_early(s, support_lod_bias);
+   return progress;
+}

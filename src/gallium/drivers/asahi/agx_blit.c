@@ -220,8 +220,20 @@ asahi_blit_compute_shader(struct pipe_context *ctx, struct asahi_blit_key *key)
 }
 
 static bool
-asahi_compute_blit_supported(const struct pipe_blit_info *info)
+asahi_compute_blit_supported(enum agx_chip chip,
+                             const struct pipe_blit_info *info)
 {
+   /* Gallium's compute blitter reaches agx_launch_grid() and therefore
+    * agx_cdm_launch(), whose packet is the AGX2 compute command format, and
+    * agx_upload_textures()'s legacy storage PBE descriptor. CommandEncodingNext
+    * parts need the native Ioto program/launch path Honeykrisp already uses;
+    * on HAL200 the internal block-image kernel aborts in
+    * agx_native_descriptor_rejected("storage PBE") before it is ever
+    * submitted. Take the fully supported render blitter until native Gallium
+    * compute is wired. */
+   if (agx_chip_command_stream_generation(chip) != AGX_CS_GENERATION_AGX2)
+      return false;
+
    return (info->src.box.depth == info->dst.box.depth) && !info->alpha_blend &&
           !info->num_window_rectangles && !info->sample0_only &&
           !info->scissor_enable && !info->window_rectangle_include &&
@@ -313,7 +325,7 @@ asahi_compute_blit(struct pipe_context *ctx, const struct pipe_blit_info *info,
        info->dst.box.width == 0 || info->dst.box.height == 0)
       return;
 
-   assert(asahi_compute_blit_supported(info));
+   assert(asahi_compute_blit_supported(agx_device(ctx->screen)->chip, info));
    asahi_compute_save(agx_context(ctx));
 
    unsigned depth = info->dst.box.depth;
@@ -510,10 +522,231 @@ agx_blitter_save(struct agx_context *ctx, struct blitter_context *blitter,
    }
 }
 
+/* G17P stores a multisample colour tile by resolving it directly into a
+ * matching single-sample PBE target at EOT. Attach exact full-resource API
+ * resolves to the still-active source batch instead of first requesting the
+ * unwitnessed multisample PBE store needed by a second render pass.
+ *
+ * DRI additionally seeds its private multisample window drawable from the WSI
+ * image. Keep that reverse copy restricted to the original WSI binding shape;
+ * its later swap is the operation that supplies the direct resolve target.
+ */
+static bool
+agx_g17p_rgba8_resolve_format(enum pipe_format format)
+{
+   return format == PIPE_FORMAT_R8G8B8A8_UNORM ||
+          format == PIPE_FORMAT_B8G8R8A8_UNORM ||
+          format == PIPE_FORMAT_R8G8B8X8_UNORM ||
+          format == PIPE_FORMAT_B8G8R8X8_UNORM;
+}
+
+bool
+agx_g17p_direct_resolve_blit_shape(const struct pipe_blit_info *info,
+                                   bool source_multisampled)
+{
+   struct pipe_resource *src = info->src.resource;
+   struct pipe_resource *dst = info->dst.resource;
+   if (!src || !dst)
+      return false;
+
+   struct pipe_resource *msaa = source_multisampled ? src : dst;
+   struct pipe_resource *single = source_multisampled ? dst : src;
+   const unsigned wsi_bind =
+      PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED;
+   const bool wsi_seed = !source_multisampled &&
+                         !(msaa->bind & wsi_bind) &&
+                         (single->bind & wsi_bind);
+
+   return (util_res_sample_count(msaa) == 2 ||
+           util_res_sample_count(msaa) == 4) &&
+          util_res_sample_count(single) == 1 && src->format == dst->format &&
+          agx_g17p_rgba8_resolve_format(src->format) &&
+          (source_multisampled || wsi_seed) &&
+          (single->target == PIPE_TEXTURE_2D ||
+           single->target == PIPE_TEXTURE_RECT) &&
+          single->last_level == 0 && single->array_size == 1 &&
+          single->depth0 == 1 &&
+          !info->src.level && !info->dst.level && !info->src.box.x &&
+          !info->src.box.y && !info->src.box.z && !info->dst.box.x &&
+          !info->dst.box.y && !info->dst.box.z &&
+          info->src.box.depth == 1 && info->dst.box.depth == 1 &&
+          info->src.box.width == (int)src->width0 &&
+          info->src.box.height == (int)src->height0 &&
+          info->dst.box.width == (int)dst->width0 &&
+          info->dst.box.height == (int)dst->height0 &&
+          src->width0 == dst->width0 && src->height0 == dst->height0 &&
+          info->src.format == info->dst.format &&
+          info->src.format == src->format && info->mask == PIPE_MASK_RGBA &&
+          info->filter == PIPE_TEX_FILTER_NEAREST && !info->scissor_enable &&
+          !info->alpha_blend && !info->sample0_only &&
+          !info->swizzle_enable && !info->num_window_rectangles;
+}
+
+static bool
+agx_g17p_attach_direct_resolve(struct agx_context *ctx,
+                               struct pipe_resource *msaa,
+                               struct pipe_resource *single)
+{
+   struct agx_batch *batch =
+      agx_writer_get(ctx, agx_resource(msaa)->bo->handle);
+
+   if (!batch || !agx_batch_is_active(batch) || !batch->initialized ||
+       (batch->key.resolve && batch->key.resolve != single) ||
+       batch->key.nr_cbufs != 1 ||
+       batch->key.cbufs[0].texture != msaa ||
+       batch->key.cbufs[0].level != 0 ||
+       batch->key.cbufs[0].first_layer != 0 ||
+       batch->key.cbufs[0].last_layer != 0)
+      return false;
+
+   if (!batch->key.resolve) {
+      pipe_resource_reference(&batch->key.resolve, single);
+      agx_batch_writes(batch, agx_resource(single), 0);
+   }
+   return true;
+}
+
+bool
+agx_g17p_staged_resolve_blit_shape(const struct pipe_blit_info *info)
+{
+   if (!info || !info->src.resource || !info->dst.resource)
+      return false;
+
+   const struct pipe_resource *src = info->src.resource;
+   const struct pipe_resource *dst = info->dst.resource;
+   return (util_res_sample_count(src) == 2 ||
+           util_res_sample_count(src) == 4) &&
+          util_res_sample_count(dst) == 1 &&
+          (src->target == PIPE_TEXTURE_2D ||
+           src->target == PIPE_TEXTURE_RECT) &&
+          src->last_level == 0 && src->array_size == 1 && src->depth0 == 1 &&
+          agx_g17p_rgba8_resolve_format(src->format) &&
+          info->src.level == 0 && info->src.box.z == 0 &&
+          info->src.box.depth == 1 && info->src.format == src->format &&
+          !(info->mask & ~PIPE_MASK_RGBA) && (info->mask & PIPE_MASK_RGBA) &&
+          !info->sample0_only;
+}
+
+/* A partial or converting resolve cannot write its final destination directly
+ * at EOT, while storing the multisample image for a later shader pass has no
+ * grounded G17P PBE encoding. Resolve the complete live tile into a temporary
+ * single-sample image first; the ordinary render blitter can then apply the
+ * caller's rectangle, mask, scale, swizzle, and destination format exactly. */
+static bool
+agx_g17p_staged_resolve_blit(struct agx_context *ctx,
+                             const struct pipe_blit_info *info)
+{
+   struct pipe_resource *src = info->src.resource;
+   struct pipe_resource templ = {
+      .target = PIPE_TEXTURE_2D,
+      .format = src->format,
+      .width0 = src->width0,
+      .height0 = src->height0,
+      .depth0 = 1,
+      .array_size = 1,
+      .last_level = 0,
+      .nr_samples = 1,
+      .nr_storage_samples = 1,
+      .usage = PIPE_USAGE_DEFAULT,
+      .bind = PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW,
+   };
+   struct pipe_resource *resolved =
+      ctx->base.screen->resource_create(ctx->base.screen, &templ);
+   if (!resolved)
+      return false;
+
+   if (!agx_g17p_attach_direct_resolve(ctx, src, resolved)) {
+      pipe_resource_reference(&resolved, NULL);
+      return false;
+   }
+
+   struct pipe_blit_info staged = *info;
+   staged.src.resource = resolved;
+   staged.src.level = 0;
+   staged.src.format = src->format;
+   staged.src.box.z = 0;
+   staged.src.box.depth = 1;
+   agx_blit(&ctx->base, &staged);
+   pipe_resource_reference(&resolved, NULL);
+   return true;
+}
+
+bool
+agx_g17p_stencil_plane_blit_shape(const struct pipe_blit_info *info)
+{
+   if (!info || !info->src.resource || !info->dst.resource ||
+       !(info->mask & PIPE_MASK_S) || (info->mask & ~PIPE_MASK_ZS))
+      return false;
+
+   const struct util_format_description *src =
+      util_format_description(info->src.format);
+   const struct util_format_description *dst =
+      util_format_description(info->dst.format);
+
+   return util_format_has_stencil(src) && util_format_has_stencil(dst) &&
+          (!(info->mask & PIPE_MASK_Z) ||
+           (util_format_has_depth(src) && util_format_has_depth(dst)));
+}
+
 void
 agx_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
 {
    struct agx_context *ctx = agx_context(pipe);
+
+   /* G17P does not have a grounded fragment ABI for exporting stencil. That
+    * is not a hardware-resource limitation: standalone stencil is native S8,
+    * and u_transfer_helper represents every packed API Z/S image as a native
+    * depth image plus a separate native S8 image.
+    *
+    * Lower the stencil aspect at that representation boundary. Depth keeps
+    * using the depth blitter, whose G17P depthf sequence is Apple-witnessed.
+    * Reinterpret each physical S8 image as R8_UINT and use the ordinary
+    * integer-colour blitter, avoiding an unwitnessed stencilf contract.
+    * R8_UINT and S8_UINT have the same one-byte AIL layout and integer
+    * conversion, so this is a lossless plane copy, including scaling and
+    * array-layer selection performed by u_blitter.
+    */
+   if (agx_chip_command_stream_generation(agx_device(pipe->screen)->chip) !=
+          AGX_CS_GENERATION_AGX2 &&
+       agx_g17p_stencil_plane_blit_shape(info)) {
+      struct agx_resource *src = agx_resource(info->src.resource);
+      struct agx_resource *dst = agx_resource(info->dst.resource);
+
+      const bool src_has_depth = util_format_has_depth(
+         util_format_description(info->src.format));
+      const bool dst_has_depth = util_format_has_depth(
+         util_format_description(info->dst.format));
+      if ((!src_has_depth || src->separate_stencil) &&
+          (!dst_has_depth || dst->separate_stencil)) {
+         if (info->mask & PIPE_MASK_Z) {
+            struct pipe_blit_info depth = *info;
+            depth.src.format = src->layout.format;
+            depth.dst.format = dst->layout.format;
+            depth.mask = PIPE_MASK_Z;
+            agx_blit(pipe, &depth);
+         }
+
+         struct pipe_blit_info stencil = *info;
+         stencil.src.resource = src->separate_stencil
+                                   ? &src->separate_stencil->base
+                                   : info->src.resource;
+         stencil.src.format = PIPE_FORMAT_R8_UINT;
+         stencil.dst.resource = dst->separate_stencil
+                                   ? &dst->separate_stencil->base
+                                   : info->dst.resource;
+         stencil.dst.format = PIPE_FORMAT_R8_UINT;
+         stencil.mask = PIPE_MASK_R;
+         /* There is no meaningful average of stencil values, so resolving a
+          * multisample stencil buffer takes sample zero. Saying so also keeps
+          * u_blitter off its per-sample shading path, whose sample loop the
+          * G17P fast linker cannot encode: without this the blit's fragment
+          * program fails to link and the stencil aspect is silently dropped.
+          */
+         stencil.sample0_only = info->src.resource->nr_samples > 1;
+         agx_blit(pipe, &stencil);
+         return;
+      }
+   }
 
    if (info->render_condition_enable && !agx_render_condition_check(ctx))
       return;
@@ -527,7 +760,19 @@ agx_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
    agx_legalize_compression(ctx, agx_resource(info->src.resource),
                             info->src.format);
 
-   if (asahi_compute_blit_supported(info)) {
+   if (agx_chip_uses_native_gallium(agx_device(ctx->base.screen)->chip) &&
+       agx_g17p_direct_resolve_blit_shape(info, true) &&
+       agx_g17p_attach_direct_resolve(ctx, info->src.resource,
+                                      info->dst.resource))
+      return;
+
+   if (agx_chip_uses_native_gallium(agx_device(ctx->base.screen)->chip) &&
+       agx_g17p_staged_resolve_blit_shape(info) &&
+       agx_g17p_staged_resolve_blit(ctx, info))
+      return;
+
+   if (asahi_compute_blit_supported(agx_device(ctx->base.screen)->chip,
+                                    info)) {
       asahi_compute_blit(pipe, info, &ctx->compute_blitter);
       return;
    }
@@ -547,6 +792,15 @@ agx_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
       ASAHI_BLIT |
          (info->render_condition_enable ? 0 : ASAHI_DISABLE_RENDER_COND));
    util_blitter_blit(ctx->blitter, info, NULL);
+
+   /* The first DRI drawable validation seeds its private MSAA colourbuffer
+    * from the WSI image. Keep that copy in the same tile batch, and publish
+    * the tile directly back to the WSI image when the swap resolve arrives.
+    */
+   if (agx_chip_uses_native_gallium(agx_device(ctx->base.screen)->chip) &&
+       agx_g17p_direct_resolve_blit_shape(info, false))
+      (void)agx_g17p_attach_direct_resolve(ctx, info->dst.resource,
+                                          info->src.resource);
 }
 
 static bool

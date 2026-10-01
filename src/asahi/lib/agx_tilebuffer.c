@@ -7,6 +7,8 @@
 #include <assert.h>
 #include "util/format/u_format.h"
 #include "layout.h"
+#include "util/bitset.h"
+#include "agx_bg_eot_key.h"
 
 /* Maximum number of bytes per tile on G13G. This may change in future versions
  * of the architecture.
@@ -160,7 +162,7 @@ agx_tilebuffer_set_samples(struct agx_tilebuffer_layout *tib,
 }
 
 enum pipe_format
-agx_tilebuffer_physical_format(struct agx_tilebuffer_layout *tib, unsigned rt)
+agx_tilebuffer_physical_format(const struct agx_tilebuffer_layout *tib, unsigned rt)
 {
    return ail_pixel_format[tib->logical_format[rt]].renderable;
 }
@@ -207,4 +209,394 @@ agx_tilebuffer_pack_usc(struct agx_tilebuffer_layout *tib)
          cfg.bytes_per_threadgroup = 65536;
       }
    }
+}
+
+static unsigned
+format_size_B(enum pipe_format format)
+{
+   unsigned size = format_align_B(format);
+   if (util_format_get_nr_components(ail_pixel_format[format].renderable) == 1)
+      size *= util_format_get_nr_components(format);
+   return size;
+}
+
+unsigned
+agx_g17p_rgba8_mrt_mask(const struct agx_tilebuffer_layout *tib)
+{
+   if (!tib || tib->layered || tib->nr_samples != 1 ||
+       (tib->tile_size != 32 * 32 && tib->tile_size != 32 * 16))
+      return 0;
+
+   unsigned count = 0, mask = 0;
+   for (unsigned rt = 0; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+      const enum pipe_format format = tib->logical_format[rt];
+      if (format == PIPE_FORMAT_NONE)
+         continue;
+      if ((format != PIPE_FORMAT_R8G8B8A8_UNORM &&
+           format != PIPE_FORMAT_B8G8R8A8_UNORM &&
+           format != PIPE_FORMAT_R8G8B8X8_UNORM &&
+           format != PIPE_FORMAT_B8G8R8X8_UNORM) ||
+          tib->spilled[rt] || tib->_offset_B[rt] != 4 * count)
+         return 0;
+      mask |= BITFIELD_BIT(rt);
+      ++count;
+   }
+   return count && tib->sample_size_B == ALIGN_POT(4 * count, 8) &&
+          tib->sample_size_B * tib->tile_size < 32768 ? mask : 0;
+}
+
+unsigned
+agx_g17p_wide_rgba8_mrt_count(const struct agx_tilebuffer_layout *tib)
+{
+   const unsigned mask = agx_g17p_rgba8_mrt_mask(tib);
+   const unsigned count = util_bitcount(mask);
+   return count >= 3 && mask == BITFIELD_MASK(count) ? count : 0;
+}
+
+unsigned
+agx_tilebuffer_compact(const struct agx_tilebuffer_layout *src,
+                       struct agx_tilebuffer_layout *dst,
+                       uint8_t map[AGX_MAX_RENDER_TARGETS])
+{
+   if (!src || !dst)
+      return 0;
+
+   const struct agx_tilebuffer_layout original = *src;
+   *dst = original;
+   memset(dst->logical_format, 0, sizeof(dst->logical_format));
+   memset(dst->spilled, 0, sizeof(dst->spilled));
+   memset(dst->_offset_B, 0, sizeof(dst->_offset_B));
+   unsigned count = 0;
+   for (unsigned rt = 0; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+      if (original.logical_format[rt] == PIPE_FORMAT_NONE)
+         continue;
+      if (map)
+         map[count] = rt;
+      dst->logical_format[count] = original.logical_format[rt];
+      dst->spilled[count] = original.spilled[rt];
+      dst->_offset_B[count++] = original._offset_B[rt];
+   }
+   return count;
+}
+
+bool
+agx_g17p_rt0_tile_layout_supported(const struct agx_tilebuffer_layout *tib)
+{
+   if (!tib)
+      return false;
+
+   /* Compaction only carries the spill flag of an occupied target, so read
+    * the flags before it: a spilled slot with no format is inconsistent
+    * metadata and must not be silently dropped. */
+   for (unsigned rt = 0; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+      if (tib->spilled[rt])
+         return false;
+   }
+
+   struct agx_tilebuffer_layout compact;
+   const unsigned count = agx_tilebuffer_compact(tib, &compact, NULL);
+   tib = &compact;
+   /* No attachment supplies a sample count. Draw-time state completes this
+    * layout; the empty BG/EOT programs use the single-sample form. */
+   if (count == 0 && compact.nr_samples == 0)
+      compact.nr_samples = 1;
+   if ((tib->nr_samples != 1 && tib->nr_samples != 2 &&
+        tib->nr_samples != 4) ||
+       tib->layered || tib->spilled[0])
+      return false;
+
+   /* Four 8-byte samples fill exactly 32 KiB at 32x32, but the hardware
+    * limit is strictly smaller. Keep the generic allocator's valid 32x16
+    * layout; BG/EOT use pixel coordinates and the render UAPI publishes the
+    * utile geometry to firmware. */
+   const enum agx_g17p_mrt_layout mrt = agx_g17p_classify_mrt(tib);
+   const bool raw32 = mrt == AGX_G17P_MRT_RGBA32 ||
+                     mrt == AGX_G17P_MRT_R32_QUAD;
+   /* A multisample tile of a 16-byte sample fits only 16x16. */
+   if (tib->tile_size != 32 * 32 && tib->tile_size != 32 * 16 &&
+       !((mrt == AGX_G17P_MRT_RGBA32 || mrt == AGX_G17P_MRT_MIXED ||
+          tib->nr_samples > 1) &&
+         tib->tile_size == 16 * 16))
+      return false;
+
+   /* Multisample tiles repeat one sample's allocation, so what matters is the
+    * physical tilebuffer format rather than the API format in front of it.
+    * A hardware sweep at four samples
+    * (src/asahi/gl-tests/test-g17p-gl-msaa-resolve.c, which reads every sample
+    * back individually before resolving) covers each physical family below:
+    * rgba8, rgb565, rgba4, rgb5_a1, rgb10_a2, r8, rg8, r16f and rgba16f all
+    * reach every sample and resolve to the drawn colour. Naming the physical
+    * format also admits the BGRA and RGBX spellings of the same tiles, which
+    * the previous logical-format list had to enumerate one at a time.
+    */
+   if (tib->nr_samples > 1 && tib->logical_format[0] != PIPE_FORMAT_NONE) {
+      switch (agx_tilebuffer_physical_format(tib, 0)) {
+      case PIPE_FORMAT_R8_UNORM:
+      case PIPE_FORMAT_R8G8_UNORM:
+      case PIPE_FORMAT_R8G8B8A8_UNORM:
+      case PIPE_FORMAT_R16_UNORM:
+      case PIPE_FORMAT_R16_FLOAT:
+      case PIPE_FORMAT_R10G10B10A2_UNORM:
+      /* The signed normalized families, which GL 3.3 reaches where GL 3.0 did
+       * not: KHR-GL33.texture_size_promotion renders to them. The same sweep
+       * covers them -- r8_snorm, rg8_snorm, rgba8_snorm, r16_snorm, rg16_snorm
+       * and rgba16_snorm all reach every sample and resolve. */
+      case PIPE_FORMAT_R8_SNORM:
+      case PIPE_FORMAT_R16_SNORM:
+      /* The integer families the same case renders to. The sweep draws these
+       * through an integer fragment output and reads them back with an
+       * integer sampler: r8i and rgba8i share the eight-bit tile, rgb10a2ui
+       * the sixteen-bit one, and all three reach every sample. */
+      case PIPE_FORMAT_R8_UINT:
+      case PIPE_FORMAT_R16_UINT:
+      /* Vulkan's qualified raw-copy/resolve path preserves individual
+       * R32 words, including packed RGB9E5, until the separate resolve. */
+      case PIPE_FORMAT_R32_UINT:
+      case PIPE_FORMAT_R9G9B9E5_FLOAT:
+      /* The remaining two colour formats the conformance blit walks. Their
+       * tiles are the same eight bytes per sample as the families above. */
+      case PIPE_FORMAT_R8G8B8A8_SRGB:
+      case PIPE_FORMAT_R11G11B10_FLOAT:
+         break;
+      default:
+         return false;
+      }
+   }
+
+   if (agx_g17p_rgba8_mrt_mask(tib))
+      return true;
+
+   for (unsigned rt = mrt == AGX_G17P_MRT_MIXED ? AGX_MAX_RENDER_TARGETS
+                      : raw32 || mrt == AGX_G17P_MRT_RGBA8 ? 4
+                      : mrt != AGX_G17P_MRT_NONE ? 2 : 1;
+        rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+      if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
+         return false;
+   }
+
+   /* A multisample layout reserves one empty byte-aligned sample even with no
+    * colour attachment. */
+   if (tib->logical_format[0] == PIPE_FORMAT_NONE)
+      return tib->sample_size_B == (tib->nr_samples > 1 ? 8 : 0);
+
+   const enum pipe_format format = tib->logical_format[0];
+   const bool scalar_r32f = format == PIPE_FORMAT_R32_FLOAT;
+   const bool scalar_r32i = format == PIPE_FORMAT_R32_SINT;
+   const bool pair_r32f = format == PIPE_FORMAT_R32G32_FLOAT;
+   const bool pair_r32i = format == PIPE_FORMAT_R32G32_SINT;
+   const bool pair_r32u = format == PIPE_FORMAT_R32G32_UINT;
+   const bool scalar_r8u = format == PIPE_FORMAT_R8_UINT;
+   const bool scalar_r8i = format == PIPE_FORMAT_R8_SINT;
+   const bool rgba16u_or_x = format == PIPE_FORMAT_R16G16B16A16_UINT ||
+                             format == PIPE_FORMAT_R16G16B16X16_UINT;
+   const bool rgba16i_or_x = format == PIPE_FORMAT_R16G16B16A16_SINT ||
+                             format == PIPE_FORMAT_R16G16B16X16_SINT;
+   /* API RGB32 surfaces use the four-lane RGBX physical family. The unused
+    * lane has the same tile footprint and EOT protocol as RGBA32. */
+   const bool rgbx32u = tib->sample_size_B == 16 &&
+      (tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_UINT ||
+       tib->logical_format[0] == PIPE_FORMAT_R32G32B32X32_UINT) &&
+      agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R32_UINT;
+   const bool rgbx32i = tib->sample_size_B == 16 &&
+      (tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_SINT ||
+       tib->logical_format[0] == PIPE_FORMAT_R32G32B32X32_SINT) &&
+      agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R32_UINT;
+   const bool rgbx32f = tib->sample_size_B == 16 &&
+      (tib->logical_format[0] == PIPE_FORMAT_R32G32B32A32_FLOAT ||
+       tib->logical_format[0] == PIPE_FORMAT_R32G32B32X32_FLOAT) &&
+      agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R32_UINT;
+   /* At any sample count: the sweep draws this one through an integer
+    * fragment output and reads every sample back with an integer sampler, and
+    * all four are the drawn value. KHR-GL33.texture_size_promotion renders to
+    * it multisampled. */
+   const bool rgb10a2u = tib->sample_size_B == 8 &&
+      (tib->logical_format[0] == PIPE_FORMAT_R10G10B10A2_UINT ||
+       tib->logical_format[0] == PIPE_FORMAT_B10G10R10A2_UINT) &&
+      agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R16_UINT;
+   /* The packed float tile is eight bytes per sample at any sample count, and
+    * KHR-GL30.framebuffer_blit.multisampled_to_singlesampled_blit_color_config
+    * exercises it at four samples through GL_R11F_G11F_B10F. Whether such a
+    * tile can be resolved by averaging the raw word is a separate question
+    * from whether the layout is admissible; restricting admission to one
+    * sample refuses that conformance case outright. */
+   const bool r11g11b10f = tib->sample_size_B == 8 &&
+      tib->logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT &&
+      agx_tilebuffer_physical_format(tib, 0) ==
+         PIPE_FORMAT_R11G11B10_FLOAT;
+   /* RGB9E5 keeps multisample words too; its resolve runs after the pass
+    * (hk_agx3_g17p_direct_color_resolve_supported). */
+   const bool r9g9b9e5f = tib->sample_size_B == 8 &&
+      tib->logical_format[0] == PIPE_FORMAT_R9G9B9E5_FLOAT &&
+      agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R9G9B9E5_FLOAT;
+
+   return mrt != AGX_G17P_MRT_NONE || rgbx32u || rgbx32i || rgbx32f ||
+          rgb10a2u || r11g11b10f || r9g9b9e5f ||
+          (tib->sample_size_B == 8 &&
+           (agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R8_UNORM ||
+            agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R16_FLOAT ||
+            agx_tilebuffer_physical_format(tib, 0) ==
+               PIPE_FORMAT_R10G10B10A2_UNORM ||
+            /* Every spelling of the signed normalized tiles at once. Naming
+             * the physical format admits the BGRA and RGBX forms the logical
+             * list had to enumerate and still missed: GL 3.3's
+             * texture_size_promotion renders to r8g8b8x8_snorm. */
+            agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R8_SNORM ||
+            agx_tilebuffer_physical_format(tib, 0) == PIPE_FORMAT_R16_SNORM ||
+            tib->logical_format[0] == PIPE_FORMAT_R16G16_UNORM ||
+            tib->logical_format[0] == PIPE_FORMAT_R32_UINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R8G8_UINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R8G8_SINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R8G8B8X8_UINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R8_SRGB ||
+            tib->logical_format[0] == PIPE_FORMAT_R8G8_SRGB ||
+            tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_SRGB ||
+            tib->logical_format[0] == PIPE_FORMAT_B8G8R8A8_SRGB ||
+            tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_UINT ||
+            tib->logical_format[0] == PIPE_FORMAT_B8G8R8X8_UINT ||
+            tib->logical_format[0] == PIPE_FORMAT_B8G8R8A8_UINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R8G8B8X8_SINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_SINT ||
+            tib->logical_format[0] == PIPE_FORMAT_B8G8R8X8_SINT ||
+            tib->logical_format[0] == PIPE_FORMAT_B8G8R8A8_SINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R16_UNORM ||
+            tib->logical_format[0] == PIPE_FORMAT_R16_UINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R16_SINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R16_FLOAT ||
+            tib->logical_format[0] == PIPE_FORMAT_R16G16_FLOAT ||
+            tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT ||
+            tib->logical_format[0] == PIPE_FORMAT_R16G16_UINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R16G16_SINT ||
+            tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_UNORM ||
+            scalar_r32f || scalar_r32i || pair_r32f || pair_r32i ||
+            pair_r32u || scalar_r8u || scalar_r8i || rgba16u_or_x ||
+            rgba16i_or_x));
+}
+
+/* Other layouts of two to eight targets share Apple's multi-target EOT
+ * builtin, whose targets differ only in a per-format IMGWBLK selector, and a
+ * background program without pixel transactions. Each target keeps its own
+ * tile offset, so admit any unspilled layout whose formats all have a grounded
+ * selector.
+ *
+ * Layered layouts are admitted on the same terms. The earlier `!tib->layered`
+ * clause was the scope of what had been captured -- only the 2D builtin family
+ * was on hand -- and not a hardware limit: Apple's factory emits the same
+ * program for a 2D-ARRAY attachment, differing only in that it also publishes
+ * the layer wire, and its per-target selector is still the only
+ * format-dependent byte. Those texts are now recorded for two through eight
+ * targets in agx3_g17p_array_eot.h, which is the full range this function
+ * admits. */
+static enum agx_g17p_mrt_layout
+agx_g17p_classify_mixed_mrt(const struct agx_tilebuffer_layout *tib,
+                            unsigned active_count)
+{
+   bool mixed = active_count >= 2 &&
+                active_count <= AGX_MAX_RENDER_TARGETS;
+   BITSET_DECLARE(occupied_B, 256) = {0};
+   for (unsigned rt = 0; rt < active_count; ++rt) {
+      const unsigned offset_B = tib->_offset_B[rt];
+      const unsigned size_B = format_size_B(tib->logical_format[rt]);
+      mixed &= !tib->spilled[rt] &&
+               agx_g17p_mrt_eot_selector(tib->logical_format[rt]) != 0 &&
+               !(tib->logical_format[rt] == PIPE_FORMAT_R11G11B10_FLOAT &&
+                 tib->nr_samples != 1) &&
+               size_B && offset_B + size_B <= tib->sample_size_B;
+      if (!mixed)
+         break;
+      mixed &= !BITSET_TEST_RANGE(occupied_B, offset_B, offset_B + size_B - 1);
+      BITSET_SET_RANGE(occupied_B, offset_B, offset_B + size_B - 1);
+   }
+
+   return mixed ? AGX_G17P_MRT_MIXED : AGX_G17P_MRT_NONE;
+}
+
+enum agx_g17p_mrt_layout
+agx_g17p_classify_mrt(const struct agx_tilebuffer_layout *tib)
+{
+   if (!tib)
+      return AGX_G17P_MRT_NONE;
+   struct agx_tilebuffer_layout compact;
+   const unsigned active_count = agx_tilebuffer_compact(tib, &compact, NULL);
+   tib = &compact;
+
+   /* Multisample multi-target layouts take the general mixed-format
+    * programs, whose end-of-tile builtin has a multisample form. */
+   if (tib->nr_samples == 2 || tib->nr_samples == 4)
+      return agx_g17p_classify_mixed_mrt(tib, active_count);
+   if (tib->nr_samples != 1)
+      return AGX_G17P_MRT_NONE;
+
+   if (tib->spilled[0] || tib->spilled[1] || tib->_offset_B[0] != 0)
+      return agx_g17p_classify_mixed_mrt(tib, active_count);
+
+   /* Native G17P constructors cover two through four identical RGBA32
+    * targets in one imageblock. Keep the existing four-target R32 path. */
+   const enum pipe_format format = tib->logical_format[0];
+   const bool rgba32 = format == PIPE_FORMAT_R32G32B32A32_FLOAT ||
+                       format == PIPE_FORMAT_R32G32B32A32_UINT ||
+                       format == PIPE_FORMAT_R32G32B32A32_SINT;
+   if (rgba32 || format == PIPE_FORMAT_R32_FLOAT) {
+      const unsigned stride = rgba32 ? 16 : 4;
+      unsigned count = 0;
+      while (count < AGX_MAX_RENDER_TARGETS &&
+             tib->logical_format[count] == format)
+         count++;
+      bool supported = !tib->layered && count >= 2 && count <= 4 &&
+                       (rgba32 || count == 4) &&
+                       tib->sample_size_B == count * stride;
+      for (unsigned rt = 0; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+         supported &= rt < count ? tib->logical_format[rt] == format &&
+                             !tib->spilled[rt] && tib->_offset_B[rt] == rt * stride
+                       : tib->logical_format[rt] == PIPE_FORMAT_NONE;
+      }
+      if (supported)
+         return rgba32 ? AGX_G17P_MRT_RGBA32 : AGX_G17P_MRT_R32_QUAD;
+   }
+
+   bool rgba8 = !tib->layered && active_count >= 2 && active_count <= 4 &&
+                tib->sample_size_B == ALIGN_POT(4 * active_count, 8);
+   for (unsigned rt = 0; rt < active_count; ++rt) {
+      const enum pipe_format f = tib->logical_format[rt];
+      rgba8 &= (f == PIPE_FORMAT_R8G8B8A8_UNORM ||
+                f == PIPE_FORMAT_B8G8R8A8_UNORM ||
+                f == PIPE_FORMAT_R8G8B8X8_UNORM ||
+                f == PIPE_FORMAT_B8G8R8X8_UNORM) &&
+               !tib->spilled[rt] && tib->_offset_B[rt] == 4 * rt;
+   }
+   if (rgba8)
+      return AGX_G17P_MRT_RGBA8;
+
+   if (active_count > 2)
+      return agx_g17p_classify_mixed_mrt(tib, active_count);
+
+   if (tib->logical_format[0] == PIPE_FORMAT_R16G16B16A16_FLOAT &&
+       tib->logical_format[1] == PIPE_FORMAT_R8_UNORM &&
+       tib->_offset_B[1] == 8 && tib->sample_size_B == 16)
+      return AGX_G17P_MRT_WBOIT;
+
+   const bool rt0_rgba8 =
+      tib->logical_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM ||
+      tib->logical_format[0] == PIPE_FORMAT_B8G8R8A8_UNORM ||
+      tib->logical_format[0] == PIPE_FORMAT_R8G8B8X8_UNORM ||
+      tib->logical_format[0] == PIPE_FORMAT_B8G8R8X8_UNORM;
+   const bool rt1_rgba8 =
+      tib->logical_format[1] == PIPE_FORMAT_R8G8B8A8_UNORM ||
+      tib->logical_format[1] == PIPE_FORMAT_B8G8R8A8_UNORM ||
+      tib->logical_format[1] == PIPE_FORMAT_R8G8B8X8_UNORM ||
+      tib->logical_format[1] == PIPE_FORMAT_B8G8R8X8_UNORM;
+
+   /* These logical channel orders and alpha-ignored variants all use the
+    * same four-lane U8 tile representation. Swizzle and X-channel discard
+    * live in the per-attachment PBE descriptor, outside the shared MRT EOT
+    * program. */
+   if (rt0_rgba8 && rt1_rgba8 &&
+       tib->_offset_B[1] == 4 && tib->sample_size_B == 8)
+      return AGX_G17P_MRT_RGBA8;
+
+   if (tib->logical_format[0] == PIPE_FORMAT_R11G11B10_FLOAT &&
+       tib->logical_format[1] == PIPE_FORMAT_R11G11B10_FLOAT &&
+       tib->_offset_B[1] == 4 && tib->sample_size_B == 8)
+      return AGX_G17P_MRT_R11G11B10;
+
+   return agx_g17p_classify_mixed_mrt(tib, active_count);
 }
