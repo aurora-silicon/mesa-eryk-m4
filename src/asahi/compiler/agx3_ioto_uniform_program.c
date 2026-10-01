@@ -39,22 +39,21 @@ agx3_ioto_uniform_program_body_bound(
    enum agx_chip chip, const struct agx3_ioto_uniform_range *ranges,
    size_t range_count, size_t *bytes, size_t *chunks)
 {
+   const enum agx_ioto_load_encoding encoding =
+      agx_ioto_load_target_encoding(chip);
    if (bytes == NULL || chunks == NULL ||
-       agx_ioto_load_target_encoding(chip) ==
-          AGX_IOTO_LOAD_ENCODING_UNSUPPORTED ||
+       encoding == AGX_IOTO_LOAD_ENCODING_UNSUPPORTED ||
        (range_count != 0 && ranges == NULL))
       return false;
 
    size_t staged_bytes =
-      range_count == 0 &&
-            agx_ioto_load_target_encoding(chip) == AGX_IOTO_LOAD_ENCODING_GPU0
+      range_count == 0 && encoding == AGX_IOTO_LOAD_ENCODING_GPU0
          ? AGX_IOTO_LOAD_GPU0_ROUND_NOP_SIZE
          : 0;
    size_t staged_chunks = 0;
    const size_t per_chunk =
-      agx_ioto_load_target_encoding(chip) == AGX_IOTO_LOAD_ENCODING_GPU0
-         ? GPU0_CHUNK_BODY_BOUND
-         : GPU1_CHUNK_BODY_BOUND;
+      encoding == AGX_IOTO_LOAD_ENCODING_GPU0 ? GPU0_CHUNK_BODY_BOUND
+                                             : GPU1_CHUNK_BODY_BOUND;
 
    for (size_t i = 0; i < range_count; ++i) {
       if (!uniform_range_valid(&ranges[i]))
