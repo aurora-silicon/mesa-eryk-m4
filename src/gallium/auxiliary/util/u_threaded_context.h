@@ -482,7 +482,9 @@ struct tc_renderpass_info {
 static inline bool
 tc_renderpass_info_is_zsbuf_used(const struct tc_renderpass_info *info)
 {
-   return info->zsbuf_clear ||
+   /* A pending attachment resolve reads depth/stencil even if no draw does. */
+   return (info->has_resolve && info->resolve[1]) ||
+          info->zsbuf_clear ||
           info->zsbuf_clear_partial ||
           info->zsbuf_write_fs ||
           info->zsbuf_write_dsa ||
