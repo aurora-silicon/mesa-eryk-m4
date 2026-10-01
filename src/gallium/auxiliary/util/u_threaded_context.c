@@ -4619,9 +4619,11 @@ static void
 tc_blit(struct pipe_context *_pipe, const struct pipe_blit_info *info)
 {
    struct threaded_context *tc = threaded_context(_pipe);
+   bool is_depth = util_format_is_depth_or_stencil(info->src.format);
 
    /* filter out untracked non-resolves */
    if (!tc->options.parse_renderpass_info ||
+       (is_depth && tc->options.disable_renderpass_depth_resolve) ||
        info->src.resource->nr_samples <= 1 ||
        info->dst.resource->nr_samples > 1 ||
        info->scissor_enable ||
@@ -4655,7 +4657,6 @@ tc_blit(struct pipe_context *_pipe, const struct pipe_blit_info *info)
       return;
    }
 
-   bool is_depth = util_format_is_depth_or_stencil(info->src.format);
    struct pipe_resource *src = !is_depth ? tc->fb_resources[0] : tc->fb_resources[PIPE_MAX_COLOR_BUFS];
    bool is_resolve = false;
    if (tc->fb_resolve == info->dst.resource) {

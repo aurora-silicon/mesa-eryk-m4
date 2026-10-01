@@ -3151,13 +3151,12 @@ init_driver_workarounds(struct zink_screen *screen)
       screen->driver_workarounds.track_renderpasses = true; //screen->info.primgen_feats.primitivesGeneratedQueryWithRasterizerDiscard
       break;
    case VK_DRIVER_ID_MESA_HONEYKRISP:
-      /* The threaded renderpass lookahead corrupts the Godot TPS render
-       * targets on both G15S and G16G (also reproducible with lavapipe).
-       * Use the ordinary attachment tracking until that path is fixed;
-       * this retains the application's draws, formats and sample counts.
-       * ZINK_DEBUG=rp remains available for bounded diagnostic replays.
+      /* The Godot TPS corruption is isolated to merged depth resolves.
+       * threaded_context keeps those as explicit blits for Honeykrisp.
+       * G15S is qualified with color/pass lookahead; retain the G16G
+       * baseline until its replays are separately validated.
        */
-      screen->driver_workarounds.track_renderpasses = false;
+      screen->driver_workarounds.track_renderpasses = screen->info.props.deviceID == 0x6030;
       break;
    default:
       break;

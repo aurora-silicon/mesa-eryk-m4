@@ -569,6 +569,8 @@ struct threaded_context_options {
    bool unsynchronized_texture_subdata;
    /* if true, parse and track renderpass info during execution */
    bool parse_renderpass_info;
+   /* Keep attachment lookahead, but send depth/stencil resolves to blit. */
+   bool disable_renderpass_depth_resolve;
    /* callbacks for drivers to read their DSA/FS state and update renderpass info accordingly
     * note: drivers must ONLY append to renderpass info using |=
     */

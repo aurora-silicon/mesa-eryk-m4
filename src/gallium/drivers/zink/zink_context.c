@@ -6035,6 +6035,11 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                                                         .unsynchronized_get_device_reset_status = true,
                                                         .unsynchronized_texture_subdata = true,
                                                         .parse_renderpass_info = screen->driver_workarounds.track_renderpasses,
+                                                        /* Inline depth resolves corrupt Godot TPS on
+                                                         * Honeykrisp. Keep the explicit blit while
+                                                         * retaining color/pass usage lookahead. */
+                                                        .disable_renderpass_depth_resolve =
+                                                           zink_driverid(screen) == VK_DRIVER_ID_MESA_HONEYKRISP,
                                                         .dsa_parse = zink_tc_parse_dsa,
                                                         .fs_parse = zink_tc_parse_fs,
                                                      },
