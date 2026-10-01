@@ -207,42 +207,73 @@ agx_virtio_bo_mmap_user(struct agx_device *dev, struct agx_bo *bo,
    return map == MAP_FAILED ? NULL : map;
 }
 
+/* Gallium is dlopened by EGL/GLVND. Keep optional profiling storage out of
+ * the library's TLS segment: its initial-exec GL dispatch variables require
+ * the complete segment to fit glibc's finite surplus. Allocate per thread
+ * only when profiling is enabled, and release it when that thread exits. */
+struct agx_virtio_map_profile {
+   int64_t since;
+   struct {
+      char label[64];
+      uint64_t calls, bytes, ns, max_ns;
+   } stats[16];
+};
+static once_flag map_profile_once = ONCE_FLAG_INIT;
+static tss_t map_profile_key;
+static bool map_profile_key_valid;
+static void
+map_profile_init(void)
+{
+   map_profile_key_valid = tss_create(&map_profile_key, free) == thrd_success;
+}
+static struct agx_virtio_map_profile *
+map_profile_get(void)
+{
+   call_once(&map_profile_once, map_profile_init);
+   if (!map_profile_key_valid) return NULL;
+   struct agx_virtio_map_profile *profile = tss_get(map_profile_key);
+   if (!profile) {
+      profile = calloc(1, sizeof(*profile));
+      if (profile && tss_set(map_profile_key, profile) != thrd_success) {
+         free(profile);
+         return NULL;
+      }
+   }
+   return profile;
+}
+
 static void
 agx_virtio_bo_mmap(struct agx_device *dev, struct agx_bo *bo, void *fixed_addr)
 {
    const bool profile = debug_get_option_agx_virtio_map_profile();
    int64_t start = profile ? os_time_get_nano() : 0;
    bo->_map = vdrm_bo_map(dev->vdrm, bo->handle, bo->size, fixed_addr);
-   if (profile) {
-      static _Thread_local int64_t since;
-      static _Thread_local struct {
-         char label[64];
-         uint64_t calls, bytes, ns, max_ns;
-      } stats[16];
+   struct agx_virtio_map_profile *storage = profile ? map_profile_get() : NULL;
+   if (storage) {
       const int64_t now = os_time_get_nano();
-      if (!since)
-         since = start;
+      if (!storage->since)
+         storage->since = start;
       unsigned i;
-      for (i = 0; i < ARRAY_SIZE(stats) - 1; ++i)
-         if (!stats[i].calls || !strcmp(stats[i].label, bo->label))
+      for (i = 0; i < ARRAY_SIZE(storage->stats) - 1; ++i)
+         if (!storage->stats[i].calls || !strcmp(storage->stats[i].label, bo->label))
             break;
-      snprintf(stats[i].label, sizeof(stats[i].label), "%s",
-               i == ARRAY_SIZE(stats) - 1 ? "overflow" : bo->label);
-      stats[i].calls++;
-      stats[i].bytes += bo->size;
-      stats[i].ns += now - start;
-      stats[i].max_ns = MAX2(stats[i].max_ns, now - start);
-      if (now - since >= INT64_C(1000000000)) {
-         for (unsigned j = 0; j < ARRAY_SIZE(stats); ++j) {
-            if (stats[j].calls)
+      snprintf(storage->stats[i].label, sizeof(storage->stats[i].label), "%s",
+               i == ARRAY_SIZE(storage->stats) - 1 ? "overflow" : bo->label);
+      storage->stats[i].calls++;
+      storage->stats[i].bytes += bo->size;
+      storage->stats[i].ns += now - start;
+      storage->stats[i].max_ns = MAX2(storage->stats[i].max_ns, now - start);
+      if (now - storage->since >= INT64_C(1000000000)) {
+         for (unsigned j = 0; j < ARRAY_SIZE(storage->stats); ++j) {
+            if (storage->stats[j].calls)
                fprintf(stderr, "AGX_VIRTIO_MAP_PROFILE ns=%" PRId64
                        " span_ns=%" PRId64 " calls=%" PRIu64 " bytes=%" PRIu64
                        " map_ns=%" PRIu64 " max_ns=%" PRIu64 " label=%s\n",
-                       now, now - since, stats[j].calls, stats[j].bytes,
-                       stats[j].ns, stats[j].max_ns, stats[j].label);
+                       now, now - storage->since, storage->stats[j].calls, storage->stats[j].bytes,
+                       storage->stats[j].ns, storage->stats[j].max_ns, storage->stats[j].label);
          }
-         memset(stats, 0, sizeof(stats));
-         since = now;
+         memset(storage->stats, 0, sizeof(storage->stats));
+         storage->since = now;
       }
    }
    if (bo->_map == MAP_FAILED) {
