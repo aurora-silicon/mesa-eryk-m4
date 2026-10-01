@@ -721,7 +721,13 @@ hk_CreateDescriptorPool(VkDevice _device,
    bo_size += padding;
 
    if (bo_size) {
-      pool->bo = agx_bo_create(&dev->dev, bo_size, 0, 0, "Descriptor pool");
+      /* Recording reads immutable descriptor metadata on the CPU. Keep this
+       * allocation experiment opt-in until its cache policy is qualified on
+       * the wider descriptor suite; it does not cache UBO contents. */
+      const unsigned bo_flags = dev->dev.chip == AGX_CHIP_G15S &&
+         debug_get_bool_option("HK_M3_WRITEBACK_DESCRIPTOR_POOLS", false) ?
+         AGX_BO_WRITEBACK : 0;
+      pool->bo = agx_bo_create(&dev->dev, bo_size, 0, bo_flags, "Descriptor pool");
       if (!pool->bo) {
          hk_destroy_descriptor_pool(dev, pAllocator, pool);
          return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
