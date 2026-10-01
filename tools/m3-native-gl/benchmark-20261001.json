@@ -1,0 +1,290 @@
+{
+  "minecraft": {
+    "session": "m3-native-gl-20261001",
+    "capture_sha256": "2f3cf560f5cca90c4b9a6b0a37f997a9981b081af12bfde503e07b78b2c99708",
+    "resolution": [
+      3024,
+      1837
+    ],
+    "scope": "Completed 30-frame replay; surfaceless EGL, setup excluded. Image limitations remain in each approved check.",
+    "summary": {
+      "asahi": {
+        "median_seconds": 0.281459429,
+        "fps": 106.58729788015026
+      },
+      "zink": {
+        "median_seconds": 0.353770167,
+        "fps": 84.80081928445934
+      },
+      "median_paired_gain_percent": 25.988591936990304
+    },
+    "samples": [
+      {
+        "index": 0,
+        "order": [
+          "asahi",
+          "zink"
+        ],
+        "records": {
+          "asahi": {
+            "path": "results/minecraft-demo-nativegl/m3/20261001T182713252052Z-m3-minecraft-demo-nativegl-time/benchmark.json",
+            "seconds": 0.282286319
+          },
+          "zink": {
+            "path": "results/minecraft-demo-zink/m3/20261001T182721691361Z-m3-minecraft-demo-zink-time/benchmark.json",
+            "seconds": 0.353770167
+          }
+        },
+        "native_throughput_gain_percent": 25.323171258611367
+      },
+      {
+        "index": 1,
+        "order": [
+          "zink",
+          "asahi"
+        ],
+        "records": {
+          "zink": {
+            "path": "results/minecraft-demo-zink/m3/20261001T182732163824Z-m3-minecraft-demo-zink-time/benchmark.json",
+            "seconds": 0.352885824
+          },
+          "asahi": {
+            "path": "results/minecraft-demo-nativegl/m3/20261001T182741975611Z-m3-minecraft-demo-nativegl-time/benchmark.json",
+            "seconds": 0.280093474
+          }
+        },
+        "native_throughput_gain_percent": 25.988591936990304
+      },
+      {
+        "index": 2,
+        "order": [
+          "asahi",
+          "zink"
+        ],
+        "records": {
+          "asahi": {
+            "path": "results/minecraft-demo-nativegl/m3/20261001T182750289094Z-m3-minecraft-demo-nativegl-time/benchmark.json",
+            "seconds": 0.280819893
+          },
+          "zink": {
+            "path": "results/minecraft-demo-zink/m3/20261001T182758639788Z-m3-minecraft-demo-zink-time/benchmark.json",
+            "seconds": 0.348697046
+          }
+        },
+        "native_throughput_gain_percent": 24.171062909706343
+      },
+      {
+        "index": 3,
+        "order": [
+          "zink",
+          "asahi"
+        ],
+        "records": {
+          "zink": {
+            "path": "results/minecraft-demo-zink/m3/20261001T182809019494Z-m3-minecraft-demo-zink-time/benchmark.json",
+            "seconds": 0.373036216
+          },
+          "asahi": {
+            "path": "results/minecraft-demo-nativegl/m3/20261001T182821410317Z-m3-minecraft-demo-nativegl-time/benchmark.json",
+            "seconds": 0.281459429
+          }
+        },
+        "native_throughput_gain_percent": 32.53640758292025
+      },
+      {
+        "index": 4,
+        "order": [
+          "asahi",
+          "zink"
+        ],
+        "records": {
+          "asahi": {
+            "path": "results/minecraft-demo-nativegl/m3/20261001T182829941753Z-m3-minecraft-demo-nativegl-time/benchmark.json",
+            "seconds": 0.281953501
+          },
+          "zink": {
+            "path": "results/minecraft-demo-zink/m3/20261001T182839288492Z-m3-minecraft-demo-zink-time/benchmark.json",
+            "seconds": 0.376809708
+          }
+        },
+        "native_throughput_gain_percent": 33.642500151115364
+      }
+    ]
+  },
+  "supertux": {
+    "session": "m3-native-gl-20261001",
+    "capture_sha256": "1ef1932da4f06125579b2709245be3f587e82be8578b6867869ea017a59260da",
+    "resolution": [
+      3840,
+      2160
+    ],
+    "scope": "Completed 30-frame replay; surfaceless EGL, setup excluded. Image limitations remain in each approved check.",
+    "summary": {
+      "asahi": {
+        "median_seconds": 0.087428149,
+        "fps": 343.1389128460217
+      },
+      "zink": {
+        "median_seconds": 0.108711149,
+        "fps": 275.9606560684958
+      },
+      "median_paired_gain_percent": 24.614066803587487
+    },
+    "samples": [
+      {
+        "index": 0,
+        "order": [
+          "asahi",
+          "zink"
+        ],
+        "records": {
+          "asahi": {
+            "path": "results/supertux-gl33-nativegl/m3/20261001T183035175237Z-m3-supertux-gl33-nativegl-time/benchmark.json",
+            "seconds": 0.086979137
+          },
+          "zink": {
+            "path": "results/supertux-gl33/m3/20261001T183038437217Z-m3-supertux-gl33-time/benchmark.json",
+            "seconds": 0.108711149
+          }
+        },
+        "native_throughput_gain_percent": 24.985315731518476
+      },
+      {
+        "index": 1,
+        "order": [
+          "zink",
+          "asahi"
+        ],
+        "records": {
+          "zink": {
+            "path": "results/supertux-gl33/m3/20261001T183041177495Z-m3-supertux-gl33-time/benchmark.json",
+            "seconds": 0.108028662
+          },
+          "asahi": {
+            "path": "results/supertux-gl33-nativegl/m3/20261001T183044046805Z-m3-supertux-gl33-nativegl-time/benchmark.json",
+            "seconds": 0.088024442
+          }
+        },
+        "native_throughput_gain_percent": 22.725756103060558
+      },
+      {
+        "index": 2,
+        "order": [
+          "asahi",
+          "zink"
+        ],
+        "records": {
+          "asahi": {
+            "path": "results/supertux-gl33-nativegl/m3/20261001T183047310132Z-m3-supertux-gl33-nativegl-time/benchmark.json",
+            "seconds": 0.087222985
+          },
+          "zink": {
+            "path": "results/supertux-gl33/m3/20261001T183049977234Z-m3-supertux-gl33-time/benchmark.json",
+            "seconds": 0.108996598
+          }
+        },
+        "native_throughput_gain_percent": 24.963159653387223
+      },
+      {
+        "index": 3,
+        "order": [
+          "zink",
+          "asahi"
+        ],
+        "records": {
+          "zink": {
+            "path": "results/supertux-gl33/m3/20261001T183052796461Z-m3-supertux-gl33-time/benchmark.json",
+            "seconds": 0.108434656
+          },
+          "asahi": {
+            "path": "results/supertux-gl33-nativegl/m3/20261001T183055549185Z-m3-supertux-gl33-nativegl-time/benchmark.json",
+            "seconds": 0.087785945
+          }
+        },
+        "native_throughput_gain_percent": 23.52165941825881
+      },
+      {
+        "index": 4,
+        "order": [
+          "asahi",
+          "zink"
+        ],
+        "records": {
+          "asahi": {
+            "path": "results/supertux-gl33-nativegl/m3/20261001T183058773395Z-m3-supertux-gl33-nativegl-time/benchmark.json",
+            "seconds": 0.087428149
+          },
+          "zink": {
+            "path": "results/supertux-gl33/m3/20261001T183101905370Z-m3-supertux-gl33-time/benchmark.json",
+            "seconds": 0.108947772
+          }
+        },
+        "native_throughput_gain_percent": 24.614066803587487
+      }
+    ]
+  },
+  "native_gallium_sha256": "f56416ddd55f11af233154c1755c843c77e9ed4169cc8678d7655bef9ea700f2",
+  "zink_gallium_sha256": "c0059a9b2f0a2ffb1cb5b709c9ae9030ae75f31f491c9c7a9a895dc3b85cf44f",
+  "vulkan_sha256": "82098edb14e583ae7c562e14e004a4335ace70ff4b23bcf6cb535ae2ed4153c7",
+  "scope": "Five alternating pairs per workload, same capture/replayer/resolution/completion boundaries, no application or quality changes. Guarded 60s watchdog with all-channel 0.5s thermal sampling; source patch/binary provenance retained.",
+  "image_review": {
+    "supertux": "Three frames pixel-identical to reviewed Zink reference",
+    "minecraft": "At most 72/5555088 pixels per frame differ by more than one RGB level, at scattered texture edges; no missing objects. This remains an experimental limitation, not pixel-exact or GL conformance qualification."
+  },
+  "replayer_sha256": "a4e1d06101b5360a0ee9c6e0662e8eb3cbf35dbf61f839ebbc4a42ba7da9e3be",
+  "kernel": {
+    "release": "7.1.9-dirtyroom-asahi1+",
+    "module_sha256": "a50883a71d71355fe460cd810844e1d19d5ed198160952114149ef0caaf659be"
+  },
+  "boot_id": "59533291-da26-48db-986a-123740b63b78",
+  "native_build_provenance": {
+    "prefix": "/opt/asahi-m3-native-gl-buffer-bounds-f56416ddd55f",
+    "sha256": "f56416ddd55f11af233154c1755c843c77e9ed4169cc8678d7655bef9ea700f2",
+    "revision": "be70ada8cdd636f4032a5df8a1dbbe0454385f99",
+    "base": "/opt/asahi-m3m4-f568f1256f8",
+    "patch_sha256": "f151493d784036d7bd47ad87c1177e9e1cfd08ab81c2e98ce17a2e023b501d5a",
+    "libraries": {
+      "lib/libEGL_mesa.so.0.0.0": "b0fe9befe1892ac082a3b8ecb55c4d35fcced2ffff18dfc0d55b5a9c49e72684",
+      "lib/libGLX_mesa.so.0.0.0": "e11d8506382a3d6de989a74d6c49982eeadc613d72a5bbd97774fdb7ea37e32a",
+      "lib/libgallium-26.1.4.so": "f56416ddd55f11af233154c1755c843c77e9ed4169cc8678d7655bef9ea700f2",
+      "lib/libgbm.so.1.0.0": "4e030b53f570cea944146494d24664c9b863187657a3773c0e3297d751ac1610",
+      "lib/libvulkan_asahi.so": "82098edb14e583ae7c562e14e004a4335ace70ff4b23bcf6cb535ae2ed4153c7",
+      "lib/dri/libdril_dri.so": "04f91764344bd43c00b8fd14ae785a176ef947d1834c6fe557600cd04dc30c63",
+      "lib/gbm/dri_gbm.so": "37c924aee42202dcbdf11b941661935d251c8c3876fb534de4b6e2d212a5a012"
+    },
+    "untracked_build_sources": [],
+    "component": "gallium",
+    "gallium_sha256": "f56416ddd55f11af233154c1755c843c77e9ed4169cc8678d7655bef9ea700f2",
+    "vulkan_sha256": "82098edb14e583ae7c562e14e004a4335ace70ff4b23bcf6cb535ae2ed4153c7",
+    "scope": "Isolated gallium candidate, no desktop configuration change"
+  },
+  "live_smoke": {
+    "diagnostic_only": true,
+    "mesa_prefix": "/opt/asahi-m3-native-gl-buffer-bounds-f56416ddd55f",
+    "gl_renderer": "asahi",
+    "zink_debug": null,
+    "boot_id": "59533291-da26-48db-986a-123740b63b78",
+    "display_woken": true,
+    "gameplay_ready": true,
+    "alive_in_gameplay": true,
+    "elapsed_seconds": 16.318928760001654,
+    "evidence": "/home/council/dev/gpu-replay-bench/provenance/m3-native-gl-20261001/live-minecraft-native-awake",
+    "watchdog": {
+      "device": "/dev/watchdog0",
+      "identity": "Apple SoC Watchdog",
+      "timeout_seconds": 60,
+      "initial_timeleft_seconds": 59,
+      "periodic_keepalive": false,
+      "armed": true,
+      "ssh_broker_lease": false,
+      "disarmed": true
+    },
+    "thermal_policy": {
+      "startup_max_mc": 95000,
+      "stop_mc": 120000,
+      "sample_interval_seconds": 0.5,
+      "kernel_regulation_target_mc": 110000
+    },
+    "note": "Real demo world visible behind its information dialog; F3 reports native GL. No Vulkan ICD mapped; panel temporarily woken inside guard. Not a timing score."
+  }
+}

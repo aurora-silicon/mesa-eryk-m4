@@ -45,3 +45,27 @@ with no missing objects, and remain an explicit experimental limitation, not
 an exact-image or conformance pass. Paired timings use the same OpenGL capture,
 surfaceless EGL replayer and guarded completion interval on both backends.
 The receipt file identifies exact binaries and full external evidence.
+
+Five alternating pairs per workload on 2026-10-01 give these medians:
+
+| OpenGL capture | Zink replay FPS | Native Gallium replay FPS | Throughput gain |
+| --- | ---: | ---: | ---: |
+| Minecraft, 3024x1837 | 84.80 | 106.59 | 25.7% |
+| SuperTux GL3.3, 3840x2160 | 275.96 | 343.14 | 24.3% |
+
+The same captured GL calls, replayer and completed 30-frame interval are used
+in each pair; setup, screenshots and file decoding are outside timing.
+SuperTux's three images are pixel-identical. Minecraft has the residual edge
+differences described above. These are replay scores, not live-game FPS.
+`benchmark-20261001.json` pins the samples, binary identities and evidence.
+
+The short real Minecraft check also loads the demo world, maximizes to
+3024x1837 and reports Apple M3 Pro native OpenGL in F3. Process mappings contain
+this Gallium candidate and no Vulkan ICD. It ends within the existing guard,
+whose 60-second watchdog disarms cleanly; peak recorded package temperature
+is 75.25 C. When the panel was asleep, SDL's X11 window creation blocked with
+both native Gallium and the pre-existing Zink build. Temporarily waking DPMS
+inside the guard resolves that startup issue without changing idle policy.
+Live evidence: gpu-replay-bench/provenance/m3-native-gl-20261001/
+live-minecraft-native-awake. The demo information overlay remains in this smoke
+screenshot; the benchmark replay frames contain the unobstructed gameplay.
