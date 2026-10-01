@@ -357,7 +357,11 @@ lay_out_table(struct agx_compiled_shader *shader, struct table_state *state,
             ;
 
          /* Now make the range with the given size (naturally aligned) */
-         uniform = ALIGN_POT(uniform, size);
+         /* Native Ioto uploads dwords. Keep both ends of every pushed
+          * range aligned, including 16-bit root sysvals such as the API
+          * sample mask. Padding belongs to this range, so the next range
+          * cannot alias the high half of its final dword. */
+         uniform = ALIGN_POT(uniform, MAX2(size, 2));
 
          assert((shader->push_range_count < ARRAY_SIZE(shader->push)) &&
                 "AGX_MAX_PUSH_RANGES must be an upper bound");
@@ -371,10 +375,10 @@ lay_out_table(struct agx_compiled_shader *shader, struct table_state *state,
             .uniform = uniform,
             .table = table_index,
             .offset = range_start * 2 /* bytes, not elements */,
-            .length = (range_end - range_start),
+            .length = ALIGN_POT(range_end - range_start, 2),
          };
 
-         uniform += (range_end - range_start);
+         uniform += ALIGN_POT(range_end - range_start, 2);
          range_start = range_end;
       } while (range_start < end);
    }
