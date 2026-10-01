@@ -367,7 +367,7 @@ agx3_normflt_encode(enum agx_isa_encoding enc,
 
    if (!enc_ok(enc) || (d->dest & 1) || d->dest >= 256 || d->src >= 256)
       return false;
-   if (d->snorm && enc != AGX_ISA_ENCODING_AGX3B)
+   if ((d->snorm || d->is_16bit) && enc != AGX_ISA_ENCODING_AGX3B)
       return false;
    if ((d->wait_mask & ~wait_limit(enc)) != 0)
       return false;
@@ -379,7 +379,7 @@ agx3_normflt_encode(enum agx_isa_encoding enc,
    base[nbase++] = (struct agx3_field_kv)KV(9, 2);
    base[nbase++] = (struct agx3_field_kv)KV(10, 2);
    base[nbase++] = (struct agx3_field_kv)KV(25, 2);
-   base[nbase++] = (struct agx3_field_kv)KV(26, 1);
+   base[nbase++] = (struct agx3_field_kv)KV(26, d->is_16bit && d->two_lanes ? 2 : 1);
    base[nbase++] = (struct agx3_field_kv)KV(29, 1);
    if (enc == AGX_ISA_ENCODING_AGX3C) {
       base[nbase++] = (struct agx3_field_kv)KV(30, 3);
@@ -392,7 +392,7 @@ agx3_normflt_encode(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(11, d->dest_hint ? 1 : 0);
    ov[n++] = (struct agx3_field_kv)KV(18, d->src);
    ov[n++] = (struct agx3_field_kv)KV(41, d->two_lanes ? 1 : 0);
-   ov[n++] = (struct agx3_field_kv)KV(40, d->snorm ? 1 : 0);
+   ov[n++] = (struct agx3_field_kv)KV(40, (d->is_16bit ? 2 : 0) | (d->snorm ? 1 : 0));
 
    for (unsigned i = 0; i < nslots(enc); ++i)
       if (d->wait_mask & (1u << i))

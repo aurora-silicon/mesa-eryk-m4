@@ -1001,6 +1001,64 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
    return agx_zs_emit(b, agx_src_index(&instr->src[0]), zs, base);
 }
 
+/* Unpack already-loaded normalized halves into `dest`. A byte format packs
+ * two channels into each half; a 16-bit one occupies a half per channel and
+ * is recollected into the pair the conversion consumes. Tile and device
+ * traffic differ only in how the halves arrive, so both share this tail.
+ *
+ * `read_mask` names the channels anything reads: a pair with no read lane
+ * needs no conversion. With `split_dest` false the channels are only cached
+ * as the collect's sources, so readers take each `normflt` result where it
+ * was written and the collected vector itself stays dead; the device
+ * (vertex fetch) path uses that, like Apple's vertex programs, which read the
+ * conversion results in place. */
+static void
+agx_unpack_normalized_halves_agx3(agx_builder *b, agx_index dest,
+                                  agx_index *halves, enum agx_format format,
+                                  unsigned nr_comps, unsigned read_mask,
+                                  bool split_dest)
+{
+   const bool norm16 =
+      format == AGX_FORMAT_U16NORM || format == AGX_FORMAT_S16NORM;
+   agx_index channels[4] = {agx_null()};
+   const unsigned conversions = DIV_ROUND_UP(nr_comps, 2);
+   for (unsigned i = 0; i < conversions; ++i) {
+      const unsigned lanes = MIN2(2u, nr_comps - i * 2);
+      if (!(read_mask & (BITFIELD_MASK(lanes) << (i * 2)))) {
+         for (unsigned c = 0; c < lanes; ++c)
+            channels[i * 2 + c] = agx_undef(dest.size);
+         continue;
+      }
+
+      /* One unpack per packed register; each yields a 32-bit pair, which the
+       * split below turns back into the two scalar channels. */
+      agx_index pair = agx_temp(b->shader, AGX_SIZE_32);
+      pair.channels_m1 = lanes - 1;
+      agx_index source = halves[i];
+      if (norm16) {
+         source = agx_temp(b->shader, AGX_SIZE_16);
+         source.channels_m1 = lanes - 1;
+         agx_emit_collect_to(b, source, lanes, &halves[i * 2]);
+      }
+      agx_normflt_agx3_to(b, pair, source, format);
+
+      agx_index unpacked[2] = {agx_null()};
+      agx_emit_split(b, unpacked, pair, lanes);
+      for (unsigned c = 0; c < lanes; ++c) {
+         if (dest.size == AGX_SIZE_16) {
+            channels[i * 2 + c] = agx_temp(b->shader, AGX_SIZE_16);
+            agx_fmov_to(b, channels[i * 2 + c], unpacked[c]);
+         } else {
+            channels[i * 2 + c] = unpacked[c];
+         }
+      }
+   }
+
+   agx_emit_collect_to(b, dest, nr_comps, channels);
+   if (split_dest)
+      agx_emit_cached_split(b, dest, nr_comps);
+}
+
 /*
  * The tilebuffer read half of the same story as agx_pack_normalized_agx3():
  * an 8-bit normalized attachment comes back packed, two channels to a 16-bit
@@ -1134,6 +1192,51 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    /* Zero-extend offset if we're not sign-extending */
    if (!nir_intrinsic_sign_extend(instr))
       offset = agx_abs(offset);
+
+   const bool norm8 = fmt == AGX_FORMAT_U8NORM || fmt == AGX_FORMAT_S8NORM;
+   const bool norm16 = fmt == AGX_FORMAT_U16NORM || fmt == AGX_FORMAT_S16NORM;
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       (norm8 || norm16)) {
+      const unsigned nr = instr->def.num_components;
+      assert(nr >= 1 && nr <= 4 && packed_count == 0);
+      assert(dest.size == AGX_SIZE_16 || dest.size == AGX_SIZE_32);
+
+      /* Device memory provides raw bytes/halves, with no format conversion:
+       * agx3_fmt_to_width() has no normalized device witness, so a load left
+       * carrying one is refused at the packer and the draw is dropped. Keep
+       * the element width and index scaling intact and reuse the grounded
+       * normalized unpack the tile load already uses. Byte loads reserve an
+       * aligned 32-bit payload even for a single channel. */
+      agx_index packed = norm8 ? agx_temp(b->shader, AGX_SIZE_32)
+                              : agx_vec_temp(b->shader, AGX_SIZE_16, nr);
+      agx_instr *load = agx_device_load_to(
+         b, packed, addr, offset, norm8 ? AGX_FORMAT_I8 : AGX_FORMAT_I16,
+         BITFIELD_MASK(nr), shift, nir_is_coherent(instr));
+      load->memory_index_is_bytes = index_bytes;
+      load->memory_is_packed = norm8 && nr > 1;
+
+      agx_index halves[4] = {agx_null()};
+      if (norm8) {
+         for (unsigned i = 0; i < DIV_ROUND_UP(nr, 2); ++i) {
+            halves[i] = agx_temp(b->shader, AGX_SIZE_16);
+            agx_subdivide_to(b, halves[i], packed, i);
+         }
+      } else {
+         agx_emit_split(b, halves, packed, nr);
+      }
+      /* Vertex fetch (agx_nir_lower_vbo, the only producer of normalized
+       * constant loads) converts only the lanes the shader reads and leaves
+       * each result where `normflt` wrote it. Formatted meta loads keep
+       * their collected vector. */
+      const bool vertex_fetch =
+         instr->intrinsic == nir_intrinsic_load_constant_agx;
+      agx_unpack_normalized_halves_agx3(
+         b, dest, halves, fmt, nr,
+         vertex_fetch ? nir_def_components_read(&instr->def)
+                      : BITFIELD_MASK(nr),
+         !vertex_fetch);
+      return;
+   }
 
    /* AGX3 memory traffic is raw. Convert a normalized packed texel with
     * the same native instruction used by tile loads, after its real load. */
