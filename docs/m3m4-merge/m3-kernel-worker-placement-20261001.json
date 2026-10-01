@@ -1,0 +1,743 @@
+{
+  "schema": 1,
+  "scope": "M3 kernel submission worker placement diagnosis; no production policy change",
+  "profile_run": "/home/council/dev/gpu-replay-bench/runs/20260930T235322981499Z-m3-minecraft-demo-zink-time/remote",
+  "profile_manifest": {
+    "kernel": {
+      "release": "7.1.9-dirtyroom-asahi1+",
+      "module_sha256": "a6b7df2f38e11c1ea4af832bb09efed0231dca74fe260830d2338c36c57333f7"
+    },
+    "boot_id": "4b361b98-fdd1-4b11-ae68-508522fecbd9",
+    "case": "minecraft-demo-zink",
+    "phase": "time",
+    "format": "apitrace-opengl",
+    "command": [
+      "perf",
+      "record",
+      "--clockid",
+      "mono",
+      "--no-buildid",
+      "--sample-cpu",
+      "--all-cpus",
+      "-e",
+      "cpu-clock",
+      "-F",
+      "499",
+      "--call-graph",
+      "dwarf,8192",
+      "-o",
+      "/root/gpu-replay-bench/runs/20260930T235322981499Z-m3-minecraft-demo-zink-time/cpu-profile.data",
+      "--",
+      "python3",
+      "/root/gpu-replay-bench/tools/profile-child.py",
+      "/root/gpu-replay-bench/bin/eglretrace-profile",
+      "--headless",
+      "-b",
+      "/root/gpu-replay-bench/workloads/minecraft-demo-zink/capture.trace"
+    ],
+    "environment": {
+      "GALLIUM_DRIVER": "zink",
+      "LD_LIBRARY_PATH": "/opt/asahi-m3m4-f568f1256f8/lib",
+      "GBM_BACKENDS_PATH": "/opt/asahi-m3m4-f568f1256f8/lib/gbm",
+      "VK_DRIVER_FILES": "/opt/asahi-m3m4-f568f1256f8/asahi.json",
+      "LIBGL_DRIVERS_PATH": "/opt/asahi-m3m4-f568f1256f8/lib/dri",
+      "__EGL_VENDOR_LIBRARY_FILENAMES": "/opt/asahi-m3m4-f568f1256f8/egl.json",
+      "MESA_LOADER_DRIVER_OVERRIDE": "zink",
+      "ASAHI_M3_EXPERIMENTAL": "1",
+      "ASAHI_M4_EXPERIMENTAL": "1",
+      "HK_DEBUG_LOG": "0",
+      "AGX_MESA_DEBUG": "nopromote",
+      "EGL_PLATFORM": "surfaceless",
+      "MESA_SHADER_CACHE_DIR": "/root/gpu-replay-bench/cache/minecraft-demo-zink",
+      "APITRACE_CALL_COST_RANGE": "1392083-1468244",
+      "APITRACE_PROFILE_INTERVAL": "1",
+      "APITRACE_FRAME_COMPLETION_TIMING": "1",
+      "APITRACE_BENCH_CALL_RANGE": "1392082-1468244",
+      "APITRACE_PREDECODE_RANGE": "1392082-1468244",
+      "APITRACE_BENCH_FRAME_CALLS": "1392082,1395171,1397997,1401317,1401819,1404430,1407666,1410277,1413429,1413931,1416702,1419770,1422381,1425841,1428507,1429009,1432077,1434848,1437965,1440576,1441078,1444342,1446953,1450287,1453058,1456133,1456635,1459301,1462558,1465169,1468244"
+    },
+    "capture_sha256": "2f3cf560f5cca90c4b9a6b0a37f997a9981b081af12bfde503e07b78b2c99708",
+    "replayer_sha256": "9c1e1454dba99d7964ce2f40c023b1f0e924315afabecfdac48ae7eacaf76b08",
+    "mesa_sha256": {
+      "libvulkan_asahi.so": "82098edb14e583ae7c562e14e004a4335ace70ff4b23bcf6cb535ae2ed4153c7",
+      "libgallium-26.1.4.so": "bd0dfef658d9e761b6eecc7c4a96dc5162d609ba5125f31e2f6bb2bf904618b5"
+    },
+    "measured_call_range": [
+      1392082,
+      1468244
+    ],
+    "protocol": "gl-completed-range-predecoded-v1",
+    "adaptations": [
+      "Diagnostic instrumentation; not benchmark qualification"
+    ],
+    "scope": "Completed CPU+GPU replay of 30 frames, setup and screenshots excluded; file decoding outside measured interval.",
+    "diagnostic_only": true,
+    "cpu_profile_scope": "all CPUs including kernel workers",
+    "profile_tools_sha256": {
+      "/usr/bin/perf": "fc2d0f001bef6cca10107e744f4931c7f5aebd6c2b5e216e88cc346fe0bb8e98",
+      "/root/gpu-replay-bench/tools/profile-child.py": "d06bc80b8b9952d2088b18f9a8f853c77a22744bd60736f44a97de66f97166e0"
+    }
+  },
+  "profile_guard": {
+    "boot_id": "4b361b98-fdd1-4b11-ae68-508522fecbd9",
+    "scope": "bounded M3 experiment",
+    "command": [
+      "python3",
+      "/root/gpu-replay-bench/tools/replay-gl.py",
+      "/root/gpu-replay-bench/runs/20260930T235322981499Z-m3-minecraft-demo-zink-time",
+      "minecraft-demo-zink",
+      "time",
+      "--timeout",
+      "37",
+      "--profile-cpu",
+      "--profile-system-cpu",
+      "--profile-calls",
+      "--mesa-prefix",
+      "/opt/asahi-m3m4-f568f1256f8"
+    ],
+    "phase": "complete",
+    "keep_cpu_clocks": true,
+    "progress_gate": {
+      "requested_draws": 0,
+      "total_limit_seconds": 45,
+      "stall_limit_seconds": 5,
+      "renew_interval_seconds": 10,
+      "kernel_retirement": false,
+      "retirement_source": null,
+      "startup_seconds": 20
+    },
+    "tool_sha256": {
+      "/root/m3-gpu-tools/gpu/linux_proxy.py": "908ef5b4c87872da916312e23aac55e5112f87379adbdde73cb81fb54132cb44",
+      "/root/m3-gpu-tools/gpu/transport.py": "233ec008ed2782044b6f4eeebe9d105d8f5e452aa92a26965cf03d707c03b971",
+      "/root/m3-gpu-tools/gpu/guard.py": "2aad96b8796267424376854f8d7ac21e8566f2f76e6f66d4d966d0c467c1383b",
+      "/root/m3-gpu-tools/gpu/audit.py": "106e876e435279c05ebd484b1f09ea67674e003edba4f85c0d7f4b6f746c9ff0",
+      "/root/m3-gpu-tools/gpu/perf-map.py": "89dcbdc4a9f7407b8e43901aadc72ab26bcf0445035efee5462402509320c1a0",
+      "/root/m3-gpu-tools/gpu/fuse.py": "11684e44018c52daa818dd7a71cbc1ec431cc623161e45b57ce6e4cbd1ac660a",
+      "/root/m3-gpu-tools/gpu/initialize.py": "ed6ccc5a823fcfeb07bfb8eac4d7b73f7e93b4527ec0a0ca34d90cb50c460e67",
+      "/root/m3-gpu-tools/gpu/compute_job.py": "73ddd9abe41250ebfcc0afd41cc3987da72bbd8e7074d4a79b6aed106acd8738",
+      "/root/m3-gpu-tools/gpu/render_job.py": "296324a165d97cbdf55c08b97fa6cd90afaf10f2d10991c258c43dcc763e5bc7",
+      "/root/m3-gpu-tools/gpu/draw_progress.py": "33efbafa00da7f0c661be579c183327ad73e7cfe3a74e8d2eef11cc5cd90829f",
+      "/root/m3-gpu-tools/gpu/native-start.py": "22caa84c1ad68cb7cefed8c25e20bc9a3420b9dfaf8f21ff6c0c167033fb384a",
+      "/root/m3-gpu-tools/gpu/replay-mesa.py": "a9d0cd5c7b9dc1f8903e95d480d4d2b89f46f5343117bec606a08ee56c2def56",
+      "/root/m3-gpu-tools/gpu/native_progress.py": "be085891fe421ee7800bebfcf721767b702e1993f3e7b3a68228886840b0d485",
+      "/root/m3-gpu-tools/gpu/cts-batch.py": "d5bbb1060f62183841fc32e575b902f1607758d32cb884e1f74d215f6db5d796",
+      "/root/m3-gpu-tools/gpu/cts_headless.py": "b6db8466405e39d23fea33ce6d8a5a332cd6ea320e5e30cc2b1a16634737b2aa",
+      "/root/m3-gpu-tools/gpu/cts-depth-coverage.py": "1394c9d8998b0f4b84bbba49a319b8b5656ac89d2fdc194bb0d339033beea6e9",
+      "/root/m3-gpu-tools/gpu/cts_x11_layout.py": "fba863aae46786cf9e630014715ec3628a8c697fbfe1201b9af1fa107681d133",
+      "/root/m3-gpu-tools/gpu/native-start.pre-memory.py": "305d3048313b109e61b8d9a9f51aa5f4ecc6c9180951c72a9464676772d8f26d",
+      "/root/m3-gpu-tools/gpu/render-slot-probe.py": "ff1e46bec26ddf5dca063b1e93a23c3fb9f593b68a2186031abbf7a6c58598b6",
+      "/root/m3-gpu-tools/gpu/gl-cts-plan.py": "c3e9909d560e53f252778979e8a28fd3bf2fc141ed80eee5584b0d8affb61d09",
+      "/root/m3-gpu-tools/gpu/gl-cts-batch.py": "c937185466b987832178ddc4c88e5dbe34a020253296ac9075b57c94151362a5",
+      "/root/m3-gpu-tools/gpu/cts_deqp_backend.py": "1cb84b7fab26dcdfc60216ef9db2ee1755a4c9c7a0456f9d878976bb36032fb9",
+      "/root/m3-gpu-tools/gpu/cts_memory_policy.py": "3310495e4afd23f5105744b2a744a7ae2a5f50ea936a728ab41ba83882d5b4f8",
+      "/root/m3-gpu-tools/gpu/cts_wait_policy.py": "7829cafec91ae36de5dab73404a4cc667edd27963474f0accd0685b08ed2230b",
+      "/root/m3-gpu-tools/gpu/gl-cts-triage.py": "b59663d3a764faaea3b01ff8b6ed63d0df73e38694d8fd8bfd4f159ea42bc94e",
+      "/root/m3-gpu-tools/gpu/thermal-reload.py": "6f6d97dc87635b37ae71dd0583d6014c76f36b40c24df231871acddd397f9d50",
+      "/root/m3-gpu-tools/gpu/thermal-policy-probe.py": "8f15461ac6af31e94d6f1855df33e9c10eb2c7de8443dc51542282548612af02",
+      "/root/m3-gpu-tools/gpu/render-reuse.py": "4b3f1728f3350e3cd53ae904809ab2e4dc2aaefa6ea20dea02386c496b1bdfa9",
+      "/root/m3-gpu-tools/gpu/install-render-module.py": "d4593ce72ae9cc462324cc1cead8e2a4414c44c6f649f18b7a959a0bf52d3151",
+      "/root/m3-gpu-tools/gpu/image64-run.py": "7c7400d7237f67f24be3fc6d33711703cf82a87a19737269338e79d4b2d73912",
+      "/root/m3-gpu-tools/gpu/retirement_progress.py": "9b45d17080d39117097c3480acee098acc4532e9d4ddbb58927bff131ab2b245",
+      "/root/m3-gpu-tools/gpu/vk-cts-bulk.py": "4c1c8a76dcbc28e758cefe463ab826cf1f6ad4545b797967c209cf7296d648b7",
+      "/root/m3-gpu-tools/gpu/test-retirement-progress.py": "d6e9d1d3a23b785f6c57be22eab750b50cd8113c410ebbaca73101c0dc070951",
+      "/root/m3-gpu-tools/gpu/completion_progress.py": "038bc255d69622e05831ce6d96962d6f719005e310703fe0b52827471fdd4b86",
+      "/root/m3-gpu-tools/gpu/test_completion_progress.py": "358d74fb7e8357f3a9ce85a12024bc307a8add7d558d154f5309a3cd6d36c997",
+      "/root/m3-gpu-tools/gpu/progress-log-overrun-probe.py": "263cf1750f08eaf810a1a451ed5acf429bf024cb4970cf0e2cbb3456251f2f0f",
+      "/root/m3-gpu-tools/gpu/fault_snapshot.py": "19874a52e0f83c8b7f63335fc1b5c019ef8fc375e8a401ebdd85e4e1bb44665e",
+      "/root/m3-gpu-tools/gpu/cts-wsi-repeat.py": "c5f3636f7dd16d02879d4a3f792d0d47c067f41c429bdce55eb25623725149fc",
+      "/root/m3-gpu-tools/gpu/accelerator-incomplete.bin": "43b36f1500188cb89101d4bbd22c1254dba095d9bd1387f794bbb402bc4ea534",
+      "/root/m3-gpu-tools/gpu/firmware-incomplete.bin": "bbf5c84db7008a5d33228a4494d6e466fffbeed2d19840feb80800ec29887c72",
+      "/root/m3-gpu-tools/gpu/globals-incomplete.bin": "c99b084601c700016bd33ed34484dbdad6bbcfa5195329bca34f9d62f794b4f7",
+      "/root/m3-gpu-tools/gpu/hwdata-incomplete.bin": "6854b08e374f8bc5d8bf1603b0490fa1dd314f4bbf3a8440baf76d0dd0d98f15",
+      "/root/m3-gpu-tools/gpu/power-incomplete.bin": "3e5dbd61017a8e5ea7ee760bd69d5cc7872d3139080b5f871c4f00303d20e9a7",
+      "/root/m3-gpu-tools/m3_boot_export.ko": "5860a1db413e630bb7fa4ddcba092359fb7ddac647c97a9af84741d6401c70b8",
+      "/root/m3-gpu-tools/m3_pmp_snapshot.ko": "00a311403b9211bb8328bdd12975b9d1864a381690a67e2abb77156859a4a2a3",
+      "/root/m3-gpu-tools/m3_gfx_identity.ko": "6b59373334761e7b2c3bad20734a5557e9717d241ce33175f5852196e50ba04c",
+      "/root/m3-gpu-tools/m3_gfx_hello.ko": "15093c5c22c97ac66c96cda43e48f3515cf9eefbe20ade1075da8f4ff7bc250c",
+      "/root/m3-gpu-tools/m3_pmp_overlay.ko": "da491bcb80fa297ceffeb02d3235edfbe82b7fbdebb6fb50e952d807f77bfcd6",
+      "/root/m3-gpu-tools/m3_gpu_bridge.ko": "5764ecce310b60ba4185075be323bbd1aeba665f289a02e871e4dad68f4619fb",
+      "/root/m3-gpu-tools/m3_gpu_overlay.ko": "68b9ee9f33dc6ffb3c73992e408273920ba00bd4ce2b685620f46564d247bd7a",
+      "/root/m3-gpu-tools/m3_dcp_regs.ko": "c79fc3b5513552cc4e02e5a7abd00b3617ec494727eed171f227ff02fbc7b499",
+      "/root/m3-gpu-tools/m3_dcp_hold.ko": "19fa16b44d8c9a49613a5eea789effb628293af548f82a20c5c218450c327595",
+      "/root/m3-gpu-tools/m3_dcp_query.ko": "66ed21765b473d663916a72b3211cb3313bd917f6c487c7181506c2b39e4770e",
+      "/root/m3-gpu-tools/m3_dcp_dumb_trace.ko": "4e4ba6f7a5c3f619cee6c495f7b4595f7072437e355cb00f3f49617ae84bf395",
+      "/root/m3-gpu-tools/m3_dcp_rtkit.pre-clock.ko": "873bf7c9c613ca67ae7aadc87675c631901507a8aa964a23ffd7fcc8735abdbe",
+      "/root/m3-gpu-tools/m3_dcp_rtkit.pre-pmu.ko": "ec1939dc9ab068f5140bb989aa289daffb74a3ff874f1aebf051766f15383740",
+      "/root/m3-gpu-tools/m3_dcp_vote.ko": "f9a059541cb837cd9aa3619e483a13182edafa3b8c7002a4387655f95bb360d0",
+      "/root/m3-gpu-tools/m3_dcp_clock_restore.ko": "e011ff60169f24fc75fb41bd1f7b264c35ff5411b0e0c9595c7c23dd190aa1ff",
+      "/root/m3-gpu-tools/m3_dcp_ptd_vote.ko": "d35d61301b9c0c66c5e41115b4777fa3b4f69ed017a9b8976db08c7406e73558",
+      "/root/m3-gpu-tools/m3_memory_floor.ko": "421a64c0aa29046a7e6e767511c0d832bb8bb7d370c803f36d96be5090fe7955",
+      "/root/m3-gpu-tools/m3_pmp_thermal.pre-performance.ko": "0e271d0f8ee43abe9a665c2103d5932bb408d3457166d43b7009b0af8086fa01",
+      "/root/m3-gpu-tools/m3_pmp_thermal.ko": "1564a3dca8142f745c677ed0d8632a29de13c5ef67ddd81f3b6715cd88a266fa",
+      "/root/m3-gpu-tools/m3_dcp_rtkit.ko": "3c283ac216b1309333477f75c81a31e897bfe578db00452c7592ba81c5a5e790",
+      "/root/m3-gpu-tools/m3_dcpext_regs.ko": "dbef5afbe6debf3302a526b64cccb53c453e54446198ba01bdeb6a7f7fe6a06d",
+      "/root/m3-gpu-tools/m3_dcpext_power.ko": "9bbd00e001dba05022d98ac34ddc4c3928c5ee20d3b25c4b644abb9a1a65df55",
+      "/root/m3-gpu-tools/m3_dcpext_dma.ko": "d132f28fbd21cdd2265f66cd4aee76f09b37366705e1dc9448b3592c8d77d7eb",
+      "/root/m3-gpu-tools/m3_hdmi_phy.ko": "4a04f567d4cc74703978c20420ecfc2a272a8450569cff9fc8a82af5fc04c438",
+      "/root/m3-gpu-tools/m3_hdmi_bridge.ko": "c412825cbf87ddff0c28d224ddb941217ad703f148a3601f1bd0c0131dc4f415",
+      "/root/m3-gpu-tools/m3_hdmi_xbar.ko": "8b0b007bcbb4ae7dec4b845285ededf2b217af99cc854a4a907e8cbc4b3e5fef",
+      "/root/m3-gpu-tools/m3_dcpext_rtkit.pre-hpd.ko": "4812c9d1b171356277df99ee994216d2087a4c8919d3e1effeb02369f22ea893",
+      "/root/m3-gpu-tools/m3_hdmi_bridge.pre-hpd.ko": "ca8637ab9782dc0497e6bd7aac5329bdecd4e9d2a84f43ad12a53a19a4b5842e",
+      "/root/m3-gpu-tools/m3_hdmi_phy.pre-reconnect.ko": "f889e25c64a21ce48e96f2ca886cd5ab2893459bdbd8d72ae1749f1650a6abe5",
+      "/root/m3-gpu-tools/m3_dcpext_rtkit.unplug-only.ko": "65622dc93357d5567bfd7b8fdd3a96cf0329127c4561d012732bbf91c4e58bf0",
+      "/root/m3-gpu-tools/m3_typec_probe.ko": "adb1834123429a4d1e4c9bb5b60ef45825fb258613b930f0001bf3dea3f1199b",
+      "/root/m3-gpu-tools/m3_usbc_ptd_vote.ko": "9ff885d08b4c8fb7747b3bdde1ce2fe140a08ff9fbeea0f36dadf1451b06e2e7",
+      "/root/m3-gpu-tools/m3_dcpext_secondary_power.ko": "4714cb7d946896532a8639e6f549481fe613a0a83992f7f1b216c646d381f43d",
+      "/root/m3-gpu-tools/m3_usbc_phy.ko": "5438a5316303a12e9661187048940844463c2125ad50dc719318b7e7b8ae0680",
+      "/root/m3-gpu-tools/m3_pmp_thermal.diagnostic.ko": "b19fbe74ff54fbdbfe4542bb3544ac7fc8c77fa54f18acedb386e47554b1753c",
+      "/root/m3-gpu-tools/m3_pmp_thermal.pre-critical-diagnostic.ko": "e896bf081700d9115d068d8e40b23ae972b15a71d5971cbfcd142a4a5e744783",
+      "/root/m3-gpu-tools/m3_pmp_thermal.m4-policy.ko": "1564a3dca8142f745c677ed0d8632a29de13c5ef67ddd81f3b6715cd88a266fa",
+      "/root/m3-gpu-tools/m3_dcpext_secondary.ko": "ba172433350b29803d8459f172c117a6b7417f1292c6d4734d3b0560d1b5e1d3",
+      "/root/m3-gpu-tools/m3_dcpext_rtkit.ko": "c2f9f3811a07ebddb52e27ac04b9ba53c9b22e6606cec02dba3bbe198b1a05fb",
+      "/root/m3-gpu-tools/asahi.ko": "a6b7df2f38e11c1ea4af832bb09efed0231dca74fe260830d2338c36c57333f7",
+      "/root/m3-gpu-tools/idle_work_progress.py": "81a80db5ca0df8e72e794f3daeee5936b349a37ea103586a13b9350fdd86b7a2"
+    },
+    "watchdog": {
+      "device": "/dev/watchdog0",
+      "identity": "Apple SoC Watchdog",
+      "timeout_seconds": 60,
+      "initial_timeleft_seconds": 59,
+      "periodic_keepalive": false,
+      "armed": true,
+      "ssh_broker_lease": false
+    },
+    "thermal_policy": {
+      "startup_max_mc": 95000,
+      "stop_mc": 120000,
+      "sample_interval_seconds": 0.5,
+      "kernel_regulation_target_mc": 110000
+    },
+    "initial_temperatures": {
+      "te000m": 54750.0,
+      "te001m": 57500.0,
+      "tp000m": 60250.0,
+      "tp001m": 54750.0,
+      "tp002m": 60750.0
+    },
+    "elapsed_seconds": 8.503641654999228,
+    "final_temperatures": {
+      "te000m": 56250.0,
+      "te001m": 60500.0,
+      "tp000m": 55750.0,
+      "tp001m": 57750.0,
+      "tp002m": 61500.0
+    }
+  },
+  "profile_summary": {
+    "diagnostic_only": true,
+    "log": "/home/council/dev/gpu-replay-bench/runs/20260930T235322981499Z-m3-minecraft-demo-zink-time/remote/replay.log",
+    "first": 1392082,
+    "last": 1468244,
+    "frames": 30,
+    "interval_ns": 374289027,
+    "monotonic_ns": [
+      23144953370985,
+      23145327698488
+    ],
+    "process_cpu_delta_us": {
+      "user_us": 62141,
+      "system_us": 8309
+    },
+    "cpu_calls": [
+      {
+        "name": "glXSwapBuffers",
+        "count": 30,
+        "ns": 315007675,
+        "maximum_ns": 12669493
+      },
+      {
+        "name": "glClientWaitSync",
+        "count": 180,
+        "ns": 47540397,
+        "maximum_ns": 1996773
+      },
+      {
+        "name": "glBindTexture",
+        "count": 8681,
+        "ns": 632416,
+        "maximum_ns": 542
+      },
+      {
+        "name": "glDrawArraysInstanced",
+        "count": 5321,
+        "ns": 472453,
+        "maximum_ns": 542
+      },
+      {
+        "name": "glTexParameteri",
+        "count": 18382,
+        "ns": 370944,
+        "maximum_ns": 1375
+      },
+      {
+        "name": "glNamedBufferSubData",
+        "count": 90,
+        "ns": 363448,
+        "maximum_ns": 18958
+      },
+      {
+        "name": "glBindSampler",
+        "count": 9191,
+        "ns": 353723,
+        "maximum_ns": 750
+      },
+      {
+        "name": "glBindVertexArray",
+        "count": 5951,
+        "ns": 337756,
+        "maximum_ns": 11416
+      },
+      {
+        "name": "glBindBufferRange",
+        "count": 7451,
+        "ns": 305977,
+        "maximum_ns": 4791
+      },
+      {
+        "name": "memcpy",
+        "count": 415,
+        "ns": 271548,
+        "maximum_ns": 4417
+      },
+      {
+        "name": "glUseProgram",
+        "count": 3193,
+        "ns": 239704,
+        "maximum_ns": 500
+      },
+      {
+        "name": "glFenceSync",
+        "count": 30,
+        "ns": 215860,
+        "maximum_ns": 18685
+      },
+      {
+        "name": "glActiveTexture",
+        "count": 6620,
+        "ns": 131716,
+        "maximum_ns": 4208
+      },
+      {
+        "name": "glPolygonMode",
+        "count": 3193,
+        "ns": 72478,
+        "maximum_ns": 208
+      },
+      {
+        "name": "glBindFramebuffer",
+        "count": 1832,
+        "ns": 71299,
+        "maximum_ns": 375
+      },
+      {
+        "name": "glDrawElementsInstancedBaseVertex",
+        "count": 540,
+        "ns": 52666,
+        "maximum_ns": 417
+      },
+      {
+        "name": "glBindVertexBuffer",
+        "count": 720,
+        "ns": 47677,
+        "maximum_ns": 292
+      },
+      {
+        "name": "glBindBuffer",
+        "count": 720,
+        "ns": 34586,
+        "maximum_ns": 500
+      },
+      {
+        "name": "glScissor",
+        "count": 796,
+        "ns": 22816,
+        "maximum_ns": 392
+      },
+      {
+        "name": "glViewport",
+        "count": 368,
+        "ns": 16947,
+        "maximum_ns": 500
+      },
+      {
+        "name": "glDrawBuffers",
+        "count": 338,
+        "ns": 16245,
+        "maximum_ns": 333
+      },
+      {
+        "name": "glNamedFramebufferTexture",
+        "count": 180,
+        "ns": 15542,
+        "maximum_ns": 334
+      },
+      {
+        "name": "glCopyNamedBufferSubData",
+        "count": 120,
+        "ns": 11413,
+        "maximum_ns": 333
+      },
+      {
+        "name": "glMultiDrawElementsIndirect",
+        "count": 90,
+        "ns": 10479,
+        "maximum_ns": 500
+      },
+      {
+        "name": "glEnable",
+        "count": 320,
+        "ns": 10151,
+        "maximum_ns": 292
+      },
+      {
+        "name": "glDisable",
+        "count": 320,
+        "ns": 9392,
+        "maximum_ns": 84
+      },
+      {
+        "name": "glDepthMask",
+        "count": 220,
+        "ns": 7036,
+        "maximum_ns": 209
+      },
+      {
+        "name": "glBlendFuncSeparate",
+        "count": 120,
+        "ns": 6377,
+        "maximum_ns": 250
+      },
+      {
+        "name": "glClearDepth",
+        "count": 120,
+        "ns": 5212,
+        "maximum_ns": 125
+      },
+      {
+        "name": "glDisablei",
+        "count": 90,
+        "ns": 4799,
+        "maximum_ns": 292
+      },
+      {
+        "name": "glFramebufferTexture2D",
+        "count": 60,
+        "ns": 4628,
+        "maximum_ns": 167
+      },
+      {
+        "name": "glClear",
+        "count": 120,
+        "ns": 4540,
+        "maximum_ns": 166
+      },
+      {
+        "name": "glEnablei",
+        "count": 90,
+        "ns": 3999,
+        "maximum_ns": 209
+      },
+      {
+        "name": "glBlitNamedFramebuffer",
+        "count": 30,
+        "ns": 3976,
+        "maximum_ns": 291
+      },
+      {
+        "name": "glDrawBuffer",
+        "count": 120,
+        "ns": 3544,
+        "maximum_ns": 167
+      },
+      {
+        "name": "glClearColor",
+        "count": 60,
+        "ns": 3336,
+        "maximum_ns": 209
+      },
+      {
+        "name": "glTexBuffer",
+        "count": 30,
+        "ns": 2590,
+        "maximum_ns": 209
+      },
+      {
+        "name": "glDeleteSync",
+        "count": 30,
+        "ns": 1875,
+        "maximum_ns": 84
+      }
+    ],
+    "completed_frames": [
+      {
+        "call": 1395171,
+        "ns": 14810996,
+        "replay_ns": 2149045,
+        "wait_ns": 12661951
+      },
+      {
+        "call": 1397997,
+        "ns": 12836331,
+        "replay_ns": 2066766,
+        "wait_ns": 10769565
+      },
+      {
+        "call": 1401317,
+        "ns": 13142258,
+        "replay_ns": 2101993,
+        "wait_ns": 11040265
+      },
+      {
+        "call": 1401819,
+        "ns": 9448764,
+        "replay_ns": 1525799,
+        "wait_ns": 7922965
+      },
+      {
+        "call": 1404430,
+        "ns": 12637725,
+        "replay_ns": 1982648,
+        "wait_ns": 10655077
+      },
+      {
+        "call": 1407666,
+        "ns": 13082931,
+        "replay_ns": 2106428,
+        "wait_ns": 10976503
+      },
+      {
+        "call": 1410277,
+        "ns": 12701760,
+        "replay_ns": 1950777,
+        "wait_ns": 10750983
+      },
+      {
+        "call": 1413429,
+        "ns": 12852849,
+        "replay_ns": 2100801,
+        "wait_ns": 10752048
+      },
+      {
+        "call": 1413931,
+        "ns": 9455973,
+        "replay_ns": 1533191,
+        "wait_ns": 7922782
+      },
+      {
+        "call": 1416702,
+        "ns": 12738213,
+        "replay_ns": 1987523,
+        "wait_ns": 10750690
+      },
+      {
+        "call": 1419770,
+        "ns": 13034871,
+        "replay_ns": 2047891,
+        "wait_ns": 10986980
+      },
+      {
+        "call": 1422381,
+        "ns": 12660036,
+        "replay_ns": 1933047,
+        "wait_ns": 10726989
+      },
+      {
+        "call": 1425841,
+        "ns": 13519445,
+        "replay_ns": 2523340,
+        "wait_ns": 10996105
+      },
+      {
+        "call": 1428507,
+        "ns": 12662893,
+        "replay_ns": 1947571,
+        "wait_ns": 10715322
+      },
+      {
+        "call": 1429009,
+        "ns": 9468930,
+        "replay_ns": 1548883,
+        "wait_ns": 7920047
+      },
+      {
+        "call": 1432077,
+        "ns": 13691220,
+        "replay_ns": 2042392,
+        "wait_ns": 11648828
+      },
+      {
+        "call": 1434848,
+        "ns": 12775271,
+        "replay_ns": 2061783,
+        "wait_ns": 10713488
+      },
+      {
+        "call": 1437965,
+        "ns": 12657785,
+        "replay_ns": 2052725,
+        "wait_ns": 10605060
+      },
+      {
+        "call": 1440576,
+        "ns": 12690052,
+        "replay_ns": 1929780,
+        "wait_ns": 10760272
+      },
+      {
+        "call": 1441078,
+        "ns": 9456931,
+        "replay_ns": 1537341,
+        "wait_ns": 7919590
+      },
+      {
+        "call": 1444342,
+        "ns": 13050765,
+        "replay_ns": 2109302,
+        "wait_ns": 10941463
+      },
+      {
+        "call": 1446953,
+        "ns": 13749818,
+        "replay_ns": 1985564,
+        "wait_ns": 11764254
+      },
+      {
+        "call": 1450287,
+        "ns": 13076180,
+        "replay_ns": 2100575,
+        "wait_ns": 10975605
+      },
+      {
+        "call": 1453058,
+        "ns": 12714905,
+        "replay_ns": 2003000,
+        "wait_ns": 10711905
+      },
+      {
+        "call": 1456133,
+        "ns": 12663908,
+        "replay_ns": 2082366,
+        "wait_ns": 10581542
+      },
+      {
+        "call": 1456635,
+        "ns": 9431456,
+        "replay_ns": 1516508,
+        "wait_ns": 7914948
+      },
+      {
+        "call": 1459301,
+        "ns": 12990461,
+        "replay_ns": 2274181,
+        "wait_ns": 10716280
+      },
+      {
+        "call": 1462558,
+        "ns": 14336132,
+        "replay_ns": 2086677,
+        "wait_ns": 12249455
+      },
+      {
+        "call": 1465169,
+        "ns": 12683469,
+        "replay_ns": 1968939,
+        "wait_ns": 10714530
+      },
+      {
+        "call": 1468244,
+        "ns": 13068722,
+        "replay_ns": 2059533,
+        "wait_ns": 11009189
+      }
+    ],
+    "global_retirement_deltas": {
+      "render": {
+        "retirements": 140,
+        "commands": 374,
+        "nonzero_gpu_samples": 140,
+        "prepare_ns": 3875603,
+        "active_ns": 269169475,
+        "gpu_span_ns": 225846579,
+        "tiling_ns": 80256043,
+        "fragment_ns": 136493871,
+        "stage_gap_ns": 382727
+      },
+      "compute": {
+        "retirements": 137,
+        "commands": 168,
+        "nonzero_gpu_samples": 137,
+        "prepare_ns": 1225455,
+        "active_ns": 39129210,
+        "gpu_span_ns": 10949530,
+        "tiling_ns": 0,
+        "fragment_ns": 0,
+        "stage_gap_ns": 0
+      }
+    },
+    "shader_selections": [],
+    "compute_dispatches": [],
+    "descriptor_rejections": [],
+    "limits": "Summarize opt-in GL interval diagnostics; never produces a benchmark score.\n\nInput: a retained replay.log from the completed/predecoded interval profiler.\nCPU call times include waits, worker threads are excluded. Global native\nretirement spans include other clients and overlapping engines. Shader/dispatch\nrecord frequencies do not measure coverage or execution cost.\n"
+  },
+  "busy_cpu_samples": {
+    "kernel_submission_worker_cpu5": 35,
+    "caller_cpu7": 21,
+    "recording_cpu9": 18,
+    "submission_cpu10": 4,
+    "glthread_cpu0": 1,
+    "other": 3
+  },
+  "experiment_summary": {
+    "unrestricted": {
+      "samples_fps": [
+        76.73975489675288,
+        81.13470673657413,
+        75.93806846526134,
+        80.91492468881145,
+        76.7031581515444,
+        81.08902736744403,
+        81.54635460667154,
+        76.27083611192226,
+        75.5887852366193
+      ],
+      "median_fps": 76.73975489675288
+    },
+    "performance": {
+      "samples_fps": [
+        81.63405561204662,
+        76.34073997130149,
+        75.97171008004197,
+        81.3887293782833,
+        76.53344554429015,
+        76.3414395210049,
+        76.47864656534551,
+        81.95112897418687,
+        76.41338339350679
+      ],
+      "median_fps": 76.47864656534551
+    },
+    "diagnostic_only": true,
+    "pairs": 9,
+    "placement_scope": "kernel-workqueues",
+    "improvement_percent": -0.34025171406746324,
+    "scope": "Explicit CPU placement, unchanged rendering/GPU clocks; not a qualified driver speedup"
+  },
+  "image_comparisons": [
+    {
+      "image": "frame-0001392082.png",
+      "maximum_channel_error": 0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001429009.png",
+      "maximum_channel_error": 0,
+      "pixels_over_one_level": 0
+    },
+    {
+      "image": "frame-0001468244.png",
+      "maximum_channel_error": 0,
+      "pixels_over_one_level": 0
+    }
+  ],
+  "timing_scope": "Temporary global unbound workqueue mask, not isolated GPU policy or driver speedup"
+}
