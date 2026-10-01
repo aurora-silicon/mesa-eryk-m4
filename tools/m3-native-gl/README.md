@@ -30,7 +30,18 @@ Modes clear, draw, texture and depth run separately through M3's mandatory guard
 real 60-second watchdog, all-channel telemetry every0.5seconds,95C startup gate,
 110C regulation and120C emergency limit. Failure stops subsequent GPU work.
 
-All four initial pixel oracles pass without Zink and without reboot. The receipt
-file identifies exact binaries and full external evidence. Minecraft replay and
-broader GL correctness remain qualification gates; no native Minecraft timing
-is claimed yet.
+All four initial pixel oracles pass without Zink and without reboot. Normalized
+8/16-bit vertex fetch also passes. The signed R8 texture-buffer oracle checks
+negative values, textureSize and zero reads beyond both ends. It reproduced
+Minecraft's missing clouds: the imported packer discarded the buffer element
+count, making valid coordinates fail the compiler's bounds check. Preserving
+Gen9's existing software bounds word fixes both the oracle and the clouds.
+The offline descriptor suite passes 348 checks, including rejection when this
+word would overlap hardware extensions.
+
+Minecraft's three replay images now differ from Zink by more than one RGB level
+at only 71-72 of 5,555,088 pixels per image. These are scattered texture edges,
+with no missing objects, and remain an explicit experimental limitation, not
+an exact-image or conformance pass. Paired timings use the same OpenGL capture,
+surfaceless EGL replayer and guarded completion interval on both backends.
+The receipt file identifies exact binaries and full external evidence.

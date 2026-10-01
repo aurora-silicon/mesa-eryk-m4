@@ -165,6 +165,15 @@ agx_gallium_pack_native_texture(
           semantic->height > 16384)
          return false;
 
+      /* Like the Gen9 Vulkan path, buffer views keep their bounds in the
+       * software-owned second word. Never alias it with a hardware extension
+       * (mips, compression metadata or linear-array geometry). */
+      if (semantic->buffer_size_sw &&
+          (semantic->dimension != AGX_TEXTURE_DIMENSION_2D ||
+           semantic->layout != AGX_LAYOUT_LINEAR || extended ||
+           semantic->compressed || semantic->depth != 1))
+         return false;
+
       /* Every recovered nonlinear extended Gen9 descriptor carries a second
        * VA immediately after the selected image range.  Compression metadata
        * aliases that word, while an ordinary array/mip/cube uses the end VA. */
@@ -226,6 +235,8 @@ agx_gallium_pack_native_texture(
                                     : 0,
          .first_level = semantic->first_level,
          .last_level = semantic->last_level,
+         .buffer_size_sw = semantic->buffer_size_sw,
+         .buffer_offset_sw = semantic->buffer_offset_sw,
       };
 
       AGX_TEXTURE_GEN9_pack(out->opaque, &cfg);
