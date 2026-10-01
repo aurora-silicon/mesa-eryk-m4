@@ -4355,11 +4355,13 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
             cmd, VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT)),
          .prolog.statistics_uniform =
             agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
-            debug_get_bool_option("HK_M4_STATISTICS_UNIFORM", true),
+            (dev->recording_options_cached ? dev->native_statistics_uniform :
+             debug_get_bool_option("HK_M4_STATISTICS_UNIFORM", true)),
          .prolog.native_statistics =
             agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
             dyn->ms.rasterization_samples == 1 &&
-            debug_get_bool_option("HK_M4_NATIVE_STATISTICS", true),
+            (dev->recording_options_cached ? dev->native_statistics :
+             debug_get_bool_option("HK_M4_NATIVE_STATISTICS", true)),
 
          .prolog.cull_distance_size = hw_vs->info.cull_distance_array_size,
          .prolog.api_sample_mask = has_sample_mask ? api_sample_mask : 0xff,

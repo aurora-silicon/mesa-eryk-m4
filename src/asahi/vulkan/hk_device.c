@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "hk_device.h"
+#include "hk_descriptor_prefetch.h"
 
 #include "agx_bg_eot.h"
 #include "agx_helpers.h"
@@ -532,6 +533,15 @@ hk_CreateDevice(VkPhysicalDevice physicalDevice,
                          "Failed to get DRM device: %m");
       goto fail_fd;
    }
+
+   dev->recording_options_cached =
+      debug_get_bool_option("HK_CACHE_RECORDING_OPTIONS",
+                            dev->dev.chip == AGX_CHIP_G15S);
+   dev->ioto_templates = hk_ioto_templates_enabled(dev->dev.chip);
+   dev->native_statistics_uniform =
+      debug_get_bool_option("HK_M4_STATISTICS_UNIFORM", true);
+   dev->native_statistics =
+      debug_get_bool_option("HK_M4_NATIVE_STATISTICS", true);
 
    /* Cached shaders specialize the physical device's immutable VA geometry. */
    const struct agx_device *physical = &hk_device_physical(dev)->dev;

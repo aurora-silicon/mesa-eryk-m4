@@ -1955,7 +1955,8 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       }
 
       struct agx3_ioto_uniform_template *uniform_template = NULL;
-      if (hk_ioto_templates_enabled(dev->dev.chip) &&
+      if ((dev->recording_options_cached ? dev->ioto_templates :
+           hk_ioto_templates_enabled(dev->dev.chip)) &&
           (s->info.stage == MESA_SHADER_VERTEX || s->info.stage == MESA_SHADER_FRAGMENT)) {
          const unsigned index = s->info.stage == MESA_SHADER_FRAGMENT;
          if (!cmd->uniform_templates[index])

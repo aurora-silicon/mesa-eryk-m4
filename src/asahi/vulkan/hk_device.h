@@ -115,6 +115,13 @@ struct hk_device {
 
    uint32_t perftest;
 
+   /* Recording policy is immutable for this device. Do not rescan the
+    * process environment for each draw's resource program/statistics state. */
+   bool recording_options_cached;
+   bool ioto_templates;
+   bool native_statistics_uniform;
+   bool native_statistics;
+
    struct {
       struct u_rwlock lock;
       struct util_dynarray list;
