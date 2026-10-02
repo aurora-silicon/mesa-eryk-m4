@@ -163,6 +163,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
       flags |= (uint64_t)debug_get_bool_option("HK_M4_VERSION_SAMPLES", true) << 36;
       flags |= (uint64_t)debug_get_bool_option("HK_M4_NATIVE_PREAMBLE", false) << 37;
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_FLOAT_PREAMBLE", false) << 39;
+      flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_RECIPROCAL_PREAMBLE", false) << 47;
    }
    if (agx_chip_uses_hal200_ioto(pdev->dev.chip)) {
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_PRESERVE_BRANCHES", false) << 38;
@@ -184,6 +185,8 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
     * Bits 2 and 5 only control logging/validation; flags 46 and 49 hold
     * vertex uniform reuse and bounded late texture-loop policy.
     * Logging/validation options do not change code and need no separate cache.
+    * Compiler bit 3 only controls verbose logging; flag 47 selects native
+    * reciprocal motion.
     */
    static_assert(AGX_DBG_REMAT < BITFIELD_BIT(17));
    static_assert(((AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |

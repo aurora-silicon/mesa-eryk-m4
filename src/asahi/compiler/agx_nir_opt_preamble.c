@@ -60,6 +60,7 @@ def_size_32(nir_def *def, unsigned *size, unsigned *align,
 
 struct native_preamble_options {
    bool float_alu;
+   bool reciprocal_alu;
    bool constant_loads;
 };
 
@@ -87,6 +88,17 @@ native_preamble_instr(const nir_instr *instr, const void *data)
             case nir_op_fneg:
             case nir_op_fabs:
                return true;
+            case nir_op_frcp:
+            case nir_op_i2f32:
+            case nir_op_u2f32:
+            case nir_op_fmin:
+            case nir_op_fmax:
+               /* Preserve the original operation and precision. NIR must
+                * independently prove the operand uniform; narrow exports
+                * remain outside the native constant-program ABI. Admit the
+                * full-width conversion/minmax dependencies too: reciprocal
+                * texture sizes otherwise remain blocked in the main shader. */
+               return options->reciprocal_alu;
             default:
                break;
             }
@@ -554,6 +566,7 @@ agx_nir_opt_preamble(nir_shader *nir, unsigned *sizes, bool uniform_32bit_only)
    nir_opt_preamble_options options = preamble_options;
    const struct native_preamble_options native = {
       .float_alu = debug_get_bool_option("AGX_NATIVE_FLOAT_PREAMBLE", false),
+      .reciprocal_alu = debug_get_bool_option("AGX_NATIVE_RECIPROCAL_PREAMBLE", false),
       .constant_loads = debug_get_bool_option("AGX_NATIVE_MEMORY_PREAMBLE", false),
    };
    if (uniform_32bit_only) {

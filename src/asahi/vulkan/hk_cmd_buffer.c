@@ -59,6 +59,8 @@
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_program_profile, "HK_M4_PROGRAM_PROFILE", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_shader_profile, "HK_M4_SHADER_PROFILE", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m4_native_preamble, "HK_M4_NATIVE_PREAMBLE", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_multidraw_preamble_program,
+                          "HK_M3_MULTIDRAW_PREAMBLE_PROGRAM", false)
 
 static uint64_t
 hk_g17p_vdm_lookup(struct hk_cmd_buffer *cmd, uint64_t primary, bool bind)
@@ -1873,14 +1875,19 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
    struct hk_multidraw_resource_cache *cache = cmd->multidraw_resources;
    struct hk_graphics_state *gfx = &cmd->state.gfx;
    /* Reuse only inside one API call and one native graphics CS. No shader
-    * memory writes, GS/tessellation, statistics or preamble execution: those
-    * paths may need additional per-draw resources or visibility handling.
-    * Buffer contents remain GPU reads; only the immutable resource program
-    * and its fragment-equivalent root are shared. */
+    * memory writes, GS/tessellation or statistics: those paths may need
+    * additional per-draw resources or visibility handling. The opt-in native
+    * preamble case has no scratch and shares only immutable executable bytes,
+    * never precomputed results. Every draw still executes the loader and
+    * preamble, reading its live buffers. Their equivalent retained fragment
+    * root, shader and linked program must match exactly as below. */
+   const bool preamble_reusable = !s->b.info.has_preamble ||
+      (debug_get_option_hk_m3_multidraw_preamble_program() &&
+       !s->b.info.scratch_size && !s->b.info.preamble_scratch_size);
    const bool reusable = cache && cache->fragment_enabled && !cmd->in_meta &&
       dev->dev.chip == AGX_CHIP_G15S &&
       s->info.stage == MESA_SHADER_FRAGMENT && !s->info.writes_memory &&
-      !s->b.info.has_preamble && gfx->shaders[MESA_SHADER_VERTEX] &&
+      preamble_reusable && gfx->shaders[MESA_SHADER_VERTEX] &&
       !gfx->shaders[MESA_SHADER_GEOMETRY] &&
       !gfx->shaders[MESA_SHADER_TESS_CTRL] &&
       !gfx->shaders[MESA_SHADER_TESS_EVAL] &&

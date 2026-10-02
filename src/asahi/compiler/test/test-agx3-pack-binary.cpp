@@ -16,6 +16,8 @@ extern "C" {
 #include "compiler/nir/nir_builder.h"
 
 #include <algorithm>
+#include <cstdlib>
+#include <string>
 #include <vector>
 #include <gtest/gtest.h>
 
@@ -7389,4 +7391,111 @@ TEST_F(AGX3PackBinary, NativePreambleExportsBooleanAsWord)
 TEST_F(AGX3PackBinary, NativePreambleExportsFloatComparisonAsWord)
 {
    test_native_boolean_preamble(true);
+}
+
+class ScopedPreambleOption {
+   const char *name;
+   bool present;
+   std::string value;
+public:
+   ScopedPreambleOption(const char *name, bool enabled) : name(name)
+   {
+      const char *old = getenv(name);
+      present = old != nullptr;
+      if (old)
+         value = old;
+      setenv(name, enabled ? "true" : "false", 1);
+   }
+   ~ScopedPreambleOption()
+   {
+      if (present)
+         setenv(name, value.c_str(), 1);
+      else
+         unsetenv(name);
+   }
+};
+
+static void
+test_native_reciprocal_preamble(bool enabled, bool float_alu,
+                                unsigned bit_size, bool uniform)
+{
+   ScopedPreambleOption reciprocal("AGX_NATIVE_RECIPROCAL_PREAMBLE", enabled);
+   ScopedPreambleOption arithmetic("AGX_NATIVE_FLOAT_PREAMBLE", float_alu);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL,
+                                                 "native-preamble-reciprocal");
+   nir_def *input = uniform ? nir_load_preamble(&b, 1, bit_size, .base = 0)
+                           : nir_u2f32(&b, nir_load_local_invocation_index(&b));
+   nir_def *value = nir_frcp(&b, input);
+   nir_instr_as_alu(nir_def_instr(value))->fp_math_ctrl = nir_fp_exact;
+   nir_store_global(&b, value, nir_imm_int64(&b, 0x100000), .align_mul = 4);
+   unsigned sizes[] = {8, 0, 0};
+   agx_nir_opt_preamble(b.shader, sizes, true);
+   nir_validate_shader(b.shader, "native reciprocal motion");
+   unsigned main_rcp = 0, preamble_rcp = 0;
+   nir_function_impl *preamble = nir_shader_get_preamble(b.shader);
+   nir_foreach_function_impl(impl, b.shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_alu ||
+                nir_instr_as_alu(instr)->op != nir_op_frcp)
+               continue;
+            EXPECT_EQ(nir_instr_as_alu(instr)->fp_math_ctrl, nir_fp_exact);
+            EXPECT_EQ(nir_instr_as_alu(instr)->def.bit_size, bit_size);
+            if (impl == preamble)
+               ++preamble_rcp;
+            else
+               ++main_rcp;
+         }
+      }
+   }
+   const bool moved = enabled && float_alu && uniform && bit_size == 32;
+   EXPECT_EQ(main_rcp, moved ? 0u : 1u);
+   EXPECT_EQ(preamble_rcp, moved ? 1u : 0u);
+   ralloc_free(b.shader);
+}
+
+TEST_F(AGX3PackBinary, NativeReciprocalPreambleRequiresUniformFullWordAndOptIn)
+{
+   test_native_reciprocal_preamble(false, true, 32, true);
+   test_native_reciprocal_preamble(true, true, 32, true);
+   test_native_reciprocal_preamble(true, false, 32, true);
+   test_native_reciprocal_preamble(true, true, 16, true);
+   test_native_reciprocal_preamble(true, true, 32, false);
+}
+
+TEST_F(AGX3PackBinary, NativeReciprocalPreambleMovesUniformTextureSizeDependencies)
+{
+   ScopedPreambleOption reciprocal("AGX_NATIVE_RECIPROCAL_PREAMBLE", true);
+   ScopedPreambleOption arithmetic("AGX_NATIVE_FLOAT_PREAMBLE", true);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL,
+                                                 "native-texture-size-reciprocal");
+   nir_def *a = nir_i2f32(&b, nir_load_preamble(&b, 1, 32, .base = 0));
+   nir_def *c = nir_u2f32(&b, nir_load_preamble(&b, 1, 32, .base = 2));
+   nir_def *value = nir_frcp(&b, nir_fmax(&b, nir_fmin(&b, a, c),
+                                       nir_imm_float(&b, 1.0)));
+   nir_store_global(&b, value, nir_imm_int64(&b, 0x100000), .align_mul = 4);
+   unsigned sizes[] = {8, 0, 0};
+   agx_nir_opt_preamble(b.shader, sizes, true);
+   nir_validate_shader(b.shader, "uniform reciprocal dependencies");
+   unsigned moved = 0, main = 0;
+   nir_function_impl *preamble = nir_shader_get_preamble(b.shader);
+   nir_foreach_function_impl(impl, b.shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_alu)
+               continue;
+            nir_op op = nir_instr_as_alu(instr)->op;
+            if (op != nir_op_i2f32 && op != nir_op_u2f32 &&
+                op != nir_op_fmin && op != nir_op_fmax && op != nir_op_frcp)
+               continue;
+            if (impl == preamble)
+               ++moved;
+            else
+               ++main;
+         }
+      }
+   }
+   EXPECT_EQ(main, 0u);
+   EXPECT_EQ(moved, 5u);
+   ralloc_free(b.shader);
 }
