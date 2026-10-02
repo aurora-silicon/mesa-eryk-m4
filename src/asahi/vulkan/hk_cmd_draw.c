@@ -88,6 +88,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_multidraw_ubo_proof, "HK_M3_MULTIDRAW_UBO_PROOF
 
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_bind_state_reuse, "HK_M3_BIND_STATE_REUSE", false)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_bind_state_elide, "HK_M3_BIND_STATE_ELIDE", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_raster_state_reuse, "HK_M3_RASTER_STATE_REUSE", false)
 
 #define IS_DIRTY(bit) BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_##bit)
 
@@ -3505,10 +3506,19 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                                          &w_cull2_record))
       return false;
 
-   void *depth_bias_record = util_dynarray_grow_bytes(
-      &cs->depth_bias, 1, sizeof(raster_state.depth_bias));
-   memcpy(depth_bias_record, raster_state.depth_bias,
-          sizeof(raster_state.depth_bias));
+   const bool raster_reuse = dev->dev.chip == AGX_CHIP_G15S &&
+                             debug_get_option_hk_m3_raster_state_reuse();
+   if (raster_reuse && hk_g17p_raster_tail_matches(
+                         cs->depth_bias.data, cs->depth_bias.size,
+                         raster_state.depth_bias, sizeof(raster_state.depth_bias),
+                         sizeof(raster_state.depth_bias))) {
+      cs->native_depth_bias_reuses++;
+   } else {
+      void *depth_bias_record = util_dynarray_grow_bytes(
+         &cs->depth_bias, 1, sizeof(raster_state.depth_bias));
+      memcpy(depth_bias_record, raster_state.depth_bias,
+             sizeof(raster_state.depth_bias));
+   }
 
    /* Preserve the physical +0x00..+0x73 layout from Metal.  The complete
     * 28-byte FS record occupies +0x00..+0x1b; in particular, +0x14 is the
@@ -3529,8 +3539,8 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    /* The viewport index selects matching transform, region and scissor
     * entries. Retain all of them in draw-owned storage, including when
     * dynamic state replaces a pipeline's static viewport count. */
-   uint8_t *scissors = util_dynarray_grow_bytes(
-      &cs->scissor, viewport_count, sizeof(raster_state.scissor));
+   uint8_t scissors[AGX_PPP_VIEWPORT_PAYLOAD_MAX_VIEWPORTS *
+                    AGX_PPP_HAL200_SCISSOR_RECORD_LENGTH];
    for (unsigned i = 0; i < viewport_count; ++i) {
       const VkViewport *v = &dyn->vp.viewports[i];
       unsigned x0 = CLAMP(MIN2(v->x, v->x + v->width), 0, render->cr.width);
@@ -3573,6 +3583,16 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          .translate_z = fui(v->minDepth),
          .scale_z = fui(v->maxDepth - v->minDepth),
       };
+   }
+
+   const size_t scissor_size = viewport_count * sizeof(raster_state.scissor);
+   if (raster_reuse && hk_g17p_raster_tail_matches(
+                         cs->scissor.data, cs->scissor.size, scissors,
+                         scissor_size, sizeof(raster_state.scissor))) {
+      cs->native_scissor_reuses++;
+   } else {
+      void *records = util_dynarray_grow_bytes(&cs->scissor, 1, scissor_size);
+      memcpy(records, scissors, scissor_size);
    }
 
    struct agx_ppp_viewport_payload_core viewport_record;

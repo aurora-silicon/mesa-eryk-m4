@@ -19,6 +19,18 @@ struct hk_g17p_bind_state_upload {
    struct agx_vdm_hal200_bind_tail tail;
 };
 
+/* Select a complete immutable tail of the existing raster table. The next
+ * draw can keep the existing indices only when every selected record matches.
+ * Compare encoded bits, including depth bounds and NaN/signed-zero values. */
+static inline bool
+hk_g17p_raster_tail_matches(const void *table, size_t table_size,
+                            const void *records, size_t size, size_t stride)
+{
+   return table && records && stride && size && size <= table_size &&
+      !(size % stride) && !(table_size % stride) &&
+      !memcmp((const uint8_t *)table + table_size - size, records, size);
+}
+
 /* hk_pool_vdm_alloc returns an offset from AGX_G17P_VDM_USER_BASE
  * (0x1000000000), never a USC address or ordinary main-heap VA. Keep that
  * established command-BO aperture and reject overflow before narrowing any

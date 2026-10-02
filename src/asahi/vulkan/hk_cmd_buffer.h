@@ -535,6 +535,7 @@ struct hk_cs {
    size_t native_bind_size;
    struct hk_g17p_bind_state_upload native_bind_upload;
    unsigned native_bind_uploads, native_bind_reuses, native_bind_elisions;
+   unsigned native_scissor_reuses, native_depth_bias_reuses;
 
    struct util_dynarray scissor, depth_bias;
    uint64_t uploaded_scissor, uploaded_zbias;

@@ -59,10 +59,52 @@ test_immutable_match(void)
    assert(!memcmp(saved, storage, sizeof(storage)));
 }
 
+static void
+test_raster_tail(void)
+{
+   /* A single viewport followed by B/C. Reusing the complete B/C tail, or
+    * C alone after a count change, must resolve the actual selector to the
+    * correct retained records without changing any previous draw's bytes. */
+   uint8_t scissors[48], bias[24], saved[48], selector[8];
+   memset(scissors, 0x11, 16);
+   memset(scissors + 16, 0x22, 16);
+   memset(scissors + 32, 0x33, 16);
+   memset(bias, 0x44, 12);
+   memset(bias + 12, 0x55, 12);
+   memcpy(saved, scissors, sizeof(saved));
+   assert(hk_g17p_raster_tail_matches(scissors, 48, scissors + 16, 32, 16));
+   assert(hk_g17p_ppp_indices_pack(48 - 16, 24, selector));
+   assert(selector[4] == 1 && selector[6] == 1);
+   assert(scissors[16 * selector[4]] == 0x22);
+   assert(scissors[16 * (selector[4] + 1)] == 0x33);
+   assert(bias[12 * selector[6]] == 0x55);
+
+   assert(hk_g17p_raster_tail_matches(scissors, 48, scissors + 32, 16, 16));
+   assert(hk_g17p_ppp_indices_pack(48, 24, selector));
+   assert(selector[4] == 2 && scissors[16 * selector[4]] == 0x33);
+   assert(!hk_g17p_raster_tail_matches(scissors, 48, scissors, 32, 16));
+   assert(!hk_g17p_raster_tail_matches(scissors, 16, scissors + 16, 32, 16));
+   assert(!hk_g17p_raster_tail_matches(NULL, 0, scissors, 16, 16));
+   assert(!hk_g17p_raster_tail_matches(scissors, 48, scissors, 0, 16));
+   assert(!hk_g17p_raster_tail_matches(scissors, 47, scissors + 32, 16, 16));
+   assert(!hk_g17p_raster_tail_matches(scissors, 48, scissors + 32, 15, 16));
+   assert(!memcmp(scissors, saved, sizeof(saved)));
+
+   uint8_t candidate[12];
+   memcpy(candidate, bias + 12, sizeof(candidate));
+   assert(hk_g17p_raster_tail_matches(bias, 24, candidate, 12, 12));
+   for (unsigned i = 0; i < sizeof(candidate); ++i) {
+      candidate[i] ^= 1;
+      assert(!hk_g17p_raster_tail_matches(bias, 24, candidate, 12, 12));
+      candidate[i] ^= 1;
+   }
+}
+
 int main(void)
 {
    test_bind0();
    test_immutable_match();
+   test_raster_tail();
    /* Distinct allocations within CB A, followed by an independently recorded
     * CB B. Resolve the emitted real HAL200 fields against retained storage;
     * changing inputs or recording B must never change either earlier record.

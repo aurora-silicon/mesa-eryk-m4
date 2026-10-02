@@ -1377,7 +1377,7 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
             fprintf(stderr, "HK_ARCH_CS queue=%u timeline=%" PRIu64
                     " cb=%u cs=%" PRIx64 " engine=%s draws=%u flushes=%u"
                     " width=%u height=%u sample_bytes=%u samples=%u"
-                    " empty_tiles=%u ts_start=%u ts_end=%u queries=%u fragment_dependency=%u writes_memory=%u bind_uploads=%u bind_reuses=%u bind_elisions=%u\n",
+                    " empty_tiles=%u ts_start=%u ts_end=%u queries=%u fragment_dependency=%u writes_memory=%u bind_uploads=%u bind_reuses=%u bind_elisions=%u scissor_reuses=%u depth_bias_reuses=%u\n",
                     queue->drm.id, queue->drm.timeline_value, i, cs->addr,
                     cs->type == HK_CS_CDM ? "compute" : "render",
                     cs->stats.cmds, cs->stats.flushes,
@@ -1390,7 +1390,8 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
                     cs->stats.query_copies,
                     cs->fragment_only_dependency, cs->writes_memory,
                     cs->native_bind_uploads, cs->native_bind_reuses,
-                    cs->native_bind_elisions);
+                    cs->native_bind_elisions, cs->native_scissor_reuses,
+                    cs->native_depth_bias_reuses);
          if (debug_get_bool_option("HK_COMMAND_PROFILE", false))
             fprintf(stderr,
                     "HK_COMMAND_PROFILE ns=%" PRId64 " cb=%u engine=%s calls=%u commands=%u merged=%u timestamp_only=%u reset=%u dependency=%u ts_start=%u ts_end=%u fills=%u timestamp_copies=%u query_copies=%u precomp_calls=%u precomp_id=%u retirement_copies=%u\n",
