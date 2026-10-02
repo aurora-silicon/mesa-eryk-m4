@@ -19,8 +19,8 @@ its original catalog hash and indices, including all 23 geometry emit cases.
 A guarded 23.10-second real native Vulkan Minecraft run shows maximized
 3024x1837 unpaused F3 forest gameplay on the private candidate. Diagnostics
 confirm 663,287 scissor and 663,018 depth-bias reuses during that application run.
-Those are reuse events, not frames or saved GPU time. The copied demo world and
-owned game process were cleaned up without modifying the user's world/options.
+Those are reuse events, not frames or saved GPU time. The run used a copied demo world and stopped its owned game process without
+modifying the user's world/options.
 
 Fifteen same-boot alternating 30-frame replay timings give 162.04 / 162.37 FPS
 by separate medians, paired mean +0.34% and paired median +0.12%. This is not a
@@ -33,3 +33,17 @@ Vulkan SHA256: `51e170c383d7cb8000d7b44312fec42da0b799f68fe14ace380055a278f34bec
 Kernel SHA256: `f542a8e7716c0f692b0b0ca9853bdfbc481b0200b775175b65e3efce8a2d5df0`.
 Every experiment retained the mandatory 60-second watchdog, 0.5-second thermal
 telemetry and completion-policy restoration receipts. This is focused testing.
+
+A final unscored counter diagnostic, selected by the actual completed frame
+interval, finds 1,369 scissor and 1,369 depth-bias reuses in each of the 30
+1370-draw main passes. Their tables shrink from 38,360 bytes to 28 bytes per
+pass, saving 38,332 bytes/frame. Across other passes the counters establish
+at least 40,776.53 bytes/frame saved (viewport arrays can save more). This is
+metadata storage/upload reduction, not a claimed frame-time saving. The reusable
+`tools/minecraft/raster-table-cost.py` rejects an incomplete interval or guard
+and excludes the initial warmup pass; evidence is in `raster-state-reuse/table-cost`.
+
+Normal accelerated Plasma restoration passes the guarded probe with a fresh
+Konsole window, mapped normal Vulkan/Gallium libraries and a completed desktop
+screenshot. The 60-second watchdog is disarmed cleanly; `plasmalogin.service`
+is enabled and active. Evidence is in `raster-state-reuse/desktop`.
