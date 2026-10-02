@@ -794,3 +794,43 @@ TEST_F(Optimizer, NativeTextureLoadMovesAcrossIndependentMath)
       agx_fadd_to(b, wx, wy, wz);
    }, agx_schedule_native_loads);
 }
+
+TEST_F(Optimizer, NativeImplicitSampleMovesAcrossIndependentMath)
+{
+   agx_index dst = agx_register(16, AGX_SIZE_32);
+   dst.channels_m1 = 3;
+   agx_index coord = agx_register(24, AGX_SIZE_32);
+   coord.channels_m1 = 1;
+   INSTRUCTION_CASE({
+      agx_fadd_to(b, wx, wy, wz);
+      agx_texture_sample_to(b, dst, coord, agx_zero(), agx_zero(),
+         agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+         AGX_LOD_MODE_AUTO_LOD, 15, false, false, false, AGX_GATHER_NONE, false);
+   }, {
+      agx_texture_sample_to(b, dst, coord, agx_zero(), agx_zero(),
+         agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+         AGX_LOD_MODE_AUTO_LOD, 15, false, false, false, AGX_GATHER_NONE, false);
+      agx_fadd_to(b, wx, wy, wz);
+   }, agx_schedule_native_loads);
+}
+
+TEST_F(Optimizer, NativeSamplePreservesCoverageOrder)
+{
+   agx_index dst = agx_register(16, AGX_SIZE_32);
+   dst.channels_m1 = 3;
+   agx_index coord = agx_register(24, AGX_SIZE_32);
+   coord.channels_m1 = 1;
+   INSTRUCTION_CASE({
+      agx_zs_emit_agx3(b, wx, wy, 0);
+      agx_fadd_to(b, wx, wy, wz);
+      agx_texture_sample_to(b, dst, coord, agx_zero(), agx_zero(),
+         agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+         AGX_LOD_MODE_AUTO_LOD, 15, false, false, false, AGX_GATHER_NONE, false);
+   }, {
+      agx_zs_emit_agx3(b, wx, wy, 0);
+      agx_texture_sample_to(b, dst, coord, agx_zero(), agx_zero(),
+         agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+         AGX_LOD_MODE_AUTO_LOD, 15, false, false, false, AGX_GATHER_NONE, false);
+      agx_fadd_to(b, wx, wy, wz);
+   }, agx_schedule_native_loads);
+}
