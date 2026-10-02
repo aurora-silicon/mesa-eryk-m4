@@ -274,6 +274,7 @@ enum hk_meta_object_key_type {
    HK_META_OBJECT_KEY_TIMESTAMP_COPY,
    HK_META_OBJECT_KEY_QUERY_COPY,
    HK_META_OBJECT_KEY_TIMESTAMP_DISPATCH,
+   HK_META_OBJECT_KEY_DEPTH_BUFFER_UPLOAD,
 };
 
 struct hk_native_meta_key {
@@ -2623,6 +2624,173 @@ hk_m4_small_raw_upload(struct hk_device *dev, const struct hk_image *image,
    return texels != 0;
 }
 
+struct hk_depth_upload_push {
+   uint64_t address;
+   uint32_t row_texels;
+   uint32_t x, y, width, height;
+};
+
+/* A compressed depth plane cannot be reinterpreted as R32_UINT, nor written
+ * by the raw block-copy kernel. Write gl_FragDepth through its native ZLS
+ * attachment so the hardware maintains compression metadata. */
+static bool
+hk_native_upload_compressed_depth(struct hk_cmd_buffer *cmd,
+                                  struct hk_image *image,
+                                  const VkCopyBufferToImageInfo2 *info)
+{
+   if (image->vk.format != VK_FORMAT_D32_SFLOAT || image->plane_count != 1 ||
+       image->vk.image_type != VK_IMAGE_TYPE_2D || image->vk.mip_levels != 1 ||
+       image->vk.array_layers != 1 || image->vk.samples != VK_SAMPLE_COUNT_1_BIT)
+      return false;
+
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   const enum hk_meta_object_key_type key = HK_META_OBJECT_KEY_DEPTH_BUFFER_UPLOAD;
+   const VkPushConstantRange range = {
+      .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      .size = sizeof(struct hk_depth_upload_push),
+   };
+   VkPipelineLayout layout;
+   VkResult result = vk_meta_get_pipeline_layout(
+      &dev->vk, &dev->meta, NULL, &range, &key, sizeof(key), &layout);
+   if (result != VK_SUCCESS)
+      goto error;
+
+   VkPipeline pipeline = vk_meta_lookup_pipeline(&dev->meta, &key, sizeof(key));
+   if (pipeline == VK_NULL_HANDLE) {
+      nir_builder b = nir_builder_init_simple_shader(
+         MESA_SHADER_FRAGMENT, NULL, "hk-meta-depth-buffer-upload");
+#define depth_push(field, bits) \
+   nir_load_push_constant(&b, 1, bits, nir_imm_int(&b, \
+      offsetof(struct hk_depth_upload_push, field)))
+      nir_def *xy = nir_f2u32(&b, nir_load_frag_coord(&b));
+      nir_def *x = nir_isub(&b, nir_channel(&b, xy, 0), depth_push(x, 32));
+      nir_def *y = nir_isub(&b, nir_channel(&b, xy, 1), depth_push(y, 32));
+      /* Helpers outside a partial rectangle must still use a valid address. */
+      nir_def *valid = nir_iand(&b, nir_ult(&b, x, depth_push(width, 32)),
+                                    nir_ult(&b, y, depth_push(height, 32)));
+      x = nir_bcsel(&b, valid, x, nir_imm_int(&b, 0));
+      y = nir_bcsel(&b, valid, y, nir_imm_int(&b, 0));
+      nir_def *index = nir_iadd(&b, nir_umul_2x32_64(&b, y, depth_push(row_texels, 32)),
+                                   nir_u2u64(&b, x));
+      nir_def *address = nir_iadd(&b, depth_push(address, 64),
+                                    nir_ishl_imm(&b, index, 2));
+      nir_def *value = nir_load_global(&b, 1, 32, address, .align_mul = 4);
+      nir_variable *out = nir_variable_create(b.shader, nir_var_shader_out,
+                                              glsl_float_type(), "gl_FragDepth");
+      out->data.location = FRAG_RESULT_DEPTH;
+      nir_store_var(&b, out, value, 1);
+#undef depth_push
+      const VkPipelineShaderStageNirCreateInfoMESA nir_info = {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_NIR_CREATE_INFO_MESA,
+         .nir = b.shader,
+      };
+      const VkPipelineShaderStageCreateInfo fs_info = {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+         .pNext = &nir_info,
+         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+         .pName = "main",
+      };
+      const VkPipelineDepthStencilStateCreateInfo ds_info = {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+         .depthTestEnable = VK_TRUE,
+         .depthWriteEnable = VK_TRUE,
+         .depthCompareOp = VK_COMPARE_OP_ALWAYS,
+      };
+      const VkGraphicsPipelineCreateInfo pipeline_info = {
+         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+         .stageCount = 1,
+         .pStages = &fs_info,
+         .pDepthStencilState = &ds_info,
+         .layout = layout,
+      };
+      const struct vk_meta_rendering_info render = {
+         .samples = VK_SAMPLE_COUNT_1_BIT,
+         .depth_attachment_format = VK_FORMAT_D32_SFLOAT,
+      };
+      result = vk_meta_create_graphics_pipeline(&dev->vk, &dev->meta,
+         &pipeline_info, &render, &key, sizeof(key), &pipeline);
+      ralloc_free(b.shader);
+      if (result != VK_SUCCESS)
+         goto error;
+   }
+
+   const VkImageViewUsageCreateInfo usage = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+      .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+   };
+   const VkImageViewCreateInfo view_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .pNext = &usage,
+      .flags = VK_IMAGE_VIEW_CREATE_DRIVER_INTERNAL_BIT_MESA,
+      .image = info->dstImage,
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = VK_FORMAT_D32_SFLOAT,
+      .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
+   };
+   VkImageView view;
+   result = vk_meta_create_image_view(&cmd->vk, &dev->meta, &view_info, &view);
+   if (result != VK_SUCCESS)
+      goto error;
+
+   const struct vk_device_dispatch_table *disp = &dev->vk.dispatch_table;
+   VkCommandBuffer cb = vk_command_buffer_to_handle(&cmd->vk);
+   VK_FROM_HANDLE(hk_buffer, buffer, info->srcBuffer);
+   for (unsigned i = 0; i < info->regionCount; ++i) {
+      const VkBufferImageCopy2 *r = &info->pRegions[i];
+      uint32_t width = r->imageExtent.width, height = r->imageExtent.height;
+      uint32_t row = r->bufferRowLength ? r->bufferRowLength : width;
+      uint64_t size = ((uint64_t)(height ? height - 1 : 0) * row + width) * 4;
+      if (r->imageSubresource.aspectMask != VK_IMAGE_ASPECT_DEPTH_BIT ||
+          r->imageSubresource.mipLevel || r->imageSubresource.baseArrayLayer ||
+          vk_image_subresource_layer_count(&image->vk, &r->imageSubresource) != 1 ||
+          r->imageOffset.x < 0 || r->imageOffset.y < 0 || r->imageOffset.z ||
+          r->imageExtent.depth != 1 || !width || !height || row < width ||
+          (r->bufferImageHeight && r->bufferImageHeight < height) ||
+          (uint32_t)r->imageOffset.x >= image->vk.extent.width ||
+          width > image->vk.extent.width - r->imageOffset.x ||
+          (uint32_t)r->imageOffset.y >= image->vk.extent.height ||
+          height > image->vk.extent.height - r->imageOffset.y ||
+          (r->bufferOffset & 3) || r->bufferOffset > buffer->vk.size ||
+          size > buffer->vk.size - r->bufferOffset)
+         return false;
+
+      const struct hk_depth_upload_push push = {
+         .address = hk_buffer_address_ro(buffer, r->bufferOffset),
+         .row_texels = row, .x = r->imageOffset.x, .y = r->imageOffset.y,
+         .width = width, .height = height,
+      };
+      const VkRenderingAttachmentInfo attachment = {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+         .imageView = view,
+         .imageLayout = info->dstImageLayout,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      };
+      const VkRenderingInfo rendering = {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+         .renderArea = {{r->imageOffset.x, r->imageOffset.y}, {width, height}},
+         .layerCount = 1, .pDepthAttachment = &attachment,
+      };
+      const struct vk_meta_rect rect = {
+         .x0 = r->imageOffset.x, .y0 = r->imageOffset.y,
+         .x1 = r->imageOffset.x + width, .y1 = r->imageOffset.y + height,
+      };
+      disp->CmdBeginRendering(cb, &rendering);
+      disp->CmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+      disp->CmdPushConstants(cb, layout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                             0, sizeof(push), &push);
+      dev->meta.cmd_draw_volume(&cmd->vk, &dev->meta, &rect, 1);
+      disp->CmdEndRendering(cb);
+      if (vk_command_buffer_has_error(&cmd->vk))
+         return true;
+   }
+   return true;
+
+error:
+   vk_command_buffer_set_error(&cmd->vk, result);
+   return true;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
                          const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
@@ -2654,6 +2822,16 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
 
    bool gfx = hk_copy_requires_gfx(dst_image);
    if (agx_native_graphics(&dev->dev)) {
+      if (dst_image->planes[0].layout.compressed &&
+          dst_image->vk.format == VK_FORMAT_D32_SFLOAT) {
+         struct hk_meta_save save;
+         hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_GRAPHICS);
+         if (!hk_native_upload_compressed_depth(cmd, dst_image,
+                                                pCopyBufferToImageInfo))
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_GRAPHICS);
+         return;
+      }
       if (hk_m4_small_raw_upload(dev, dst_image, pCopyBufferToImageInfo) ||
           hk_native_raw_copy_format(dst_image->vk.format) ||
           !hk_g17p_copy_buffer_to_image_supported(
@@ -2835,6 +3013,45 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
               src_image->planes[0].layout.compressed,
               dst_image->planes[0].layout.compressed,
               pCopyImageInfo->regionCount);
+   }
+   if (agx_native_graphics(&dev->dev) &&
+       (src_image->planes[0].layout.compressed ||
+        dst_image->planes[0].layout.compressed) &&
+       src_image->vk.format == VK_FORMAT_D32_SFLOAT &&
+       dst_image->vk.format == VK_FORMAT_D32_SFLOAT &&
+       src_image->vk.image_type == VK_IMAGE_TYPE_2D &&
+       dst_image->vk.image_type == VK_IMAGE_TYPE_2D &&
+       src_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
+       dst_image->vk.samples == VK_SAMPLE_COUNT_1_BIT) {
+      /* Keep the native depth views and use an unscaled nearest fetch. The
+       * raw R32_UINT copy views cannot describe ZLS compression metadata. */
+      for (unsigned i = 0; i < pCopyImageInfo->regionCount; ++i) {
+         const VkImageCopy2 *r = &pCopyImageInfo->pRegions[i];
+         const VkImageBlit2 region = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+            .srcSubresource = r->srcSubresource,
+            .srcOffsets = {r->srcOffset,
+               {r->srcOffset.x + r->extent.width,
+                r->srcOffset.y + r->extent.height, r->srcOffset.z + 1}},
+            .dstSubresource = r->dstSubresource,
+            .dstOffsets = {r->dstOffset,
+               {r->dstOffset.x + r->extent.width,
+                r->dstOffset.y + r->extent.height, r->dstOffset.z + 1}},
+         };
+         const VkBlitImageInfo2 info = {
+            .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+            .srcImage = pCopyImageInfo->srcImage,
+            .srcImageLayout = pCopyImageInfo->srcImageLayout,
+            .dstImage = pCopyImageInfo->dstImage,
+            .dstImageLayout = pCopyImageInfo->dstImageLayout,
+            .regionCount = 1, .pRegions = &region,
+            .filter = VK_FILTER_NEAREST,
+         };
+         hk_CmdBlitImage2(commandBuffer, &info);
+         if (vk_command_buffer_has_error(&cmd->vk))
+            break;
+      }
+      return;
    }
    /* Sample through the native compressed view, then store to ordinary
     * storage. Consecutive slice copies can share one CDM instead of paying

@@ -317,6 +317,10 @@ hk_can_compress(const struct agx_device *dev, VkFormat format, unsigned plane,
                 VkImageCreateFlagBits flags, VkImageUsageFlagBits usage,
                 const void *pNext)
 {
+   const bool m3_depth_compression =
+      dev->chip == AGX_CHIP_G15S &&
+      debug_get_bool_option("HK_M3_COMPRESSED_DEPTH", false) && samples == 1 &&
+      format == VK_FORMAT_D32_SFLOAT;
    const struct vk_format_ycbcr_info *ycbcr_info =
       vk_format_get_ycbcr_info(format);
 
@@ -337,6 +341,7 @@ hk_can_compress(const struct agx_device *dev, VkFormat format, unsigned plane,
     * and metadata layout have been qualified. */
    if (hk_descriptor_generation_is_agx3(
           agx_chip_descriptor_generation(dev->chip)) &&
+       !m3_depth_compression &&
        !(agx_chip_uses_g15_g16_shader_abi(dev->chip) &&
          debug_get_bool_option("HK_M4_COMPRESSED_2D", false) && samples == 1 &&
          (format == VK_FORMAT_R8G8B8A8_UNORM ||
@@ -876,6 +881,12 @@ static bool
 hk_can_compress_create_info(struct hk_device *dev, unsigned plane,
                             const VkImageCreateInfo *info)
 {
+   /* The depth upload and native ZLS bindings are qualified for one level.
+    * The separate experimental color-mipmap switch must not broaden this. */
+   if (dev->dev.chip == AGX_CHIP_G15S &&
+       info->format == VK_FORMAT_D32_SFLOAT && info->mipLevels != 1)
+      return false;
+
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
        (info->imageType != VK_IMAGE_TYPE_2D ||
         (info->mipLevels != 1 &&
