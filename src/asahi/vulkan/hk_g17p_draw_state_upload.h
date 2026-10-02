@@ -82,6 +82,37 @@ hk_g17p_upload_bind_state(void *cpu, size_t capacity, uint64_t compact,
    return true;
 }
 
+/* Match every uploaded byte, including viewport count/transform and varying
+ * counts. Only immutable command-pool allocations may be reused; this helper
+ * never writes an allocation already referenced by a recorded draw. */
+static inline bool
+hk_g17p_bind_state_matches(const void *cpu, size_t size,
+                          const uint8_t *bind_group, const uint8_t *viewport,
+                          size_t viewport_size, uint32_t counts_32,
+                          uint32_t counts_16)
+{
+   if (!cpu || !bind_group || !viewport ||
+       viewport_size < AGX_PPP_VIEWPORT_PAYLOAD_MIN_LENGTH ||
+       viewport_size > AGX_PPP_VIEWPORT_PAYLOAD_MAX_LENGTH ||
+       (viewport_size - AGX_PPP_VIEWPORT_PAYLOAD_MIN_LENGTH) % 32 ||
+       size != HK_G17P_BIND_GROUP_BYTES + viewport_size +
+                  HK_G17P_VARYING_RECORD_BYTES ||
+       ((counts_32 | counts_16) & UINT32_C(0xff000000)))
+      return false;
+
+   const uint32_t words[5] = {UINT32_C(0x10040000), counts_32, counts_16, 0, 0};
+   uint8_t varying[HK_G17P_VARYING_RECORD_BYTES];
+   for (unsigned i = 0; i < 5; ++i)
+      for (unsigned b = 0; b < 4; ++b)
+         varying[4 * i + b] = words[i] >> (8 * b);
+
+   const uint8_t *stored = cpu;
+   return !memcmp(stored, bind_group, HK_G17P_BIND_GROUP_BYTES) &&
+          !memcmp(stored + HK_G17P_BIND_GROUP_BYTES, viewport, viewport_size) &&
+          !memcmp(stored + HK_G17P_BIND_GROUP_BYTES + viewport_size,
+                  varying, sizeof(varying));
+}
+
 static inline bool
 hk_g17p_upload_draw_indices(void *cpu, size_t capacity, uint64_t compact,
                             size_t scissor_bytes, size_t depth_bias_bytes,

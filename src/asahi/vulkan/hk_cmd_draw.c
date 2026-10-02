@@ -86,6 +86,9 @@ DEBUG_GET_ONCE_BOOL_OPTION(hk_batch_robust_index, "HK_BATCH_ROBUST_INDEX", true)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_multidraw_fs_program, "HK_M3_MULTIDRAW_FS_PROGRAM", true)
 DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_multidraw_ubo_proof, "HK_M3_MULTIDRAW_UBO_PROOF", true)
 
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_bind_state_reuse, "HK_M3_BIND_STATE_REUSE", false)
+DEBUG_GET_ONCE_BOOL_OPTION(hk_m3_bind_state_elide, "HK_M3_BIND_STATE_ELIDE", false)
+
 #define IS_DIRTY(bit) BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_##bit)
 
 #define IS_SHADER_DIRTY(bit)                                                   \
@@ -231,6 +234,9 @@ hk_cmd_buffer_begin_graphics(struct hk_cmd_buffer *cmd,
 void
 hk_cmd_invalidate_graphics_state(struct hk_cmd_buffer *cmd)
 {
+   if (cmd->current_cs.gfx)
+      cmd->current_cs.gfx->native_bind_size = 0;
+
    /* From the Vulkan 1.3.275 spec:
     *
     *    "...There is one exception to this rule - if the primary command
@@ -2857,6 +2863,9 @@ hk_emit_hal300_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 static void
 hk_flush_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
 {
+   /* A standalone PPP viewport update bypasses the complete bind record. */
+   cs->native_bind_size = 0;
+
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const bool hal300 =
       agx_chip_command_stream_generation(dev->dev.chip) ==
@@ -3576,16 +3585,37 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     * and its architectural low alias live until command-buffer reset. */
    const size_t state_size = HK_G17P_BIND_GROUP_BYTES + viewport_record.length +
                              HK_G17P_VARYING_RECORD_BYTES;
-   struct agx_ptr state = hk_pool_vdm_alloc(cmd, state_size, 64);
+   const bool reuse = dev->dev.chip == AGX_CHIP_G15S &&
+                      debug_get_option_hk_m3_bind_state_reuse();
+   bool bind_reused = false;
+   struct agx_ptr state = cs->native_bind_state;
    struct hk_g17p_bind_state_upload uploaded;
-   if (!state.cpu ||
-       !hk_g17p_upload_bind_state(state.cpu, state_size, state.gpu,
-                                  bind_group, viewport_record.bytes,
-                                  viewport_record.length,
-                                  gfx->linked_varyings.counts_32.opaque[0],
-                                  gfx->linked_varyings.counts_16.opaque[0],
-                                  &uploaded))
-      return false;
+   if (reuse && hk_g17p_bind_state_matches(
+                   state.cpu, cs->native_bind_size, bind_group,
+                   viewport_record.bytes, viewport_record.length,
+                   gfx->linked_varyings.counts_32.opaque[0],
+                   gfx->linked_varyings.counts_16.opaque[0])) {
+      uploaded = cs->native_bind_upload;
+      cs->native_bind_reuses++;
+      bind_reused = true;
+   } else {
+      state = hk_pool_vdm_alloc(cmd, state_size, 64);
+      if (!state.cpu ||
+          !hk_g17p_upload_bind_state(state.cpu, state_size, state.gpu,
+                                    bind_group, viewport_record.bytes,
+                                    viewport_record.length,
+                                    gfx->linked_varyings.counts_32.opaque[0],
+                                    gfx->linked_varyings.counts_16.opaque[0],
+                                    &uploaded))
+         return false;
+
+      cs->native_bind_uploads++;
+      if (reuse) {
+         cs->native_bind_state = state;
+         cs->native_bind_size = state_size;
+         cs->native_bind_upload = uploaded;
+      }
+   }
 
    if (hk_g17p_launch_trace_enabled()) {
       hk_g17p_trace_line("hal200-bind-group", state.gpu, state.cpu,
@@ -3597,8 +3627,17 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                          viewport_record.length);
    }
 
-   memcpy(*out, uploaded.tail.bytes, uploaded.tail.length);
-   *out += uploaded.tail.length;
+   if (bind_reused && debug_get_option_hk_m3_bind_state_elide()) {
+      /* These eight PPP payloads still match the active stream state. Keep
+       * the final header for the two-word selector: the following normal,
+       * robust or empty draw must close it with fresh scissor/depth indices. */
+      memcpy(*out, uploaded.tail.bytes + uploaded.tail.length - 4, 4);
+      *out += 4;
+      cs->native_bind_elisions++;
+   } else {
+      memcpy(*out, uploaded.tail.bytes, uploaded.tail.length);
+      *out += uploaded.tail.length;
+   }
    if (hk_g17p_launch_trace_enabled()) {
       const struct agx_vdm_hal200_bind_pair *pairs = uploaded.pairs;
       fprintf(stderr,

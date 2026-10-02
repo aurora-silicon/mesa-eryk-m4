@@ -29,9 +29,40 @@ test_bind0(void)
       assert(actual[i] == 0xa5);
 }
 
+static void
+test_immutable_match(void)
+{
+   uint8_t group[128] = {0}, viewport[72] = {0}, storage[220], saved[220];
+   struct hk_g17p_bind_state_upload uploaded;
+   assert(hk_g17p_upload_bind_state(storage, sizeof(storage), 0x800000,
+      group, viewport, sizeof(viewport), 2, 0x10000, &uploaded));
+   memcpy(saved, storage, sizeof(saved));
+   assert(hk_g17p_bind_state_matches(storage, sizeof(storage), group, viewport,
+      sizeof(viewport), 2, 0x10000));
+   /* Each byte participates, even payload padding and auxiliary words. */
+   for (unsigned i = 0; i < sizeof(storage); ++i) {
+      storage[i] ^= 1;
+      assert(!hk_g17p_bind_state_matches(storage, sizeof(storage), group,
+         viewport, sizeof(viewport), 2, 0x10000));
+      storage[i] ^= 1;
+   }
+   assert(!hk_g17p_bind_state_matches(storage, sizeof(storage), group,
+      viewport, 40, 2, 0x10000));
+   assert(!hk_g17p_bind_state_matches(storage, sizeof(storage) - 1, group,
+      viewport, sizeof(viewport), 2, 0x10000));
+   assert(!hk_g17p_bind_state_matches(storage, sizeof(storage), group,
+      viewport, sizeof(viewport), 3, 0x10000));
+   assert(!hk_g17p_bind_state_matches(storage, sizeof(storage), group,
+      viewport, sizeof(viewport), 2, 0x20000));
+   assert(!hk_g17p_bind_state_matches(NULL, 0, group, viewport,
+      sizeof(viewport), 2, 0x10000));
+   assert(!memcmp(saved, storage, sizeof(storage)));
+}
+
 int main(void)
 {
    test_bind0();
+   test_immutable_match();
    /* Distinct allocations within CB A, followed by an independently recorded
     * CB B. Resolve the emitted real HAL200 fields against retained storage;
     * changing inputs or recording B must never change either earlier record.

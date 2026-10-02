@@ -27,6 +27,7 @@
 #include "hk_cs_root_size.h"
 #include "hk_descriptor_set.h"
 #include "hk_drm_render_core.h"
+#include "hk_g17p_draw_state_upload.h"
 
 #include "asahi/lib/agx_nir_lower_vbo.h"
 #include "util/u_dynarray.h"
@@ -527,6 +528,13 @@ struct hk_cs {
 
    /* Remaining state is for graphics only, ignored for compute */
    struct agx_tilebuffer_layout tib;
+
+   /* One immutable bind record owned by this command pool. Never reuse an
+    * allocation across reset, and never overwrite an earlier draw's bytes. */
+   struct agx_ptr native_bind_state;
+   size_t native_bind_size;
+   struct hk_g17p_bind_state_upload native_bind_upload;
+   unsigned native_bind_uploads, native_bind_reuses, native_bind_elisions;
 
    struct util_dynarray scissor, depth_bias;
    uint64_t uploaded_scissor, uploaded_zbias;
