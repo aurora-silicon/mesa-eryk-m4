@@ -35,6 +35,7 @@ enum agx_compiler_dbg {
 uint64_t agx_get_compiler_debug(void);
 bool agx_native_fragment_loads_enabled(void);
 bool agx_native_early_textures_enabled(void);
+bool agx_native_binary_uniforms_enabled(void);
 bool agx_native_early_compare_enabled(void);
 bool agx_native_parallel_lod_enabled(void);
 

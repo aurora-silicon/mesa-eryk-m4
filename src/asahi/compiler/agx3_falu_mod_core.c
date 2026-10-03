@@ -61,6 +61,43 @@ regs_ok(uint16_t a, uint16_t b_, uint16_t c)
 }
 
 bool
+agx3_falu_binary_uniform(enum agx_isa_encoding enc, bool multiply,
+                         uint16_t dest, uint16_t uniform, uint16_t reg,
+                         bool uniform_neg, bool reg_neg,
+                         const struct agx3_falu_runtime *runtime,
+                         uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !runtime || !out || !len ||
+       dest >= 256 || reg >= 256 || uniform >= 512 ||
+       ((dest | reg | uniform) & 1) || runtime->wait_mask > 63 ||
+       runtime->cache[0] || runtime->discard[0] ||
+       (runtime->cache[1] && runtime->discard[1]))
+      return false;
+
+   /* Own native Minecraft pipeline 110 on J514S: uniform operands use
+    * f42=3/f36, independently of the varying GPR in f18. ADD includes
+    * negated uniforms. Preserve the native float family's negate fields. */
+   struct agx3_field_kv ov[17] = {
+      KV(2,dest), KV(42,3), KV(36,uniform), KV(18,reg),
+      KV(48,uniform_neg), KV(31,reg_neg), KV(11,runtime->dest_cache),
+      KV(44,0), KV(46,0), KV(27,runtime->cache[1]),
+      KV(29,runtime->discard[1]),
+   };
+   unsigned n = 11;
+   for (unsigned i = 0; i < 6; ++i)
+      ov[n++] = (struct agx3_field_kv)KV((multiply ? 80 : 52) + i,
+                                       (runtime->wait_mask >> i) & 1);
+   for (unsigned ep = 0; ep <= 3; ++ep)
+      if (agx3_bind_compose(enc, multiply ? "f32mul" : "f32add", ep,
+                            multiply ? mul_b : add_b,
+                            multiply ? sizeof(mul_b)/sizeof(mul_b[0]) :
+                                       sizeof(add_b)/sizeof(add_b[0]),
+                            ov, n, out, len))
+         return true;
+   return false;
+}
+
+bool
 agx3_falu_fma_uniform(enum agx_isa_encoding enc, uint16_t dest,
                       unsigned uniform_mask, const uint16_t src[3],
                       const struct agx3_falu_runtime *runtime,

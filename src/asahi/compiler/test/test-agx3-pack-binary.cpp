@@ -7623,6 +7623,92 @@ public:
    }
 };
 
+TEST_F(AGX3PackBinary, NativeBinaryUniformsCommuteNegateAndLifetime)
+{
+   ScopedPreambleOption option("AGX_NATIVE_BINARY_UNIFORMS", true);
+   for (bool multiply : {false, true}) {
+      for (bool commute : {false, true}) {
+         auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+         b->shader->stage = MESA_SHADER_FRAGMENT;
+         agx_index uniform = agx_uniform(multiply ? 42 : 44, AGX_SIZE_32);
+         uniform.neg = !multiply;
+         agx_index reg = agx_register(multiply ? 12 : 2, AGX_SIZE_32);
+         reg.cache = !multiply;
+         reg.discard = multiply;
+         agx_index dest = agx_register(multiply ? 12 : 18, AGX_SIZE_32);
+         dest.cache = true;
+         if (multiply)
+            agx_fmul_to(b,dest,commute ? reg : uniform,commute ? uniform : reg);
+         else
+            agx_fadd_to(b,dest,commute ? reg : uniform,commute ? uniform : reg);
+         agx_stop(b);
+         const std::vector<uint8_t> expected = multiply ?
+            std::vector<uint8_t>{0x69,0x0d,0x2d,0x2b,0,2,14,0,0,0} :
+            std::vector<uint8_t>{0x99,0x83,0x24,0x2d,0,0x0a,14,0,0,0};
+         EXPECT_EQ(pack(b),expected);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, NativeBinaryUniformsRetainAsynchronousProducerWait)
+{
+   for (bool multiply : {false,true}) {
+      auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      const agx_index reg = agx_register(2,AGX_SIZE_32);
+      agx_device_load_to(b,reg,agx_register(8,AGX_SIZE_64),
+         agx_immediate(0),AGX_FORMAT_I32,1,0,false);
+      if (multiply)
+         agx_fmul_to(b,agx_register(4,AGX_SIZE_32),
+            agx_uniform(6,AGX_SIZE_32),reg);
+      else
+         agx_fadd_to(b,agx_register(4,AGX_SIZE_32),
+            agx_uniform(6,AGX_SIZE_32),reg);
+      agx_stop(b);
+      const auto bin = pack(b);
+      ASSERT_FALSE(bin.empty());
+      uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], length;
+      const struct agx3_falu_runtime runtime = {.wait_mask=1};
+      ASSERT_TRUE(agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3B,
+         multiply,4,6,2,false,false,&runtime,bytes,&length));
+      EXPECT_NE(std::search(bin.begin(),bin.end(),bytes,bytes+length),bin.end());
+   }
+}
+
+TEST_F(AGX3PackBinary, NativeBinaryUniformsLegalizeUnqualifiedShapes)
+{
+   ScopedPreambleOption option("AGX_NATIVE_BINARY_UNIFORMS", true);
+   for (unsigned mode = 0; mode < 10; ++mode) {
+      auto *b = builder(mode == 9 ? AGX_ISA_ENCODING_AGX3C :
+                                  AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = mode == 5 ? MESA_SHADER_VERTEX : MESA_SHADER_FRAGMENT;
+      b->shader->is_preamble = mode == 6;
+      b->shader->nir->info.internal = mode == 7;
+      key.secondary = mode == 8;
+      agx_index uniform = agx_uniform(mode == 1 ? 511 : 22,AGX_SIZE_32);
+      agx_index reg = mode == 2 ? agx_immediate(0) :
+         mode == 3 ? agx_uniform(24,AGX_SIZE_32) : agx_register(0,AGX_SIZE_32);
+      if (mode == 0) uniform.abs = true;
+      auto *I = agx_fadd_to(b,agx_register(2,AGX_SIZE_32),uniform,reg);
+      I->saturate = mode == 4;
+      agx_lower_uniform_sources(b->shader);
+      EXPECT_EQ(I->src[0].type,mode == 3 ? AGX_INDEX_UNIFORM : AGX_INDEX_NORMAL);
+      if (mode == 3) EXPECT_EQ(I->src[1].type,AGX_INDEX_NORMAL);
+   }
+   for (bool enabled : {false,true}) {
+      ScopedPreambleOption policy("AGX_NATIVE_BINARY_UNIFORMS",enabled);
+      EXPECT_EQ(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX3B,
+         AGX_OPCODE_FMUL,1,510,AGX_SIZE_32),enabled);
+      EXPECT_FALSE(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX3B,
+         AGX_OPCODE_FADD,0,511,AGX_SIZE_32));
+      EXPECT_FALSE(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX3B,
+         AGX_OPCODE_FADD,0,512,AGX_SIZE_32));
+      EXPECT_FALSE(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX3B,
+         AGX_OPCODE_FADD,0,0,AGX_SIZE_16));
+   }
+}
+
+
 static void
 test_native_reciprocal_preamble(bool enabled, bool float_alu,
                                 unsigned bit_size, bool uniform)

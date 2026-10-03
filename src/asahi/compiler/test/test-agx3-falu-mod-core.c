@@ -14,6 +14,91 @@
 #include <string.h>
 
 static unsigned
+uniform_binary_vectors(void)
+{
+   /* Own J514S macOS Minecraft pipeline 110, ordinary GPR destinations.
+    * Each complete ADD/MUL instruction is an independent native byte oracle. */
+   const struct {
+      bool multiply; uint16_t dest, uniform, reg;
+      bool uniform_neg, reg_neg, dest_cache, cache, discard;
+      uint8_t size, bytes[16];
+   } vectors[] = {
+      {1,12,42,12,0,0,1,0,1,6,{0x69,0x0d,0x2d,0x2b,0x00,0x02}},
+      {0,18,44,2,1,0,1,1,0,6,{0x99,0x83,0x24,0x2d,0x00,0x0a}},
+      {0,14,46,0,1,0,1,1,0,6,{0x79,0x81,0x24,0x2f,0x00,0x0a}},
+      {0,14,50,0,1,0,1,1,0,6,{0x79,0x81,0x24,0x33,0x00,0x0a}},
+      {0,18,48,2,1,0,1,1,0,6,{0x99,0x83,0x24,0x31,0x00,0x0a}},
+      {1,90,32,2,0,0,1,0,1,6,{0xd9,0x03,0xad,0x21,0x00,0x02}},
+      {1,88,34,0,0,0,1,0,1,6,{0xc9,0x01,0xad,0x23,0x00,0x02}},
+      {1,88,38,88,0,0,1,0,1,6,{0xc9,0x59,0xad,0x27,0x00,0x02}},
+      {1,90,36,90,0,0,1,0,1,6,{0xd9,0x5b,0xad,0x25,0x00,0x02}},
+      {0,52,40,62,1,0,1,0,1,6,{0xa9,0x3f,0x6c,0x29,0x00,0x0a}},
+      {1,18,32,2,0,0,1,1,0,6,{0x99,0x83,0x25,0x21,0x00,0x02}},
+      {1,16,34,0,0,0,1,1,0,6,{0x89,0x81,0x25,0x23,0x00,0x02}},
+      {1,18,36,18,0,0,1,0,1,6,{0x99,0x13,0x2d,0x25,0x00,0x02}},
+      {1,16,38,16,0,0,1,0,1,6,{0x89,0x11,0x2d,0x27,0x00,0x02}},
+      {0,14,20,18,1,0,1,1,0,6,{0x79,0x93,0x24,0x15,0x00,0x0a}},
+      {1,14,28,14,0,0,1,0,1,6,{0x79,0x0f,0x2d,0x1d,0x00,0x02}},
+      {0,16,24,12,1,0,1,1,0,6,{0x89,0x8d,0x24,0x19,0x00,0x0a}},
+      {1,16,30,16,0,0,1,0,1,6,{0x89,0x11,0x2d,0x1f,0x00,0x02}},
+      {1,12,62,12,0,0,1,0,1,6,{0x69,0x0d,0x2d,0x3f,0x00,0x02}},
+   };
+   unsigned fail = 0;
+   uint8_t bytes[16], size = 0;
+   for (unsigned i = 0; i < sizeof(vectors)/sizeof(vectors[0]); ++i) {
+      const struct agx3_falu_runtime rt = {
+         .dest_cache=vectors[i].dest_cache,
+         .cache={false,vectors[i].cache},
+         .discard={false,vectors[i].discard},
+      };
+      if (!agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3B,
+              vectors[i].multiply, vectors[i].dest, vectors[i].uniform,
+              vectors[i].reg, vectors[i].uniform_neg, vectors[i].reg_neg,
+              &rt, bytes, &size) || size != vectors[i].size ||
+          memcmp(bytes,vectors[i].bytes,size)) {
+         fprintf(stderr,"native uniform binary vector %u failed\n",i);
+         fprintf(stderr,"actual (%u): ",size);
+         for (unsigned b=0; b<size; ++b) fprintf(stderr,"%02x",bytes[b]);
+         fprintf(stderr,"\n");
+         fail++;
+      }
+   }
+   struct agx3_falu_runtime rt = {.wait_mask=63};
+   for (unsigned mul = 0; mul < 2; ++mul) {
+      rt.wait_mask = 63;
+      fail += !agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3B,mul,
+         254,510,254,true,true,&rt,bytes,&size);
+      fail += agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3C,mul,
+         0,0,0,false,false,&rt,bytes,&size);
+      for (unsigned s = 0; s < 3; ++s) {
+         uint16_t v[3] = {0}; v[s] = 1;
+         fail += agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3B,mul,
+            v[0],v[1],v[2],false,false,&rt,bytes,&size);
+         v[s] = s == 1 ? 512 : 256;
+         fail += agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3B,mul,
+            v[0],v[1],v[2],false,false,&rt,bytes,&size);
+      }
+      rt.wait_mask = 64;
+      fail += agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3B,mul,
+         0,0,0,false,false,&rt,bytes,&size);
+      rt.wait_mask = 0;
+      rt.cache[0] = true;
+      fail += agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3B,mul,
+         0,0,0,false,false,&rt,bytes,&size);
+      rt.cache[0] = false; rt.discard[0] = true;
+      fail += agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3B,mul,
+         0,0,0,false,false,&rt,bytes,&size);
+      rt.discard[0] = false; rt.cache[1] = rt.discard[1] = true;
+      fail += agx3_falu_binary_uniform(AGX_ISA_ENCODING_AGX3B,mul,
+         0,0,0,false,false,&rt,bytes,&size);
+      rt.cache[1] = rt.discard[1] = false;
+   }
+   printf("native uniform ADD/MUL: %zu Apple vectors, %u failures\n",
+      sizeof(vectors)/sizeof(vectors[0]),fail);
+   return fail;
+}
+
+static unsigned
 mixed_fma_vectors(void)
 {
    const struct mixed_vector { unsigned mask; uint16_t a,b,c; uint8_t bytes[8]; } vectors[] = {
@@ -509,7 +594,7 @@ fma_two_vectors(void)
 int
 main(void)
 {
-   unsigned pass = 0, fail = uniform_fma_vectors() + mixed_fma_vectors() + runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors() + fma_two_vectors();
+   unsigned pass = 0, fail = uniform_fma_vectors() + uniform_binary_vectors() + mixed_fma_vectors() + runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors() + fma_two_vectors();
    for (size_t i = 0; i < mod_vec_count; ++i) {
       const struct mod_vec *v = &mod_vecs[i];
       const enum agx_isa_encoding e =

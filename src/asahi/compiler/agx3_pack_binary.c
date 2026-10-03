@@ -7696,6 +7696,36 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
          }
 
+         if (enc == AGX_ISA_ENCODING_AGX3B &&
+             (I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL) &&
+             (I->src[0].type == AGX_INDEX_UNIFORM ||
+              I->src[1].type == AGX_INDEX_UNIFORM)) {
+            if (I->saturate || I->nr_dests != 1 || I->nr_srcs != 2 ||
+                !agx3_vary_reg32(I->dest[0]) || agx_channels(I->dest[0]) != 1)
+               AGX3_REFUSE(I);
+            /* ADD and MUL commute. Preserve modifiers and GPR lifetime
+             * when placing the uniform in the witnessed first source. */
+            const bool uniform_first = I->src[0].type == AGX_INDEX_UNIFORM;
+            const agx_index uniform = I->src[uniform_first ? 0 : 1];
+            const agx_index reg = I->src[uniform_first ? 1 : 0];
+            if (!agx3_mod_src_ok(reg) || uniform.size != AGX_SIZE_32 ||
+                agx_channels(uniform) != 1 || agx_channels(reg) != 1 ||
+                uniform.abs || reg.abs || uniform.memory || uniform.kill ||
+                uniform.cache || uniform.discard || reg.kill)
+               AGX3_REFUSE(I);
+            const struct agx3_falu_runtime runtime = {
+               .dest_cache = I->dest[0].cache, .wait_mask = wait,
+               .cache = {false,reg.cache}, .discard = {false,reg.discard},
+            };
+            uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], length;
+            if (!agx3_falu_binary_uniform(enc, I->op == AGX_OPCODE_FMUL,
+                    I->dest[0].value, uniform.value, reg.value,
+                    uniform.neg, reg.neg, &runtime, bytes, &length) ||
+                !agx3_append(emission, bytes, length))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FFMA &&
              (I->src[0].type == AGX_INDEX_UNIFORM ||
               I->src[1].type == AGX_INDEX_UNIFORM ||
