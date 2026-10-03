@@ -2247,6 +2247,63 @@ test_mixed_target_layout_bounds(void)
 }
 
 static int
+test_vertex_preamble_external_publication(void)
+{
+   const uint8_t loader[] = {
+      0x06, 0, 0x03, 0, 0x07, 0, 0x02, 0, 0, 0, 0x60, 0, 0x0e, 0, 0, 0,
+   };
+   const uint8_t preamble[] = {0x8b, 0, 0x41, 4, 0x0e, 0, 0, 0};
+   const uint64_t base = UINT64_C(0x10000000000);
+   const uint64_t offset = UINT64_C(0x1c4);
+   const uint64_t va = base + offset;
+   uint8_t output[64], original[64];
+   memset(original, 0xcc, sizeof(original));
+   memcpy(original, loader, sizeof(loader));
+   const size_t required = sizeof(loader) - 4 +
+      HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE + AGX_IOTO_PRESHADER_BRANCH_SIZE;
+   for (unsigned invalid = 0; invalid < 10; ++invalid) {
+      memcpy(output, original, sizeof(output));
+      size_t length = sizeof(loader);
+      uint8_t bad[sizeof(preamble)]; memcpy(bad, preamble, sizeof(bad));
+      if (invalid == 0) bad[sizeof(bad) - 1] = 1;
+      if (invalid == 5) output[sizeof(loader) - 5] ^= 1;
+      uint8_t unchanged[sizeof(output)]; memcpy(unchanged, output, sizeof(output));
+      CHECK(!hk_agx3_vertex_preamble_branch(
+         invalid == 4 ? AGX_CHIP_G16G : AGX_CHIP_G15S, output,
+         invalid == 1 ? required - 1 : sizeof(output), &length, bad,
+         invalid == 6 ? 3 : sizeof(bad),
+         invalid == 2 ? va | 1 : invalid == 3 ? UINT64_C(1) << 48 :
+         invalid == 7 ? base - 2 : invalid == 8 ? base + (UINT64_C(1) << 32) :
+         invalid == 9 ? base + (UINT64_C(1) << 32) - 2 : va, base, base + UINT64_C(0x200)));
+      CHECK(length == sizeof(loader) && !memcmp(output, unchanged, sizeof(output)));
+   }
+   memcpy(output, original, sizeof(output));
+   size_t length = sizeof(loader);
+   CHECK(hk_agx3_vertex_preamble_branch(AGX_CHIP_G15S, output, required,
+      &length, preamble, sizeof(preamble), va, base, base + UINT64_C(0x200)));
+   CHECK(length == required && !memcmp(output, loader, sizeof(loader) - 4));
+   for (unsigned i = 0; i < HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE; i += 2)
+      CHECK(output[sizeof(loader) - 4 + i] == 0x06 &&
+            output[sizeof(loader) - 3 + i] == 0);
+   uint8_t branch[AGX_IOTO_PRESHADER_BRANCH_SIZE];
+   CHECK(agx_ioto_preshader_pack_branch(AGX_CHIP_G15S,
+      ((uint64_t)((int64_t)offset - (int64_t)(UINT64_C(0x200) +
+       sizeof(loader) - 4 + HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE))) &
+       ((UINT64_C(1) << 48) - 1), false, branch));
+   CHECK(!memcmp(output + length - sizeof(branch), branch, sizeof(branch)));
+   /* Native GPU0 B(-88): source = base+512+28, target = base+452.
+    * This checks relocation against a retained byte witness, rather than
+    * merely comparing two calls to the same address calculation. */
+   const uint8_t native_backwards[] = {
+      0x0f, 0x00, 0x54, 0xa8, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
+   };
+   CHECK(!memcmp(output + length - sizeof(native_backwards),
+                 native_backwards, sizeof(native_backwards)));
+   CHECK(!memcmp(output + length, original + length, sizeof(output) - length));
+   return 0;
+}
+
+static int
 test_fragment_preamble_publication(void)
 {
    const uint8_t preamble[] = {0x8b, 0, 0x41, 4, 0x0e, 0, 0, 0};
@@ -2313,7 +2370,7 @@ test_fragment_preamble_publication(void)
 int
 main(void)
 {
-   if (test_fragment_preamble_publication() || test_mixed_target_layout_bounds() ||
+   if (test_vertex_preamble_external_publication() || test_fragment_preamble_publication() || test_mixed_target_layout_bounds() ||
        test_coverage_initial_pixel_dependencies() ||
        test_exact_target_order() || test_terminal_suffix_modes() ||
        test_fail_closed() || test_g17s_minimal_compute_admission() ||

@@ -31,6 +31,15 @@ bool hk_agx3_fragment_preamble_append(
    enum agx_chip chip, bool writes_sample_mask, void *output, size_t capacity,
    size_t *length, const void *preamble, size_t preamble_size);
 
+/* G15S diagnostic external form: preserve the loader profile and input
+ * publication drain, then replace STOP with a native non-linking branch.
+ * The caller owns and retains the executable at preamble_va. B carries a signed byte displacement from the branch instruction itself.
+ * Both executable locations must fit the same queue USC window. */
+bool hk_agx3_vertex_preamble_branch(
+   enum agx_chip chip, void *output, size_t capacity, size_t *length,
+   const void *preamble, size_t preamble_size, uint64_t preamble_va,
+   uint64_t usc_base, uint64_t program_va);
+
 struct agx_tilebuffer_layout;
 
 struct hk_agx3_ioto_program_desc {

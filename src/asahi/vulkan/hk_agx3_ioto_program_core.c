@@ -361,6 +361,60 @@ hk_agx3_fragment_preamble_append(
 }
 
 bool
+hk_agx3_vertex_preamble_branch(
+   enum agx_chip chip, void *output, size_t capacity, size_t *length,
+   const void *preamble, size_t preamble_size, uint64_t preamble_va,
+   uint64_t usc_base, uint64_t program_va)
+{
+   const uint8_t terminal[] = {
+      0x03, 0x00, 0x07, 0x00, 0x02, 0x00, 0x00, 0x00, 0x60, 0x00,
+      0x0e, 0x00, 0x00, 0x00,
+   };
+   const size_t stop_size = 4;
+   const size_t suffix_size = HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE +
+      AGX_IOTO_PRESHADER_BRANCH_SIZE;
+   if (chip != AGX_CHIP_G15S || !output || !length || !preamble ||
+       preamble_size < stop_size || preamble_size > UINT32_MAX ||
+       *length < sizeof(terminal) || *length > capacity ||
+       usc_base > (UINT64_C(1) << 48) - (UINT64_C(1) << 32) ||
+       (program_va & 1) || (preamble_va & 1) ||
+       preamble_va < usc_base || preamble_va - usc_base >= (UINT64_C(1) << 32) ||
+       preamble_size > (UINT64_C(1) << 32) - (preamble_va - usc_base) ||
+       program_va < usc_base || program_va - usc_base >= (UINT64_C(1) << 32) ||
+       *length > (UINT64_C(1) << 32) - (program_va - usc_base) ||
+       suffix_size - stop_size > (UINT64_C(1) << 32) -
+          (program_va - usc_base) - *length ||
+       suffix_size - stop_size > capacity - *length)
+      return false;
+
+   const uint8_t *src = preamble;
+   uint8_t *dst = output;
+   uint8_t branch[AGX_IOTO_PRESHADER_BRANCH_SIZE];
+   const uint64_t branch_va = program_va + *length - stop_size +
+      HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE;
+   /* B carries the signed byte displacement from its own instruction start.
+    * Both validated locations share one 4 GiB USC window, so the difference
+    * fits the native signed 48-bit field without truncating an address. */
+   const int64_t displacement = (int64_t)(preamble_va - usc_base) -
+      (int64_t)(branch_va - usc_base);
+   const uint64_t encoded = (uint64_t)displacement & ((UINT64_C(1) << 48) - 1);
+   if (memcmp(dst + *length - sizeof(terminal), terminal, sizeof(terminal)) ||
+       memcmp(src + preamble_size - stop_size, terminal + sizeof(terminal) -
+          stop_size, stop_size) ||
+       !agx_ioto_preshader_pack_branch(chip, encoded, false, branch))
+      return false;
+
+   const size_t insertion = *length - stop_size;
+   for (unsigned i = 0; i < HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE;
+        i += AGX_IOTO_LOAD_NOP_SIZE)
+      agx_ioto_load_pack_nop(0, dst + insertion + i);
+   memcpy(dst + insertion + HK_AGX3_FRAGMENT_PREAMBLE_DRAIN_SIZE,
+          branch, sizeof(branch));
+   *length += suffix_size - stop_size;
+   return true;
+}
+
+bool
 hk_agx3_g17p_basic_graphics_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
    struct hk_agx3_g17p_graphics_program *program)
