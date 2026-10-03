@@ -3126,6 +3126,69 @@ TEST_F(AGX3PackBinary, RefusesUnmappedOp)
    EXPECT_EQ(pack(b), want);
 }
 
+TEST_F(AGX3PackBinary, VertexFetchRetiresOnlyOverlappingSampleCoordinates)
+{
+   for (bool overlap : {false, true}) {
+      auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_VERTEX;
+      /* The first native vertex load prefers slot 6. Four more independent
+       * loads advance the ordinary cursor so the sample uses slot 5 and the
+       * fetch wraps to slot 1 (coordinate bank 0). Without them the sample
+       * uses slot 1 and the fetch uses slot 2 (coordinate bank 8). */
+      for (unsigned i = 0; i < (overlap ? 5u : 0u); ++i) {
+         agx_device_load_to(b, agx_register(128 + 2*i, AGX_SIZE_32),
+            agx_uniform(4, AGX_SIZE_64), agx_immediate(i),
+            AGX_FORMAT_I32, 1, 0, false);
+         agx_bitop_to(b, agx_register(200 + 2*i, AGX_SIZE_32),
+            agx_register(128 + 2*i, AGX_SIZE_32), agx_immediate(0), UTIL_LUT2(a));
+      }
+
+      agx_index sampled = agx_register(64, AGX_SIZE_32);
+      sampled.channels_m1 = 3;
+      agx_index xy = agx_register(8, AGX_SIZE_32);
+      xy.channels_m1 = 1;
+      agx_instr *sample = agx_texture_sample_to(
+         b, sampled, xy, agx_register(12, AGX_SIZE_16), agx_immediate(0),
+         agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+         AGX_LOD_MODE_LOD_MIN, 0, false, false, false, AGX_GATHER_NONE, false);
+      sample->mask = 15;
+
+      /* Consume the intervening load without consuming the sample result. */
+      agx_device_load_to(b, agx_register(120, AGX_SIZE_32),
+         agx_uniform(4, AGX_SIZE_64), agx_immediate(10),
+         AGX_FORMAT_I32, 1, 0, false);
+      agx_bitop_to(b, agx_register(122, AGX_SIZE_32),
+         agx_register(120, AGX_SIZE_32), agx_immediate(0), UTIL_LUT2(a));
+
+      agx_index fetched = agx_register(80, AGX_SIZE_32);
+      fetched.channels_m1 = 3;
+      agx_index ij = agx_register(16, AGX_SIZE_32);
+      ij.channels_m1 = 1;
+      agx_instr *fetch = agx_texture_sample_to(
+         b, fetched, ij, agx_immediate(0), agx_immediate(0),
+         agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+         AGX_LOD_MODE_AUTO_LOD, 0, false, false, false, AGX_GATHER_NONE, false);
+      fetch->op = AGX_OPCODE_TEXTURE_LOAD;
+      fetch->mask = 15;
+      agx_stop(b);
+      const auto code = pack(b);
+
+      const unsigned bank = overlap ? 0 : 8;
+      const unsigned slot = overlap ? 1 : 2;
+      const unsigned wait = overlap ? 1u << 4 : 0;
+      std::vector<uint8_t> copies;
+      for (unsigned c = 0; c < 2; ++c) {
+         uint8_t bytes[AGX3_TEX_MAX_LENGTH], length;
+         ASSERT_TRUE(agx3_tex_stage_copy_hints(AGX_ISA_ENCODING_AGX3B,
+            bank + 2*c, 16 + 2*c, slot, c ? 0 : wait,
+            false, false, bytes, &length));
+         append(copies, bytes, length);
+      }
+      EXPECT_NE(std::search(code.begin(), code.end(), copies.begin(), copies.end()),
+                code.end()) << "overlap=" << overlap;
+   }
+}
+
 TEST_F(AGX3PackBinary, TextureFetch2DLod0Immediate)
 {
    for (int e = 0; e < 2; ++e) {

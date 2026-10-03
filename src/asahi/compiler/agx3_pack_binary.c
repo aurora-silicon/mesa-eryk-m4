@@ -2288,11 +2288,15 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
        * Reserving 20 or 24 halves returns stale results on J713. */
       halves = gradient ? (I->dim == AGX_DIM_3D ? 32 : 16) : fixed ? 8 : 4;
    } else if (I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_IMAGE_LOAD) {
-      /* Vertex fetches already use disjoint banks per result slot and wait
-       * that slot before reusing its bank. Their base is assigned later. */
-      if (stage == MESA_SHADER_VERTEX && I->op == AGX_OPCODE_TEXTURE_LOAD)
+      /* Vertex fetch banks are chosen after the first slot assignment. The
+       * second assignment includes their staging dependencies, with those
+       * choices frozen so changing a result slot cannot change the bank. */
+      if (stage == MESA_SHADER_VERTEX && I->op == AGX_OPCODE_TEXTURE_LOAD &&
+          sample_bank == UINT16_MAX)
          return true;
       base = I->op == AGX_OPCODE_IMAGE_LOAD ? 16 : 0;
+      if (stage == MESA_SHADER_VERTEX && I->op == AGX_OPCODE_TEXTURE_LOAD)
+         base = sample_bank;
       halves = I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_3D ||
                I->dim == AGX_DIM_2D_MS || I->dim == AGX_DIM_2D_MS_ARRAY ||
                I->lod_mode == AGX_LOD_MODE_LOD_MIN ? 8 : 4;
@@ -4922,6 +4926,37 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    if (!agx3_slot_assign(sl, count, nslots, res))
       goto fail;
 
+   if (enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX) {
+      /* A fetch's bank is independent of its completion slot. In particular,
+       * a live explicit-LOD sample can occupy bank 0 while a later fetch gets
+       * slot 1. Omitting the staging hazard lets that fetch overwrite the
+       * sample's coordinates before it consumes them. Descriptor prefetch
+       * exposed this by removing loads that happened to change slot choices.
+       * Preserve the original fetch-bank choices, then schedule their real
+       * overlaps with samples and other staging users. */
+      unsigned index = 0;
+      bool fetches = false;
+      agx_foreach_block(ctx, bank_block) {
+         agx_foreach_instr_in_block(bank_block, I) {
+            if (I->op == AGX_OPCODE_STOP)
+               continue;
+            if (I->op == AGX_OPCODE_TEXTURE_LOAD) {
+               if (!res[index].slot || res[index].slot > nslots)
+                  goto fail;
+               sample_banks[index] = 8 * (res[index].slot - 1);
+               if (!agx3_append_texture_staging_tokens(
+                      I, ctx->stage, &sl[index], sample_banks[index]))
+                  goto fail;
+               fetches = true;
+            }
+            index++;
+         }
+      }
+      assert(index == count);
+      if (fetches && !agx3_slot_assign(sl, count, nslots, res))
+         goto fail;
+   }
+
    const char *explicit_waits = ctx->stage == MESA_SHADER_VERTEX &&
       enc == AGX_ISA_ENCODING_AGX3B ? getenv("AGX3_VERTEX_EXPLICIT_WAITS") : NULL;
    const char *serialize_scope = getenv("AGX3_VERTEX_SERIALIZE_SCOPE");
@@ -5331,7 +5366,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * retains its separately qualified split bank.
              */
             const unsigned coord_base = I->op == AGX_OPCODE_IMAGE_LOAD ? 16 :
-               ctx->stage == MESA_SHADER_VERTEX ? 8 * (slot - 1) : 0;
+               ctx->stage == MESA_SHADER_VERTEX ?
+                  (sample_bank != UINT16_MAX ? sample_bank : 8 * (slot - 1)) : 0;
             if (staged) {
                ctx->agx3_staging_halfs = MAX2(
                   ctx->agx3_staging_halfs,
