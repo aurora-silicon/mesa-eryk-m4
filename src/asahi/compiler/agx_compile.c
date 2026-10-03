@@ -6910,6 +6910,12 @@ lower_prefetched_uniform(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
+bool
+agx_native_late_loop_enabled(void)
+{
+   return debug_get_bool_option("AGX_NATIVE_LATE_LOOP", false);
+}
+
 static bool
 agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)
@@ -6918,6 +6924,26 @@ agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
     * concurrent pipeline compilation workers. */
    agx_get_compiler_debug();
    struct agx_shader_info *info = &out->info;
+
+   /* Address and resource lowering can expose a constant initial loop
+    * predicate after the frontend's loop pass. Use NIR's existing peeling
+    * transform to move that first predicate out of the loop. Run once:
+    * repeatedly peeling arbitrary loops is neither necessary nor bounded.
+    * This remains an opt-in until hardware control-flow and application
+    * regression checks qualify the changed instruction schedule. */
+   if (key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       agx_native_late_loop_enabled() && nir_opt_loop(nir)) {
+      NIR_PASS(_, nir, nir_lower_vars_to_ssa);
+      bool progress;
+      do {
+         progress = false;
+         NIR_PASS(progress, nir, nir_opt_copy_prop);
+         NIR_PASS(progress, nir, nir_opt_cse);
+         NIR_PASS(progress, nir, nir_opt_dce);
+         NIR_PASS(progress, nir, nir_opt_constant_folding);
+         NIR_PASS(progress, nir, nir_opt_dead_cf);
+      } while (progress);
+   }
 
    /* Native fragment shaders have no constant program yet. Descriptor and
     * sampler emulation therefore leaves substantial repeated work across

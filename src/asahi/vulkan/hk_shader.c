@@ -151,8 +151,10 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
     * variant. Include them in both pipeline UUIDs and disk-cache keys. */
    static_assert(sizeof(pdev->dev.debug) == sizeof(uint32_t));
    uint64_t flags = pdev->dev.debug;
-   if (agx_chip_isa_encoding(pdev->dev.chip) == AGX_ISA_ENCODING_AGX3B)
+   if (agx_chip_isa_encoding(pdev->dev.chip) == AGX_ISA_ENCODING_AGX3B) {
       flags |= (uint64_t)agx_native_fma_uniforms_enabled() << 59;
+      flags |= (uint64_t)agx_native_late_loop_enabled() << 60;
+   }
    if (agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip)) {
       flags |= (uint64_t)hk_ubo_prefetch_enabled(pdev->dev.chip) << 32;
       flags |= (uint64_t)hk_ubo_prefetch_variant_enabled(pdev->dev.chip) << 33;

@@ -18,13 +18,14 @@ int main(int argc, char **argv)
                                   !strcmp(argv[2], "--native-preamble") ||
                                   !strcmp(argv[2], "--gcm") ||
                                   !strcmp(argv[2], "--licm") ||
+                                  !strcmp(argv[2], "--opt-loop") ||
                                   !strcmp(argv[2], "--gcm-no-vn") ||
                                   !strcmp(argv[2], "--no-reassoc") ||
                                   !strcmp(argv[2], "--print-nir") ||
                                   !strcmp(argv[2], "--lower-texture-gen9") ||
                                   !strncmp(argv[2], "--binary-output=", 16) ||
                                   !strncmp(argv[2], "--uniform-one=", 14)))) {
-      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--native-preamble|--gcm|--licm|--gcm-no-vn|--no-reassoc|--uniform-one=HALF|--binary-output=FILE]\n       %s FRONTEND.nirbin [--print-nir|--lower-texture-gen9]\n", argv[0], argv[0]);
+      fprintf(stderr, "Usage: %s BUNDLE/input.bin [--check-native-resources|--native-preamble|--gcm|--licm|--opt-loop|--gcm-no-vn|--no-reassoc|--uniform-one=HALF|--binary-output=FILE]\n       %s FRONTEND.nirbin [--print-nir|--lower-texture-gen9]\n", argv[0], argv[0]);
       return 2;
    }
    FILE *f = fopen(argv[1], "rb");
@@ -109,6 +110,17 @@ int main(int argc, char **argv)
       nir_opt_dce(nir);
       fprintf(stderr, "Loop invariant code motion: %s\n", progress ? "changed" : "unchanged");
       nir_validate_shader(nir, "after replay LICM");
+   }
+   if (argc == 3 && !strcmp(argv[2], "--opt-loop")) {
+      bool progress = nir_opt_loop(nir);
+      nir_lower_vars_to_ssa(nir);
+      nir_opt_copy_prop(nir);
+      nir_opt_cse(nir);
+      nir_opt_dce(nir);
+      nir_opt_constant_folding(nir);
+      nir_opt_dead_cf(nir);
+      fprintf(stderr, "Late loop optimization: %s\n", progress ? "changed" : "unchanged");
+      nir_validate_shader(nir, "after replay loop optimization");
    }
    if (argc == 3 && !strncmp(argv[2], "--uniform-one=", 14)) {
       char *end;

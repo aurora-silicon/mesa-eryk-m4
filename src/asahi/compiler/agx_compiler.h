@@ -1044,6 +1044,7 @@ bool agx_instr_accepts_uniform(enum agx_isa_encoding encoding,
                                enum agx_opcode op, unsigned src_index,
                                unsigned value, enum agx_size size);
 bool agx_native_fma_uniforms_enabled(void);
+bool agx_native_late_loop_enabled(void);
 
 /* Routines defined for AIR */
 void agx_print_index(agx_index index, bool is_float, FILE *fp);
