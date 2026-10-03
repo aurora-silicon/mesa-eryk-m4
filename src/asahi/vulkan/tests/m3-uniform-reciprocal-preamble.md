@@ -96,3 +96,33 @@ earlier Linux measurements were 1.361 / 2.226 ms. Native CPU command-buffer
 lookahead is independently observed and must not be reported as GPU stage
 overlap. Submission/preparation and fragment execution both remain open
 performance work.
+
+## Follow-up controls, 2026-10-03
+
+The same private library and kernel, on boot
+7daa1b87-466a-4119-98af-8d9aa28e003a, were tested with fifteen alternating
+pairs per policy. All policies retain reciprocal preambles and scoped program
+reuse, compression, mixed batching and bind-state elision. Each policy matches
+all three approved gameplay images exactly before timings are admitted.
+
+| Added policy | Baseline median FPS | Candidate median FPS | Paired mean change | Paired median change | Wins |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Descriptor and compact descriptor prefetch | 166.738 | 166.983 | -0.253% | -0.312% | 7/15 |
+| Preserve smaller fragment branches | 162.969 | 166.690 | +1.041% | +0.308% | 10/15 |
+| Both policies together | 166.887 | 163.569 | -0.778% | -1.910% | 5/15 |
+
+The ratio of separate medians overstates the branch control's typical paired
+gain because the samples vary between slower and faster groups. These controls
+do not establish a reliable broad improvement, and none is enabled by default.
+Raw policies, exact image receipts, guards, temperatures and samples are retained
+under gpu-replay-bench/diagnostics/m3-macos-driver-gap-20261003/descriptor-branch-study.
+
+The native Metal draw profiler records 1,370 world draw calls per frame,
+including 1,362 indirect calls. Three actual pipeline descriptors account for
+613, 500 and 249 indirect calls per frame; two disable blending and one enables
+it. Counts are API calls, not fragment invocations or pipeline GPU costs. The
+combined draw/timestamp profiler reproduces the three uninjected macOS images
+exactly. Its world TA/fragment medians are 1.136/1.565 ms, but injected timings
+are diagnostic only. Public Metal binary archives compiled from those actual
+descriptors are retained; they do not prove the bytes of the executed PSOs, and
+their G15 metadata is not a qualified register/occupancy schema.
