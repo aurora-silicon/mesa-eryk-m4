@@ -167,6 +167,20 @@ int main(int argc, char **argv)
    }
    struct agx_shader_part out = {0};
    bool ok = agx_compile_shader_nir(nir, &key, &out);
+   const char *optimized_nir = getenv("AGX_REPLAY_OPTIMIZED_NIR_OUTPUT");
+   if (ok && optimized_nir) {
+      FILE *dump = fopen(optimized_nir, "wx");
+      if (!dump) {
+         perror(optimized_nir);
+         return 2;
+      }
+      nir_print_shader(nir, dump);
+      bool failed = ferror(dump);
+      if (fclose(dump) || failed) {
+         fprintf(stderr, "Failed to write optimized NIR: %s\n", optimized_nir);
+         return 2;
+      }
+   }
    fprintf(stderr, "Compiler replay: %s (%u bytes)\n", ok ? "PASS" : "REJECT", out.info.binary_size);
    if (ok) {
       fprintf(stderr, "Compiler binary hash: %08x\n",

@@ -21,6 +21,13 @@ ninja -C build/mesa-m4-asahi-host src/asahi/compiler/agx_shader_replay
 build/mesa-m4-asahi-host/src/asahi/compiler/agx_shader_replay BUNDLE/input.bin
 ```
 
+`--print-nir` prints the captured entry-point NIR. To inspect NIR after the
+successful compiler optimization pipeline, set
+`AGX_REPLAY_OPTIMIZED_NIR_OUTPUT=/path/to/new-file.nir`. This separate file includes
+the resulting preamble and main function. It refuses to overwrite an existing
+file and reports write failures. Record compiler options alongside the dump;
+offline statistics alone do not identify the executable selected by a live draw.
+
 The workspace `tools/compiler-replay.py` wrapper saves compiler stdout/stderr,
 input and executable SHA256 hashes, Git revision, dirty patch and hashes of
 untracked source files. Preserve the capture build's source patch and installed
