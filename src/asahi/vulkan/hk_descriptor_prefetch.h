@@ -27,6 +27,13 @@ hk_plain_samplers_enabled(enum agx_chip chip)
 }
 
 static inline bool
+hk_repeated_sampler_enabled(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S &&
+          debug_get_bool_option("HK_NATIVE_REPEATED_SAMPLER", false);
+}
+
+static inline bool
 hk_vertex_ubo_prefetch_enabled(enum agx_chip chip)
 {
    return chip == AGX_CHIP_G15S &&

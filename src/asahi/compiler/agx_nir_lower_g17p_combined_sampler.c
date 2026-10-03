@@ -11,6 +11,7 @@
 
 #include "nir.h"
 #include "nir_builder.h"
+#include "util/u_debug.h"
 
 /* Geometry and tessellation shaders run as compute on G16G and, like vertex
  * shaders, have no derivatives: they may only use explicit-LOD forms. */
@@ -325,6 +326,99 @@ agx_nir_lower_g17p_combined_sampler(
    if (shader->info.stage == MESA_SHADER_FRAGMENT &&
        g17p_has_descriptor_access(shader))
       return false;
+
+   *binding = (struct agx_g17p_combined_sampler_binding){
+      .texture_offset_B = texture_offset_B,
+      .sampler_index_offset_B = sampler_state_offset_B + 8,
+   };
+   return true;
+}
+
+/* Reuse the witnessed texture0/sampler0 ABI for repeated accesses to one
+ * statically bound combined descriptor. Ordinary descriptor-set reads (UBOs,
+ * for example) keep their separate fragment root and must not be removed.
+ * Call on a clone: a residual unsupported handle can reject after DCE.
+ */
+bool
+agx_nir_lower_g17p_repeated_sampler(
+   nir_shader *shader, struct agx_g17p_combined_sampler_binding *binding)
+{
+   if (!shader || !binding || shader->info.stage != MESA_SHADER_FRAGMENT)
+      return false;
+
+   unsigned samples = 0;
+   uint32_t texture_offset_B = 0, sampler_state_offset_B = 0;
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            uint32_t texture, sampler;
+            if (debug_get_bool_option("AGX_NATIVE_REPEATED_SAMPLER_AUDIT", false)) {
+               uint8_t ts = 255, ss = 255;
+               uint32_t to = UINT32_MAX, so = UINT32_MAX;
+               bool th = g17p_handle_binding(tex, nir_tex_src_texture_handle,
+                         nir_intrinsic_bindless_image_agx, &ts, &to);
+               bool sh = g17p_handle_binding(tex, nir_tex_src_sampler_handle,
+                         nir_intrinsic_bindless_sampler_agx, &ss, &so);
+               fprintf(stderr, "REPEATED_SAMPLER sample=%u op=%u shape=%u offset=%u"
+                       " texture=%u:%u:%u sampler=%u:%u:%u\n", samples,
+                       tex->op, g17p_sample_shape(tex),
+                       g17p_register_sample_offset(tex), th, ts, to, sh, ss, so);
+            }
+            if (!g17p_sample_shape(tex) || g17p_register_sample_offset(tex) ||
+                !g17p_handle_offset(tex, nir_tex_src_texture_handle,
+                                   nir_intrinsic_bindless_image_agx, &texture) ||
+                !g17p_handle_offset(tex, nir_tex_src_sampler_handle,
+                                   nir_intrinsic_bindless_sampler_agx, &sampler) ||
+                (texture & 7) || texture > UINT32_MAX - 44 ||
+                sampler != texture + 32 ||
+                (nir_tex_instr_src_index(tex, nir_tex_src_bias) >= 0 &&
+                 !g17p_is_sampler_bias(tex, 0, sampler + 12)) ||
+                (samples && (texture != texture_offset_B ||
+                             sampler != sampler_state_offset_B)))
+               return false;
+            texture_offset_B = texture;
+            sampler_state_offset_B = sampler;
+            ++samples;
+         }
+      }
+   }
+
+   if (samples < 2)
+      return false;
+
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            nir_steal_tex_src(tex, nir_tex_src_texture_handle);
+            nir_steal_tex_src(tex, nir_tex_src_sampler_handle);
+            if (tex->op == nir_texop_txb) {
+               nir_steal_tex_src(tex, nir_tex_src_bias);
+               tex->op = nir_texop_tex;
+            }
+            tex->texture_index = tex->sampler_index = 0;
+         }
+      }
+   }
+
+   NIR_PASS(_, shader, nir_opt_dce);
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_op op = nir_instr_as_intrinsic(instr)->intrinsic;
+            if (op == nir_intrinsic_bindless_image_agx ||
+                op == nir_intrinsic_bindless_sampler_agx)
+               return false;
+         }
+      }
+   }
 
    *binding = (struct agx_g17p_combined_sampler_binding){
       .texture_offset_B = texture_offset_B,

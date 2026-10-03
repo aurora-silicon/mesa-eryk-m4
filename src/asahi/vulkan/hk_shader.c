@@ -142,6 +142,31 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
    *size = comp_size * length, *align = comp_size;
 }
 
+static unsigned
+hk_collect_plain_samplers(struct vk_descriptor_set_layout *const *set_layouts,
+                         unsigned set_count, struct hk_plain_sampler *samplers)
+{
+   unsigned count = 0;
+   for (unsigned set = 0; set < set_count; ++set) {
+      if (!set_layouts || !set_layouts[set])
+         continue;
+      const struct hk_descriptor_set_layout *layout =
+         vk_to_hk_descriptor_set_layout(set_layouts[set]);
+      if (layout->vk.flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT)
+         continue;
+      for (unsigned binding = 0; binding < layout->binding_count; ++binding) {
+         const struct hk_descriptor_set_binding_layout *b = &layout->binding[binding];
+         if (b->type != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+             b->array_size != 1 || b->flags || count == HK_PLAIN_SAMPLER_MAX)
+            continue;
+         samplers[count++] = (struct hk_plain_sampler){
+            .set = set, .descriptor_offset_B = b->offset,
+         };
+      }
+   }
+   return count;
+}
+
 uint64_t
 hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
 {
@@ -154,6 +179,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    if (agx_chip_isa_encoding(pdev->dev.chip) == AGX_ISA_ENCODING_AGX3B) {
       flags |= (uint64_t)agx_native_fma_uniforms_enabled() << 59;
       flags |= (uint64_t)agx_native_late_loop_enabled() << 60;
+      flags |= (uint64_t)hk_repeated_sampler_enabled(pdev->dev.chip) << 61;
    }
    if (agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip)) {
       flags |= (uint64_t)hk_ubo_prefetch_enabled(pdev->dev.chip) << 32;
@@ -2760,19 +2786,57 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                agx_chip_uses_g15_g16_shader_abi(dev->dev.chip));
       nir_shader *candidate = nir_shader_clone(NULL, nir);
       struct agx_g17p_combined_sampler_binding binding;
+      const struct hk_descriptor_set_layout *sampler_layout =
+         set_count && set_layouts && set_layouts[0] ?
+            vk_to_hk_descriptor_set_layout(set_layouts[0]) : NULL;
+      bool repeated = false;
+      struct hk_plain_sampler repeated_samplers[HK_PLAIN_SAMPLER_MAX];
+      unsigned repeated_count = 0;
+      if (candidate && shader->info.ubo_prefetch_direct &&
+          hk_plain_samplers_enabled(dev->dev.chip) &&
+          sampler_layout && !(sampler_layout->vk.flags &
+             (VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT |
+              VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT)) &&
+          hk_repeated_sampler_enabled(dev->dev.chip)) {
+         /* The general executable retains border/minimum/scaled fallbacks.
+          * Only the existing per-draw plain-sampler proof selects this one.
+          * Fold that proof before examining handles: otherwise clamp sampler
+          * alternatives make identical ordinary samples appear dynamic. */
+         repeated_count = hk_collect_plain_samplers(set_layouts, set_count,
+                                                    repeated_samplers);
+         NIR_PASS(_, candidate, hk_nir_specialize_plain_samplers, 0, set_count,
+                  repeated_samplers, &repeated_count);
+         NIR_PASS(_, candidate, nir_opt_constant_folding);
+         NIR_PASS(_, candidate, nir_opt_dead_cf);
+         NIR_PASS(_, candidate, nir_opt_copy_prop);
+         NIR_PASS(_, candidate, nir_opt_dce);
+         repeated = repeated_count &&
+            agx_nir_lower_g17p_repeated_sampler(candidate, &binding);
+      }
+      if (!repeated) {
+         ralloc_free(candidate);
+         candidate = nir_shader_clone(NULL, nir);
+      }
       if (candidate &&
-          !dev->vk.enabled_features.descriptorBindingSampledImageUpdateAfterBind &&
-          agx_nir_lower_g17p_combined_sampler(candidate, &binding)) {
+          (repeated ||
+           !dev->vk.enabled_features.descriptorBindingSampledImageUpdateAfterBind) &&
+          (repeated || agx_nir_lower_g17p_combined_sampler(candidate, &binding))) {
          ralloc_free(nir);
          nir = candidate;
          shader->info.agx3_combined_sampler_valid = true;
          shader->info.agx3_combined_sampler = binding;
+         if (repeated) {
+            memcpy(shader->info.plain_samplers, repeated_samplers,
+                   repeated_count * sizeof(*repeated_samplers));
+            shader->info.plain_sampler_count = repeated_count;
+         }
 
          /* Texture and sampler table pointers occupy uniform halves 0..7.
           * Keep ordinary push-root accesses in the separate native fragment ABI;
           * the lowering removes descriptor accesses, not push constants.
           */
-         set_count = 0;
+         if (!repeated)
+            set_count = 0;
       } else {
          ralloc_free(candidate);
          candidate = nir_shader_clone(NULL, nir);
@@ -3007,26 +3071,12 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       }
       if (shader->info.ubo_prefetch_direct) {
          if (hk_plain_samplers_enabled(dev->dev.chip) &&
+             !shader->info.agx3_combined_sampler_valid &&
              (sw_stage == MESA_SHADER_FRAGMENT ||
               (sw_stage == MESA_SHADER_VERTEX &&
                hk_vertex_plain_samplers_enabled(dev->dev.chip)))) {
-            for (unsigned set = 0; set < set_count; ++set) {
-               if (!set_layouts || !set_layouts[set])
-                  continue;
-               const struct hk_descriptor_set_layout *layout =
-                  vk_to_hk_descriptor_set_layout(set_layouts[set]);
-               if (layout->vk.flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT)
-                  continue;
-               for (unsigned binding = 0; binding < layout->binding_count; ++binding) {
-                  const struct hk_descriptor_set_binding_layout *b = &layout->binding[binding];
-                  if (b->type != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-                      b->array_size != 1 || b->flags ||
-                      shader->info.plain_sampler_count == HK_PLAIN_SAMPLER_MAX)
-                     continue;
-                  shader->info.plain_samplers[shader->info.plain_sampler_count++] =
-                     (struct hk_plain_sampler){ .set = set, .descriptor_offset_B = b->offset };
-               }
-            }
+            shader->info.plain_sampler_count = hk_collect_plain_samplers(
+               set_layouts, set_count, shader->info.plain_samplers);
             NIR_PASS(_, nir, hk_nir_specialize_plain_samplers, root + 4, set_count,
                      shader->info.plain_samplers, &shader->info.plain_sampler_count);
          }

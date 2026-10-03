@@ -1420,6 +1420,77 @@ test_combined_sampler_scope(void)
    return ok;
 }
 
+static bool
+test_repeated_sampler(void)
+{
+   bool ok = true;
+   for (unsigned mode = 0; mode < 10; ++mode) {
+      nir_builder b = nir_builder_init_simple_shader(
+         mode == 5 ? MESA_SHADER_COMPUTE : MESA_SHADER_FRAGMENT,
+         &agx_nir_options, "repeated sampler with UBO");
+      nir_def *coord = nir_imm_vec2(&b, 0.25, 0.75);
+      nir_def *colour = nir_imm_vec4(&b, 0, 0, 0, 0);
+      const uint32_t texture_offset = mode == 8 ? 144 :
+                                     mode == 9 ? UINT32_MAX - 31 : 64;
+      for (unsigned i = 0; i < (mode == 6 ? 1u : 2u); ++i) {
+         nir_def *offset = mode == 3 && i ?
+            nir_f2u32(&b, nir_channel(&b, nir_load_frag_coord(&b), 0)) :
+            nir_imm_int(&b, mode == 1 && i ? 96 : texture_offset);
+         nir_def *image = nir_bindless_image_agx(&b, offset,
+                                                .desc_set = mode == 2 && i ? 3 : 0);
+         nir_def *sampler = nir_bindless_sampler_agx(
+            &b, nir_imm_int(&b, mode == 1 && i ? 128 : texture_offset + 32),
+            nir_imm_intN_t(&b, 45, 16), .desc_set = 0);
+         nir_tex_instr *tex = custom_border_sample(&b, image, sampler, coord, 0);
+         if (mode == 4 && i)
+            tex->op = nir_texop_txf;
+         if (mode == 7 && i) {
+            tex->op = nir_texop_txb;
+            nir_tex_instr_add_src(tex, nir_tex_src_bias, nir_imm_float16(&b, 1.0));
+         }
+         colour = nir_fadd(&b, colour, &tex->def);
+      }
+      /* A descriptor-set read independent of the sampled table must survive
+       * rebasing texture0/sampler0. Use it so DCE cannot hide its loss. */
+      nir_def *ubo = nir_load_descriptor_set_agx(&b, 2);
+      nir_def *value = nir_load_global_constant(&b, 1, 32, ubo,
+                                               .align_mul = 4);
+      colour = nir_fmul(&b, colour, value);
+      nir_store_output(&b, colour, nir_imm_int(&b, 0), .write_mask = 15,
+                       .src_type = nir_type_float32);
+      struct agx_g17p_combined_sampler_binding binding = {UINT32_MAX, UINT32_MAX};
+      bool lowered = agx_nir_lower_g17p_repeated_sampler(b.shader, &binding);
+      ok &= lowered == (mode == 0 || mode == 8);
+      if (lowered) {
+         unsigned samples = 0, sets = 0, handles = 0;
+         nir_foreach_block(block, nir_shader_get_entrypoint(b.shader)) {
+            nir_foreach_instr(instr, block) {
+               if (instr->type == nir_instr_type_tex) {
+                  nir_tex_instr *tex = nir_instr_as_tex(instr);
+                  samples += tex->texture_index == 0 && tex->sampler_index == 0 &&
+                     nir_tex_instr_src_index(tex, nir_tex_src_texture_handle) < 0 &&
+                     nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) < 0;
+               } else if (instr->type == nir_instr_type_intrinsic) {
+                  nir_intrinsic_instr *in = nir_instr_as_intrinsic(instr);
+                  sets += in->intrinsic == nir_intrinsic_load_descriptor_set_agx &&
+                          nir_intrinsic_desc_set(in) == 2;
+                  handles += in->intrinsic == nir_intrinsic_bindless_image_agx ||
+                             in->intrinsic == nir_intrinsic_bindless_sampler_agx;
+               }
+            }
+         }
+         ok &= samples == 2 && sets == 1 && handles == 0 &&
+               binding.texture_offset_B == texture_offset &&
+               binding.sampler_index_offset_B == texture_offset + 40;
+      } else {
+         ok &= binding.texture_offset_B == UINT32_MAX &&
+               binding.sampler_index_offset_B == UINT32_MAX;
+      }
+      ralloc_free(b.shader);
+   }
+   return ok;
+}
+
 static nir_shader *
 build_cs_bindless_txf(void)
 {
@@ -2964,7 +3035,8 @@ main(int argc, char **argv)
       return ok ? 0 : 1;
    }
    if (argc == 2 && !strcmp(argv[1], "--sampler-root-only")) {
-      const bool ok = test_combined_sampler_root() && test_combined_sampler_scope();
+      const bool ok = test_combined_sampler_root() && test_combined_sampler_scope() &&
+                      test_repeated_sampler();
       fprintf(stderr, "native sampler plus push-root lowering: %s\n", ok ? "PASS" : "FAIL");
       return ok ? 0 : 1;
    }
@@ -3025,7 +3097,8 @@ main(int argc, char **argv)
       all_ok = false;
    }
 
-   if (!test_combined_sampler_scope() || !test_combined_sampler_root()) {
+   if (!test_combined_sampler_scope() || !test_combined_sampler_root() ||
+       !test_repeated_sampler()) {
       fputs("combined sampler lowering consumed a non-sampler bias\n", stderr);
       all_ok = false;
    }
