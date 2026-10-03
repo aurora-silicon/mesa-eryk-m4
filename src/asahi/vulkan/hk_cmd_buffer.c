@@ -1860,11 +1860,15 @@ hk_profile_graphics_program(struct hk_cmd_buffer *cmd, struct hk_shader *s,
    reported[count++] = code;
    fprintf(stderr, "HK_PROGRAM_PROFILE stage=%u code=%" PRIx64
            " bytes=%zu gprs=%u scratch=%u instrs=%u loops=%u"
-           " ordinary_fs=%u prolog_root=%u\n",
+           " ordinary_fs=%u prolog_root=%u fragment_control=%08x"
+           " tri_merge_disable=%u\n",
            s->info.stage, code, linked->b.size, linked->b.nr_gprs,
            linked->b.scratch_size, s->b.info.stats.instrs, s->b.info.stats.loops,
            s->info.stage == MESA_SHADER_FRAGMENT && cmd->state.gfx.fs_ubo_direct,
-           linked->prolog_uses_root);
+           linked->prolog_uses_root,
+           s->info.stage == MESA_SHADER_FRAGMENT
+              ? linked->b.fragment_control.opaque[0] : 0,
+           s->info.stage == MESA_SHADER_FRAGMENT && s->b.info.disable_tri_merging);
 }
 
 uint64_t

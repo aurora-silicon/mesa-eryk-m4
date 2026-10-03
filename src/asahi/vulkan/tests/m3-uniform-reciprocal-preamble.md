@@ -126,3 +126,17 @@ exactly. Its world TA/fragment medians are 1.136/1.565 ms, but injected timings
 are diagnostic only. Public Metal binary archives compiled from those actual
 descriptors are retained; they do not prove the bytes of the executed PSOs, and
 their G15 metadata is not a qualified register/occupancy schema.
+
+`HK_M4_PROGRAM_PROFILE=true` now includes the selected linked fragment-control
+word and the compiler's triangle-merging restriction in its existing bounded
+address samples. Vertex entries report zero for these fragment-only fields.
+This changes logging only; it is not a complete draw/lifetime ledger or the
+final per-draw raster-state record. The private logging build
+has Vulkan library SHA-256
+`8dad55e145444ba9f7a6dbcf9444eb409944f51ba43b7483d071773858630a34`;
+source patch and identity are retained in `raster-state-profile/`.
+All three approved images match exactly. The large selected world variants
+have fragment controls `04000200`, `44000200` and `64000200`, all with the
+compiler restriction already set and 80 half registers, zero scratch. Removing
+only the extra pass-type-based restriction would therefore leave these programs
+unmerged. Their shader restrictions must not be dropped as a performance switch.
