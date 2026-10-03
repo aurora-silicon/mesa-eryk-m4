@@ -13,6 +13,57 @@
 #include <assert.h>
 
 static void
+test_native_fma_uniform_destination(void)
+{
+   /* Fifteen exact own terrain constant-program bytes, pipeline 109,
+    * J514S/macOS 26A428. The final ep5 form's extra release fields are
+    * excluded, as are uniform sources and modifiers. */
+   const struct {
+      uint16_t dest, src[3], wait;
+      enum agx3_alu_hint hints[3];
+      uint8_t bytes[8];
+   } witnesses[] = {
+      {24,{0,64,68},8,{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0xc9,0xc1,0x06,0x81,0x81,0x44,0x42,0x80}},
+      {26,{2,64,66},0,{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0xd9,0xc1,0x06,0x83,0x81,0x42,0x42,0x00}},
+      {28,{4,64,48},0,{AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0xe9,0xc1,0x06,0x05,0x81,0x30,0x42,0x00}},
+      {30,{6,64,62},0,{AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD},{0xf9,0x41,0x0e,0x07,0x81,0x3e,0x42,0x00}},
+      {32,{0,56,64},0,{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0x09,0xb9,0x46,0x81,0x81,0x40,0x42,0x00}},
+      {34,{2,56,58},0,{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0x19,0xb9,0x46,0x83,0x81,0x3a,0x42,0x00}},
+      {36,{4,56,48},0,{AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0x29,0xb9,0x46,0x05,0x81,0x30,0x42,0x00}},
+      {38,{6,56,52},0,{AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD},{0x39,0x39,0x4e,0x07,0x81,0x34,0x42,0x00}},
+      {40,{0,46,50},0,{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0x49,0xaf,0x46,0x81,0x81,0x32,0x42,0x00}},
+      {42,{2,46,48},0,{AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0x59,0xaf,0x46,0x83,0x81,0x30,0x42,0x00}},
+      {44,{4,46,42},0,{AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0x69,0xaf,0x46,0x05,0x81,0x2a,0x42,0x00}},
+      {46,{6,46,44},0,{AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_DISCARD},{0x79,0x2f,0x4e,0x07,0x81,0x2c,0x42,0x00}},
+      {48,{0,14,40},0,{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0x89,0x8f,0x56,0x01,0x81,0x28,0x42,0x00}},
+      {50,{2,14,16},0,{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0x99,0x8f,0x56,0x03,0x81,0x10,0x42,0x00}},
+      {52,{4,14,0},0,{AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,AGX3_ALU_HINT_DISCARD},{0xa9,0x8f,0x56,0x05,0x81,0x00,0x42,0x00}},
+   };
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+   for (unsigned i = 0; i < sizeof(witnesses)/sizeof(witnesses[0]); ++i) {
+      assert(agx3_alu_fma_to_uniform(AGX_ISA_ENCODING_AGX3B,witnesses[i].dest,
+               witnesses[i].src,witnesses[i].hints,witnesses[i].wait,bytes,&len));
+      assert(len==8 && !memcmp(bytes,witnesses[i].bytes,len));
+   }
+   const uint16_t src[] = {0,2,4};
+   const enum agx3_alu_hint hints[] = {AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_NONE,
+                                    AGX3_ALU_HINT_DISCARD};
+   memset(bytes,0xa5,sizeof(bytes)); len=0x5a;
+   assert(!agx3_alu_fma_to_uniform(AGX_ISA_ENCODING_AGX3C,24,src,hints,0,bytes,&len));
+   assert(!agx3_alu_fma_to_uniform(AGX_ISA_ENCODING_AGX3B,512,src,hints,0,bytes,&len));
+   assert(!agx3_alu_fma_to_uniform(AGX_ISA_ENCODING_AGX3B,25,src,hints,0,bytes,&len));
+   assert(!agx3_alu_fma_to_uniform(AGX_ISA_ENCODING_AGX3B,24,src,hints,1,bytes,&len));
+   const uint16_t high[] = {128,2,4}, odd[] = {1,2,4};
+   assert(!agx3_alu_fma_to_uniform(AGX_ISA_ENCODING_AGX3B,24,high,hints,0,bytes,&len));
+   assert(!agx3_alu_fma_to_uniform(AGX_ISA_ENCODING_AGX3B,24,odd,hints,0,bytes,&len));
+   const enum agx3_alu_hint invalid[] = {(enum agx3_alu_hint)3,AGX3_ALU_HINT_NONE,
+                                      AGX3_ALU_HINT_DISCARD};
+   assert(!agx3_alu_fma_to_uniform(AGX_ISA_ENCODING_AGX3B,24,src,invalid,0,bytes,&len));
+   for (unsigned i=0;i<sizeof(bytes);++i) assert(bytes[i]==0xa5);
+   assert(len==0x5a);
+}
+
+static void
 test_float_to_int_lifetime(void)
 {
    const uint8_t canonical[2][10] = {
@@ -1583,6 +1634,7 @@ int main(void){
    test_blur_half_arithmetic();
    test_native_u16_arithmetic();
    test_native_fma_minifloat();
+   test_native_fma_uniform_destination();
    test_int_to_float_liveness();
    test_float_compare_select();
    test_float_compare_zero();

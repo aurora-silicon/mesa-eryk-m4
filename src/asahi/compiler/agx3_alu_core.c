@@ -380,6 +380,43 @@ agx3_alu_float_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
 }
 
 bool
+agx3_alu_fma_to_uniform(enum agx_isa_encoding enc, uint16_t uniform_half,
+                         const uint16_t src[3],
+                         const enum agx3_alu_hint hints[3], uint16_t wait_mask,
+                         uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
+       uniform_half >= 512 || (uniform_half & 1) || (wait_mask & ~8u))
+      return false;
+   for (unsigned i = 0; i < 3; ++i) {
+      if (src[i] >= 128 || (src[i] & 1) ||
+          (unsigned)hints[i] > AGX3_ALU_HINT_CACHE)
+         return false;
+   }
+
+   const struct agx3_field_kv base[] = {
+      {9,3},{10,2},{25,2},{26,2},{42,2},{43,2},{59,2},{60,2},{77,2},{91,2},
+   };
+   struct agx3_field_kv fields[11] = {{3,uniform_half}};
+   const unsigned operand[] = {35,18,52};
+   const unsigned cache[] = {44,27,61};
+   const unsigned discard[] = {46,29,63};
+   unsigned n = 1;
+   for (unsigned i = 0; i < 3; ++i) {
+      fields[n++] = (struct agx3_field_kv){operand[i],src[i]};
+      fields[n++] = (struct agx3_field_kv){cache[i],hints[i]==AGX3_ALU_HINT_CACHE};
+      fields[n++] = (struct agx3_field_kv){discard[i],hints[i]==AGX3_ALU_HINT_DISCARD};
+   }
+   if (wait_mask) fields[n++] = (struct agx3_field_kv){100,1};
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], size;
+   if (!agx3_bind_compose(enc,"f32fma",3,base,10,fields,n,bytes,&size))
+      return false;
+   for (unsigned i = 0; i < size; ++i) out[i] = bytes[i];
+   *len = size;
+   return true;
+}
+
+bool
 agx3_alu_fma_minifloat_mod(enum agx_isa_encoding enc, uint16_t dest,
                            uint16_t src, uint8_t immediate, uint16_t addend,
                            bool negate_addend, bool saturate, enum agx3_alu_hint src_hint,
