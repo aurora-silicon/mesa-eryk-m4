@@ -29,8 +29,13 @@ On the M3, both modes match the approved three-frame RGB reference exactly.
 Two same-boot nine-pair studies with the unchanged 30-frame 3024x1837 Vulkan
 capture give a combined median paired improvement of 0.519%, with 16 of 18
 pairs positive. Separate medians are 176.74/177.76 and 176.55/177.56 replay FPS.
-Final completion is included. A header/cache bookkeeping rebuild has fresh
-exact image checks; its focused pinned texture CTS selection is in progress.
+Final completion is included. The final header/cache bookkeeping rebuild has
+fresh exact image checks and a further nine-pair repeat: 175.69/176.68 FPS,
+median paired gain 0.635%, eight pairs positive. Its frozen 1,268-case texture
+selection completes with 927 Pass, 341 NotSupported, zero Fail, timeouts or
+device losses. Catalog and global case indices are retained, as are the
+60-second watchdog receipts, 0.5-second temperature records and restored
+kernel controls. This is focused qualification, not a full CTS claim.
 These results do not establish native OpenGL or other-device qualification,
 MacOS parity, or live Java FPS. The normal desktop build is unchanged.
 
