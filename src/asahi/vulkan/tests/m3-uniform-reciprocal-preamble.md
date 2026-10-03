@@ -140,3 +140,44 @@ have fragment controls `04000200`, `44000200` and `64000200`, all with the
 compiler restriction already set and 80 half registers, zero scratch. Removing
 only the extra pass-type-based restriction would therefore leave these programs
 unmerged. Their shader restrictions must not be dropped as a performance switch.
+
+
+## Native clocks and rejected merging trial
+
+A bounded read-only macOS experiment samples the qualified SGX MMIO power
+state during this exact thirty-frame replay. The raw SGX state is eight for
+seven of nine in-interval observations. Independent 100 ms `powermetrics`
+telemetry reports 1,163 MHz active average, 100% busy, and 66% residency at
+1,380 MHz. The current macOS device tree has thirteen running states; its
+entry eight is 1,064 MHz. The raw SGX state and that table's indices therefore
+must not be equated. Linux's existing firmware PowerStats consistently reports
+state eight and a 1,380 MHz cap, but its frequency-valid flag is false. This
+evidence does not qualify Linux's actual physical PLL rate, a clock change, or
+a shared state-number mapping between the two firmware versions. The sampler
+and its MMIO-only, deadline, boot-identity and thermal requirements are retained
+in the M3 kernel tools. Evidence: `native-power-state/`.
+
+An isolated, default-off compiler probe removes only the triangle-merging
+restriction for ordinary implicit derivatives, retaining NIR helper flags,
+deferred discard handling and independent per-draw restrictions. Explicit
+coarse/fine/quad operations, subgroup operations, memory writes, helper queries,
+secondary parts and sample shading remain excluded. Host compiler controls
+pass and show identical shader instruction bytes. On boot
+61d03336-b1fc-402c-88da-dd13ed098e37, the final probe actually changes all three
+large world-program controls from `04000200/44000200/64000200` to
+`00000200/40000200/60000200`, retaining 80 half registers and zero scratch.
+Earlier probe versions left those programs unchanged; their timings are not
+proof of a merging effect.
+
+Fifteen same-binary alternating pairs for the effective probe measure
+166.212 versus 166.476 median replay FPS: paired mean +0.139%, paired median
++0.083%, ten wins. This is not a reliable improvement. Its three images differ
+in only 26/25/27 pixels out of 5,555,088 each, with maximum RGB error one level,
+within the user's explicitly accepted tolerance. The original strict-gate
+rejection and later tolerance approval are both retained. This image result
+is not derivative/subgroup CTS qualification. The probe is removed from the
+production sources; its source, meaningful compiler controls, private library
+hash, images, guards, temperatures and every timing remain in
+`implicit-quad-merge-v3/` (library SHA-256
+`9f144cd0c95aa3bf09b6eae4d0562e2e647cb10fa132ddb659544a01f61db2d2`).
+No performance claim or default change follows from this trial.
