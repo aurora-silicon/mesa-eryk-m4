@@ -15,6 +15,7 @@
 #include "git_sha1.h"
 #include "hk_buffer.h"
 #include "hk_entrypoints.h"
+#include "hk_descriptor_prefetch.h"
 #include "hk_image.h"
 #include "hk_instance.h"
 #include "hk_memory_budget_core.h"
@@ -1282,6 +1283,7 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
       native_schedule |= agx_native_fragment_loads_enabled();
       native_schedule |= agx_native_early_compare_enabled() << 1;
       native_schedule |= agx_native_parallel_lod_enabled() << 2;
+      native_schedule |= hk_vertex_norm8_enabled(pdev->dev.chip) << 3;
    }
    _mesa_blake3_update(&blake3_ctx, &native_schedule, sizeof(native_schedule));
 

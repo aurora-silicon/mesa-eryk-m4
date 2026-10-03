@@ -18,6 +18,7 @@ struct ctx {
    struct agx_robustness rs;
    bool dynamic_strides;
    bool native_raw;
+   bool native_norm8;
 };
 
 /* G17P's general multiply-high encoding is not hardware-qualified yet, while
@@ -288,6 +289,27 @@ pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
       enum pipe_format raw_format = bits == 8 ? PIPE_FORMAT_R8_UINT :
                                     bits == 16 ? PIPE_FORMAT_R16_UINT :
                                                  PIPE_FORMAT_R32_UINT;
+      const bool norm8 = ctx->native_norm8 && desc->is_array && bits == 8 &&
+                         desc->channel[chan].normalized && intr->def.bit_size == 32;
+      if (norm8) {
+         /* The backend retains the exact packed LDDEV mask/address, then
+          * converts pairs with NORMFLT. Keep the common swizzle and missing
+          * component rules, including alpha=1 after robust zero selection. */
+         nir_def *memory = nir_load_constant_agx(
+            b, count, 32, base, stride_offset_el,
+            .format = interchange_format,
+            .base = shift | (count << AGX_NIR_MEMORY_PACKED_COUNT_SHIFT));
+         if (ctx->rs.level >= AGX_ROBUSTNESS_D3D && !rs_address_fixup)
+            memory = nir_bcsel(b, oob, nir_imm_zero(b, count, 32), memory);
+         nir_def *channels[4];
+         for (unsigned i = 0; i < intr->def.num_components; ++i) {
+            const unsigned c = nir_intrinsic_component(intr) + i;
+            channels[i] = apply_swizzle_channel(b, memory, desc->swizzle[c], false);
+         }
+         nir_def_rewrite_uses(&intr->def,
+                             nir_vec(b, channels, intr->def.num_components));
+         return true;
+      }
       nir_def *raw = nir_load_constant_agx(
          b, DIV_ROUND_UP(bits * count, 32), 32, base, stride_offset_el,
          .format = raw_format,
@@ -382,7 +404,8 @@ pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
 
 static bool
 lower_vbo(nir_shader *shader, const struct agx_velem_key *attribs,
-          struct agx_robustness robustness, bool dynamic_strides, bool native_raw)
+          struct agx_robustness robustness, bool dynamic_strides, bool native_raw,
+          bool native_norm8)
 {
    assert(shader->info.stage == MESA_SHADER_VERTEX);
 
@@ -398,6 +421,7 @@ lower_vbo(nir_shader *shader, const struct agx_velem_key *attribs,
       .rs = robustness,
       .dynamic_strides = dynamic_strides,
       .native_raw = native_raw,
+      .native_norm8 = native_norm8,
    };
 
    return nir_shader_intrinsics_pass(shader, pass, nir_metadata_control_flow,
@@ -408,12 +432,20 @@ bool
 agx_nir_lower_vbo(nir_shader *shader, const struct agx_velem_key *attribs,
                   struct agx_robustness robustness, bool dynamic_strides)
 {
-   return lower_vbo(shader, attribs, robustness, dynamic_strides, false);
+   return lower_vbo(shader, attribs, robustness, dynamic_strides, false, false);
 }
 
 bool
 agx_nir_lower_vbo_raw(nir_shader *shader, const struct agx_velem_key *attribs,
                       struct agx_robustness robustness, bool dynamic_strides)
 {
-   return lower_vbo(shader, attribs, robustness, dynamic_strides, true);
+   return lower_vbo(shader, attribs, robustness, dynamic_strides, true, false);
+}
+
+bool
+agx_nir_lower_vbo_raw_norm8(nir_shader *shader,
+                           const struct agx_velem_key *attribs,
+                           struct agx_robustness robustness, bool dynamic_strides)
+{
+   return lower_vbo(shader, attribs, robustness, dynamic_strides, true, true);
 }

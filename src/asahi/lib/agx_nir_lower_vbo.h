@@ -46,6 +46,11 @@ bool agx_nir_lower_vbo(nir_shader *shader, const struct agx_velem_key *attribs,
 bool agx_nir_lower_vbo_raw(nir_shader *shader, const struct agx_velem_key *attribs,
                            struct agx_robustness rs, bool dynamic_strides);
 
+/* Same packed byte loads, with native conversion of array UNORM8/SNORM8. */
+bool agx_nir_lower_vbo_raw_norm8(nir_shader *shader,
+                                const struct agx_velem_key *attribs,
+                                struct agx_robustness rs, bool dynamic_strides);
+
 enum pipe_format agx_vbo_internal_format(enum pipe_format format);
 
 bool agx_vbo_supports_format(enum pipe_format format);

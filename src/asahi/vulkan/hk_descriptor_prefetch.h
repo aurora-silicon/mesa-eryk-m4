@@ -51,6 +51,13 @@ hk_vertex_uniform_cse_enabled(enum agx_chip chip)
 }
 
 static inline bool
+hk_vertex_norm8_enabled(enum agx_chip chip)
+{
+   return agx_chip_uses_g15_g16_shader_abi(chip) &&
+          debug_get_bool_option("HK_NATIVE_VERTEX_NORM8", false);
+}
+
+static inline bool
 hk_short_sample_loops_enabled(enum agx_chip chip)
 {
    return agx_chip_uses_g15_g16_shader_abi(chip) &&

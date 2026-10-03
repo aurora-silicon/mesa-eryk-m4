@@ -1150,6 +1150,34 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
       return;
    }
 
+   if (packed_count && b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       (fmt == AGX_FORMAT_U8NORM || fmt == AGX_FORMAT_S8NORM)) {
+      const unsigned nr = instr->def.num_components;
+      assert(nr >= 1 && nr <= 4 && dest.size == AGX_SIZE_32);
+      assert(packed_count == nr);
+      agx_index packed = agx_temp(b->shader, AGX_SIZE_32);
+      agx_instr *load = agx_device_load_to(
+         b, packed, addr, offset, AGX_FORMAT_I8, BITFIELD_MASK(nr), shift,
+         nir_is_coherent(instr));
+      load->memory_index_is_bytes = index_bytes;
+      load->memory_is_packed = true;
+      agx_index channels[4];
+      for (unsigned i = 0; i < DIV_ROUND_UP(nr, 2); ++i) {
+         agx_index half = agx_temp(b->shader, AGX_SIZE_16);
+         agx_subdivide_to(b, half, packed, i);
+         const unsigned lanes = MIN2(2u, nr - 2 * i);
+         agx_index pair = agx_vec_temp(b->shader, AGX_SIZE_32, lanes);
+         agx_normflt_agx3_to(b, pair, half, fmt);
+         agx_index unpacked[2];
+         agx_emit_split(b, unpacked, pair, lanes);
+         for (unsigned c = 0; c < lanes; ++c)
+            channels[2 * i + c] = unpacked[c];
+      }
+      agx_emit_collect_to(b, dest, nr, channels);
+      agx_emit_cached_split(b, dest, nr);
+      return;
+   }
+
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        fmt == AGX_FORMAT_I8 && !packed_count && instr->def.num_components > 1) {
       /* Native byte vectors are densely packed, unlike the compiler's

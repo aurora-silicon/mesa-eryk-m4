@@ -3562,7 +3562,10 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                         : AGX_ROBUSTNESS_DISABLED,
                };
 
-               if (agx_chip_uses_hal200_ioto(dev->dev.chip))
+               if (hk_vertex_norm8_enabled(dev->dev.chip))
+                  agx_nir_lower_vbo_raw_norm8(clone, attribs, agx_rs,
+                                              !key->vs.static_strides);
+               else if (agx_chip_uses_hal200_ioto(dev->dev.chip))
                   agx_nir_lower_vbo_raw(clone, attribs, agx_rs,
                                         !key->vs.static_strides);
                else

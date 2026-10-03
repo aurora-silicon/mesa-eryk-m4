@@ -112,6 +112,73 @@ static void check_prolog(bool native_raw, bool hardware)
 }
 
 static void
+check_norm8_swizzle(enum pipe_format format, unsigned count,
+                    const float decoded[4], const float expected[4], bool oob)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &options, "native norm8 VBO swizzle and robustness");
+   nir_def *input = nir_load_input(&b, 4, 32, nir_imm_int(&b, 0), .base = 0,
+                                   .dest_type = nir_type_float32);
+   nir_store_output(&b, input, nir_imm_int(&b, 0), .base = 0,
+                    .write_mask = 15, .src_type = nir_type_float32);
+   const struct agx_velem_key attrs[] = {{.format = format, .stride = 5}};
+   CHECK(agx_nir_lower_vbo_raw_norm8(
+      b.shader, attrs,
+      (struct agx_robustness){.level = AGX_ROBUSTNESS_D3D}, false));
+   unsigned loads = 0;
+   nir_intrinsic_instr *output = NULL;
+   nir_foreach_function_impl(impl, b.shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic) continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            nir_def *replacement = NULL;
+            b.cursor = nir_before_instr(instr);
+            switch (intr->intrinsic) {
+            case nir_intrinsic_load_constant_agx: {
+               ++loads;
+               CHECK(intr->def.num_components == count && intr->def.bit_size == 32);
+               CHECK((nir_intrinsic_base(intr) >> AGX_NIR_MEMORY_PACKED_COUNT_SHIFT) == count);
+               CHECK(nir_intrinsic_format(intr) ==
+                     (format == PIPE_FORMAT_R8G8B8A8_SNORM ? PIPE_FORMAT_R8_SNORM
+                                                         : PIPE_FORMAT_R8_UNORM));
+               nir_def *values[4];
+               for (unsigned i = 0; i < count; ++i)
+                  values[i] = nir_imm_float(&b, decoded[i]);
+               replacement = nir_vec(&b, values, count);
+               break;
+            }
+            case nir_intrinsic_load_vertex_id:
+               replacement = nir_imm_int(&b, oob ? 2 : 0);
+               break;
+            case nir_intrinsic_load_attrib_clamp_agx:
+               replacement = nir_imm_int(&b, 1);
+               break;
+            case nir_intrinsic_store_output:
+               output = intr;
+               break;
+            default:
+               break;
+            }
+            if (replacement) nir_def_rewrite_uses(&intr->def, replacement);
+         }
+      }
+   }
+   CHECK(loads == 1 && output);
+   bool changed;
+   do {
+      changed = false;
+      NIR_PASS(changed, b.shader, nir_opt_constant_folding);
+      NIR_PASS(changed, b.shader, nir_opt_copy_prop);
+   } while (changed);
+   CHECK(nir_src_is_const(output->src[0]));
+   const nir_const_value *value = nir_src_as_const_value(output->src[0]);
+   for (unsigned c = 0; c < 4; ++c)
+      CHECK(value[c].f32 == expected[c]);
+   ralloc_free(b.shader);
+}
+
+static void
 check_instance_divisor_lowering(uint32_t divisor, uint32_t instance,
                                 uint32_t base_instance,
                                 uint32_t expected_index)
@@ -234,6 +301,25 @@ int main(void)
    check_prolog(true, false);
    check_prolog(false, true);
    check_prolog(false, false);
+   for (unsigned v = 0; v < 256; ++v) {
+      const float u[] = {v / 255.f, 64 / 255.f, 128 / 255.f, 1};
+      const float swapped[] = {u[2], u[1], u[0], u[3]};
+      const float s[] = {MAX2(-1.f, (int8_t)v / 127.f), -1 / 127.f, 0, 1};
+      check_norm8_swizzle(PIPE_FORMAT_R8G8B8A8_UNORM, 4, u, u, false);
+      check_norm8_swizzle(PIPE_FORMAT_B8G8R8A8_UNORM, 4, u, swapped, false);
+      check_norm8_swizzle(PIPE_FORMAT_R8G8B8A8_SNORM, 4, s, s, false);
+   }
+   for (bool oob = false;; oob = true) {
+      const float u[] = {.25f, .5f, .75f, 1};
+      check_norm8_swizzle(PIPE_FORMAT_R8_UNORM, 1, u,
+                         (float[]){oob ? 0 : .25f, 0, 0, 1}, oob);
+      check_norm8_swizzle(PIPE_FORMAT_R8G8_UNORM, 2, u,
+                         (float[]){oob ? 0 : .25f, oob ? 0 : .5f, 0, 1}, oob);
+      check_norm8_swizzle(PIPE_FORMAT_R8G8B8_UNORM, 3, u,
+                         (float[]){oob ? 0 : .25f, oob ? 0 : .5f,
+                                   oob ? 0 : .75f, 1}, oob);
+      if (oob) break;
+   }
    check_format(PIPE_FORMAT_R8G8B8A8_UNORM,5,4,1,(uint32_t[]){0xff804020,0},(float[]){32.f/255,64.f/255,128.f/255,1});
    check_format(PIPE_FORMAT_B8G8R8A8_UNORM,5,4,1,(uint32_t[]){0xff804020,0},(float[]){128.f/255,64.f/255,32.f/255,1});
    check_format(PIPE_FORMAT_R8G8B8A8_SNORM,5,4,1,(uint32_t[]){0x7f00ff80,0},(float[]){-1,-1.f/127,0,1});
@@ -255,6 +341,6 @@ int main(void)
    check_instance_divisor_compiles(UINT32_MAX);
    check_sparse_vertex_locations();
    glsl_type_singleton_decref();
-   puts("Native packed VBO: formats and instance divisors 0/1/3/UINT32_MAX PASS");
+   puts("Native packed VBO: formats, norm8 swizzles/bounds and instance divisors PASS");
    return 0;
 }
