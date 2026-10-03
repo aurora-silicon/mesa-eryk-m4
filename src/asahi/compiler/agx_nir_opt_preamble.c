@@ -58,10 +58,26 @@ def_size_32(nir_def *def, unsigned *size, unsigned *align,
    }
 }
 
+/* Reserve a whole native uniform word for each narrow component. The
+ * corresponding stores and loads are widened after candidate selection;
+ * no half-width write or neighbouring uniform half is exposed. */
+static void
+def_size_widened(nir_def *def, unsigned *size, unsigned *align,
+                 nir_preamble_class *class)
+{
+   def_size_32(def, size, align, class);
+   if (*class == nir_preamble_class_general && def->bit_size == 16) {
+      *size = 2 * def->num_components;
+      *align = 2;
+   }
+}
+
 struct native_preamble_options {
    bool float_alu;
    bool reciprocal_alu;
    bool constant_loads;
+   bool narrow_constant_loads;
+   unsigned first_export_half;
 };
 
 static bool
@@ -128,13 +144,16 @@ native_preamble_instr(const nir_instr *instr, const void *data)
    const nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic == nir_intrinsic_load_preamble)
       return true;
-   /* Keep narrow memory reads in the main shader: moving them still changes
-    * full-scene readback on G15S. NIR proves uniform addresses, reconstructs
+   /* Ordinary policy keeps narrow memory reads in the main shader. The
+    * opt-in path reserves whole words and widens exported raw bits below.
+    * NIR proves uniform addresses, reconstructs
     * uniform control flow, and independently requires speculation permission
     * when crossing nonuniform control flow. Bounded UBO lowering uses load_agx
     * with NON_WRITEABLE and CAN_REORDER, not load_constant_agx. Admit that
     * immutable path too, but never mutable storage or descriptor writes. */
-   return options->constant_loads && intr->def.bit_size >= 32 &&
+   return options->constant_loads &&
+          (intr->def.bit_size >= 32 ||
+           (options->narrow_constant_loads && intr->def.bit_size == 16)) &&
           (intr->intrinsic == nir_intrinsic_load_global_constant ||
            intr->intrinsic == nir_intrinsic_load_constant_agx ||
            ((intr->intrinsic == nir_intrinsic_load_agx ||
@@ -528,11 +547,13 @@ lower_preamble(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
-/* Preserve Boolean semantics while using the qualified 32-bit uniform copy.
- * The allocator must reserve the widened size before selecting candidates. */
+/* Preserve Boolean semantics and narrow raw bits using full-word uniform
+ * copies. The allocator reserves their widened size before selection. Existing
+ * Ioto inputs below first_export_half retain their original half layout. */
 static bool
-native_preamble_bool(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
+native_preamble_widen(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
+   const struct native_preamble_options *options = data;
    if ((intr->intrinsic != nir_intrinsic_store_preamble &&
         intr->intrinsic != nir_intrinsic_load_preamble) ||
        nir_intrinsic_preamble_class(intr) != nir_preamble_class_general)
@@ -556,6 +577,28 @@ native_preamble_bool(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *dat
       nir_instr_remove(&intr->instr);
       return true;
    }
+   if (options->narrow_constant_loads &&
+       nir_intrinsic_base(intr) >= options->first_export_half) {
+      if (intr->intrinsic == nir_intrinsic_store_preamble &&
+          intr->src[0].ssa->bit_size == 16) {
+         b->cursor = nir_before_instr(&intr->instr);
+         nir_store_preamble(b, nir_u2u32(b, intr->src[0].ssa),
+            .base = nir_intrinsic_base(intr),
+            .preamble_class = nir_preamble_class_general);
+         nir_instr_remove(&intr->instr);
+         return true;
+      }
+      if (intr->intrinsic == nir_intrinsic_load_preamble &&
+          intr->def.bit_size == 16) {
+         b->cursor = nir_before_instr(&intr->instr);
+         nir_def *word = nir_load_preamble(b, intr->def.num_components, 32,
+            .base = nir_intrinsic_base(intr),
+            .preamble_class = nir_preamble_class_general);
+         nir_def_rewrite_uses(&intr->def, nir_u2u16(b, word));
+         nir_instr_remove(&intr->instr);
+         return true;
+      }
+   }
    return false;
 }
 
@@ -568,17 +611,21 @@ agx_nir_opt_preamble(nir_shader *nir, unsigned *sizes, bool uniform_32bit_only)
       .float_alu = debug_get_bool_option("AGX_NATIVE_FLOAT_PREAMBLE", false),
       .reciprocal_alu = debug_get_bool_option("AGX_NATIVE_RECIPROCAL_PREAMBLE", false),
       .constant_loads = debug_get_bool_option("AGX_NATIVE_MEMORY_PREAMBLE", false),
+      .narrow_constant_loads = debug_get_bool_option(
+         "AGX_NATIVE_NARROW_MEMORY_PREAMBLE", false),
+      .first_export_half = sizes[nir_preamble_class_general],
    };
    if (uniform_32bit_only) {
-      options.def_size = def_size_32;
+      options.def_size =
+         native.narrow_constant_loads ? def_size_widened : def_size_32;
       options.can_move_instr_cb = native_preamble_instr;
       options.cb_data = &native;
    }
    NIR_PASS(progress, nir, nir_opt_preamble, &options, sizes);
 
    if (uniform_32bit_only && progress)
-      NIR_PASS(_, nir, nir_shader_intrinsics_pass, native_preamble_bool,
-               nir_metadata_control_flow, NULL);
+      NIR_PASS(_, nir, nir_shader_intrinsics_pass, native_preamble_widen,
+               nir_metadata_control_flow, (void *)&native);
 
    int16_t heap[512];
    memset(heap, ~0, sizeof(heap));

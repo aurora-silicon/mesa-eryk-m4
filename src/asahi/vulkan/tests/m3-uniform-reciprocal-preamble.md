@@ -181,3 +181,47 @@ hash, images, guards, temperatures and every timing remain in
 `implicit-quad-merge-v3/` (library SHA-256
 `9f144cd0c95aa3bf09b6eae4d0562e2e647cb10fa132ddb659544a01f61db2d2`).
 No performance claim or default change follows from this trial.
+
+
+## Full-word exports for narrow immutable values
+
+`AGX_NATIVE_NARROW_MEMORY_PREAMBLE=true`, together with
+`AGX_NATIVE_MEMORY_PREAMBLE=true`, permits invariant 16-bit read-only loads
+in the native preamble. Unlike the rejected direct half-width export path,
+each exported component reserves an aligned 32-bit uniform word. A raw integer
+zero-extension writes that word; a 32-bit uniform load followed by a low-half
+conversion restores the exact original bits. This does not change memory
+access width, floating-point precision or rounding. Existing Ioto half inputs,
+including odd-half locations, retain their layout. NIR still proves uniform
+addresses and legal control-flow motion; mutable storage remains excluded.
+The new option defaults false, and its Vulkan compiler cache identity uses
+bit 58 with a compile-time bound preventing backend debug flag collisions.
+
+222 host AGX3 pack/compiler tests pass, including scalar/vector exports,
+allocation bounds, opt-in gating, varying addresses, and preservation of an
+existing odd-half input. ARM64 Vulkan builds. The private library SHA-256 is
+`2fa9b4a5c847c79d416de2fbf38b81a69065d33a12c14092cecfd43adf4f4043`.
+Kernel/boot identity remains the one in the preceding merging trial.
+
+Both variants reproduce all three 3024 x 1837 gameplay images exactly.
+Nine alternating pairs measure 166.347 versus 167.947 median FPS, paired
+mean +1.352%, median +1.259%, seven wins. A separate fifteen-pair repeat
+measures 166.187 versus 168.198, paired mean +1.577%, median +1.227%,
+thirteen wins. These are completion-inclusive thirty-frame replay timings,
+not live Java FPS or macOS parity. The improvement is small.
+
+740 frozen CTS cases retain the earlier 548-case selection and add 64 each
+for 16-bit storage, sampler LOD/mipmapping and fragment half-float coverage.
+Results: 478 Pass, 262 NotSupported, no failures. Original global indices,
+unsupported outcomes and the pinned 1.4.6.2 catalog remain unchanged. Selection
+SHA-256: `5919415a3301de2fc99b7f7dfe26d24223af2013a88b338424bfbe57e4b61dd4`.
+This run explicitly uses ordinary compiler options (`AGX_MESA_DEBUG` empty),
+rather than the CTS helper's historical `nopromote` default. Every bounded
+segment retains the verified 60-second watchdog, thermal evidence and policy
+restoration. M4 hardware has not been qualified by these M3 results.
+Evidence: `gpu-replay-bench/diagnostics/m3-macos-driver-gap-20261003/narrow-memory-preamble/`.
+
+The independent scheduling control matches all three images but disabling
+the pressure scheduler regresses nine-pair replay performance: 166.390 versus
+161.150 median FPS, paired mean -3.535%, median -3.727%, one win. Scheduling
+remains enabled. Evidence: `scheduler-control/`.

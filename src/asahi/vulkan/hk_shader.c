@@ -168,6 +168,8 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    if (agx_chip_uses_hal200_ioto(pdev->dev.chip)) {
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_PRESERVE_BRANCHES", false) << 38;
       flags |= (uint64_t)debug_get_bool_option("AGX_NATIVE_MEMORY_PREAMBLE", false) << 40;
+      flags |= (uint64_t)debug_get_bool_option(
+         "AGX_NATIVE_NARROW_MEMORY_PREAMBLE", false) << 58;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_BRANCH_SCALED", false) << 41;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_COALESCE_BROADCAST", false) << 42;
       flags |= (uint64_t)debug_get_bool_option("HK_NATIVE_COMPACT_DESCRIPTOR_PREFETCH", false) << 43;
@@ -177,7 +179,7 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    /* Backend debug options change executable code too. Reusing ordinary
     * binaries makes e.g. AGX_MESA_DEBUG=wait silently ineffective, and can
     * later reuse diagnostic binaries in a normal application. Reserve the
-    * bits 44..60 for the compiler's original bit positions. Compiler bit 0
+    * bits 44..57 for the compiler's original bit positions. Compiler bit 0
     * is unused, so flag 44 holds the diagnostic buffer shortcut above. Bit 1
     * only logs shaders; flag 45 holds the vertex input-loader policy.
     * Compiler bit 4 only controls internal shader dumps; flag 48 holds the
@@ -186,9 +188,9 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
     * vertex uniform reuse and bounded late texture-loop policy.
     * Logging/validation options do not change code and need no separate cache.
     * Compiler bit 3 only controls verbose logging; flag 47 selects native
-    * reciprocal motion.
+    * reciprocal motion. Flag 58 selects widened narrow-memory exports.
     */
-   static_assert(AGX_DBG_REMAT < BITFIELD_BIT(17));
+   static_assert(AGX_DBG_REMAT < BITFIELD_BIT(14));
    static_assert(((AGX_DBG_NOOPT | AGX_DBG_WAIT | AGX_DBG_NOPREAMBLE |
                    AGX_DBG_DEMAND | AGX_DBG_NOSCHED | AGX_DBG_SPILL |
                    AGX_DBG_NOPROMOTE | AGX_DBG_REMAT) & 63) == 0);

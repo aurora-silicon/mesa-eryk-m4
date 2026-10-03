@@ -7454,6 +7454,81 @@ test_native_reciprocal_preamble(bool enabled, bool float_alu,
    ralloc_free(b.shader);
 }
 
+static void
+test_native_narrow_memory_preamble(bool enabled, bool memory, bool uniform,
+                                   unsigned components)
+{
+   ScopedPreambleOption narrow("AGX_NATIVE_NARROW_MEMORY_PREAMBLE", enabled);
+   ScopedPreambleOption reads("AGX_NATIVE_MEMORY_PREAMBLE", memory);
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL,
+                                                 "native-narrow-memory-word");
+   nir_def *lane = nir_load_local_invocation_index(&b);
+   nir_def *address = nir_load_preamble(&b, 1, 64, .base = 0);
+   if (!uniform)
+      address = nir_iadd(&b, address,
+                        nir_u2u64(&b, nir_ishl_imm(&b, lane, 1)));
+   nir_def *value = nir_load_global_constant(&b, components, 16, address,
+      .access = ACCESS_CAN_SPECULATE, .align_mul = 2);
+   /* An existing odd-half input must not acquire a full-word read. */
+   nir_def *original = nir_load_preamble(&b, 1, 16, .base = 5);
+   nir_def *varying = nir_ixor(&b, nir_u2u16(&b, lane), original);
+   value = nir_ixor(&b, value, varying);
+   nir_store_global(&b, value, nir_imm_int64(&b, 0x100000), .align_mul = 2);
+   unsigned sizes[] = {8, 0, 0};
+   agx_nir_opt_preamble(b.shader, sizes, true);
+   nir_validate_shader(b.shader, "native narrow memory uses whole uniforms");
+   const bool moved = enabled && memory && uniform;
+   nir_function_impl *preamble = nir_shader_get_preamble(b.shader);
+   unsigned main_reads = 0, preamble_reads = 0, exports = 0, original_reads = 0;
+   nir_foreach_function_impl(impl, b.shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic == nir_intrinsic_load_global_constant) {
+               EXPECT_EQ(intr->def.bit_size, 16u);
+               EXPECT_EQ(intr->def.num_components, components);
+               EXPECT_EQ(nir_intrinsic_align_mul(intr), 2u);
+               if (impl == preamble)
+                  ++preamble_reads;
+               else
+                  ++main_reads;
+            } else if (intr->intrinsic == nir_intrinsic_store_preamble) {
+               ++exports;
+               EXPECT_EQ(intr->src[0].ssa->bit_size, 32u);
+               EXPECT_EQ(nir_intrinsic_base(intr) % 2, 0u);
+               EXPECT_GE(nir_intrinsic_base(intr), 8u);
+               EXPECT_LE(nir_intrinsic_base(intr) +
+                         2 * intr->src[0].ssa->num_components, sizes[0]);
+            } else if (intr->intrinsic == nir_intrinsic_load_preamble) {
+               if (nir_intrinsic_base(intr) == 5) {
+                  ++original_reads;
+                  EXPECT_EQ(intr->def.bit_size, 16u);
+               } else if (nir_intrinsic_base(intr) >= 8) {
+                  EXPECT_EQ(intr->def.bit_size, 32u);
+                  EXPECT_EQ(nir_intrinsic_base(intr) % 2, 0u);
+               }
+            }
+         }
+      }
+   }
+   EXPECT_EQ(main_reads, moved ? 0u : 1u);
+   EXPECT_EQ(preamble_reads, moved ? 1u : 0u);
+   EXPECT_EQ(original_reads, 1u);
+   EXPECT_EQ(exports > 0, moved);
+   ralloc_free(b.shader);
+}
+
+TEST_F(AGX3PackBinary, NativeNarrowMemoryExportsReserveAndCopyWholeWords)
+{
+   test_native_narrow_memory_preamble(false, true, true, 1);
+   test_native_narrow_memory_preamble(true, false, true, 1);
+   test_native_narrow_memory_preamble(true, true, false, 1);
+   test_native_narrow_memory_preamble(true, true, true, 1);
+   test_native_narrow_memory_preamble(true, true, true, 2);
+}
+
 TEST_F(AGX3PackBinary, NativeReciprocalPreambleRequiresUniformFullWordAndOptIn)
 {
    test_native_reciprocal_preamble(false, true, 32, true);
