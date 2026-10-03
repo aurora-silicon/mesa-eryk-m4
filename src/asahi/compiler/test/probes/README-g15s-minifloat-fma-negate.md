@@ -30,5 +30,8 @@ reference frames exactly. Two nine-pair same-boot measurements have median
 paired gains +0.8463/+1.1045 percent, combined +1.0504 percent (16/18 faster),
 separate combined medians 180.1560/182.0923 replay FPS. These are 30 completed
 3024x1837 gameplay replay frames with final drain retained, not Java FPS.
-The pinned 3675-case texture/arithmetic/FMA qualification is still running.
+The pinned 3675-case texture/arithmetic/FMA qualification finishes with
+2763 Pass, 912 NotSupported and zero failures or device losses. Every
+guard completes with verified 60-second watchdog and all-channel 0.5-second
+monitoring; maximum observed temperature is 83.75 C.
 No full Vulkan CTS, M4 hardware or normal desktop promotion is claimed.
