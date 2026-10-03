@@ -16,6 +16,8 @@ multi-draw fragment-program cache. One 260-instruction world shader was
 uploaded 32 times in the ordinary diagnostic capture, versus 19,616 times
 with preambles and no reuse. These are uploads over the whole capture, **not
 invocation counts, GPU time or exclusively the thirty timed frames**.
+The final diagnostic with reuse enabled reports only 32 uploads for each of
+the three large world-program variants, with 80 half registers and zero scratch.
 
 `HK_M3_MULTIDRAW_PREAMBLE_PROGRAM=true` allows the existing scoped cache to
 retain an immutable native preamble program with zero main/preamble scratch.
@@ -71,6 +73,8 @@ unsupported cases and original global indices remain recorded. Catalog SHA-256:
 72c1bb9d2f9f0425ab8a4f570d78abdc1d3a34b82173ec76b772dedc477526bf.
 This is targeted coverage, not full Vulkan CTS. Every segment verifies the
 60-second hardware watchdog, fresh thermal telemetry and policy restoration.
+Selection SHA-256:
+3bed08a5cf0edc2412f1fd542461b335f123958a1d44a16f6b3ee679e79c703a.
 
 Normal accelerated Plasma starts and completes its application/screenshot
 probe through its unchanged desktop Mesa. The private candidate then runs a
