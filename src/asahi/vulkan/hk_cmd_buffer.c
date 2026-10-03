@@ -209,6 +209,7 @@ hk_free_resettable_cmd_buffer(struct hk_cmd_buffer *cmd)
       cmd->native_programs[i] = NULL;
    }
    memset(cmd->native_pointer_uploads, 0, sizeof(cmd->native_pointer_uploads));
+   memset(&cmd->native_texture_upload, 0, sizeof(cmd->native_texture_upload));
    memset(cmd->native_prefetch_eligible, 0, sizeof(cmd->native_prefetch_eligible));
    struct hk_cmd_pool *pool = hk_cmd_buffer_pool(cmd);
    struct hk_device *dev = hk_cmd_pool_device(pool);
@@ -1580,23 +1581,29 @@ hk_g17p_graphics_uniform_ranges(
    }
 
    if (s->info.agx3_combined_sampler_valid) {
-      if (s->info.stage != MESA_SHADER_FRAGMENT || s->info.set_count != 0)
+      if (s->info.stage != MESA_SHADER_FRAGMENT)
          return false;
 
-      struct hk_descriptor_set *set = cmd->state.gfx.descriptors.sets[0];
+      const struct hk_descriptor_state *state = &cmd->state.gfx.descriptors;
+      const struct hk_descriptor_set *set = state->sets[0];
+      const uint8_t *data = set ? set->mapped_ptr :
+         state->push[0] ? state->push[0]->data : NULL;
+      const uint32_t size = state->set_sizes[0];
+      const uint64_t address = state->root.sets[0];
       const struct agx_g17p_combined_sampler_binding *binding =
          &s->info.agx3_combined_sampler;
-      if (!set || !set->mapped_ptr ||
-          binding->texture_offset_B > set->size ||
-          set->size - binding->texture_offset_B < 32 ||
-          binding->sampler_index_offset_B > set->size ||
-          set->size - binding->sampler_index_offset_B < sizeof(uint16_t))
+      if (!data || !address || binding->texture_offset_B > size ||
+          size - binding->texture_offset_B < 32 ||
+          binding->sampler_index_offset_B > size ||
+          size - binding->sampler_index_offset_B < sizeof(uint16_t)) {
+         mesa_loge("HAL200 combined sampler descriptor bounds: texture=%u sampler=%u size=%u mapped=%u",
+                   binding->texture_offset_B, binding->sampler_index_offset_B,
+                   size, data != NULL);
          return false;
+      }
 
       uint16_t sampler_index;
-      memcpy(&sampler_index,
-             (const uint8_t *)set->mapped_ptr +
-                binding->sampler_index_offset_B,
+      memcpy(&sampler_index, data + binding->sampler_index_offset_B,
              sizeof(sampler_index));
 
       const unsigned sampler_element_size =
@@ -1607,7 +1614,7 @@ hk_g17p_graphics_uniform_ranges(
          return false;
 
       const struct hk_agx3_g17p_combined_sampler_heap heap = {
-         .descriptor_set_va = hk_descriptor_set_addr(set),
+         .descriptor_set_va = address,
          .sampler_heap_va = dev->samplers.table.bo->va->addr,
          .texture_offset_B = binding->texture_offset_B,
          .sampler_index = sampler_index,
@@ -1615,8 +1622,30 @@ hk_g17p_graphics_uniform_ranges(
          .sampler_element_size_B = sampler_element_size,
       };
       uint64_t pointers[2];
-      if (!hk_agx3_g17p_combined_sampler_pointers(&heap, pointers))
+      if (!hk_agx3_g17p_combined_sampler_pointers(&heap, pointers)) {
+         mesa_loge("HAL200 combined sampler pointers: sampler=%u count=%u element=%u",
+                   sampler_index, dev->samplers.table.alloc, sampler_element_size);
          return false;
+      }
+
+      /* The Vulkan software descriptor stride is not a native table stride.
+       * In particular, push descriptors can place a 32-byte texture at a
+       * 16-byte offset. Keep entry zero in an aligned, immutable table rather
+       * than passing that interior address to the texture unit. */
+      if (pointers[0] & 31) {
+         const uint8_t *texture = data + binding->texture_offset_B;
+         if (!cmd->native_texture_upload.address ||
+             memcmp(cmd->native_texture_upload.bytes, texture, 32)) {
+            const uint64_t copied = hk_pool_upload(cmd, texture, 32, 32);
+            if (!copied)
+               return false;
+            memcpy(cmd->native_texture_upload.bytes, texture, 32);
+            cmd->native_texture_upload.address = copied;
+         }
+         pointers[0] = cmd->native_texture_upload.address;
+         if (!pointers[0])
+            return false;
+      }
 
       /* HAL200 FragmentProgramVariant::finalize (374968..3749c0) maps
        * compiler bindpoints 0x31/0x35 to driver qwords +0xc0/+0xe0.
@@ -1650,6 +1679,7 @@ hk_g17p_graphics_uniform_ranges(
    const bool native_spills = s->info.stage == MESA_SHADER_FRAGMENT &&
       agx_tilebuffer_spills(&cmd->state.gfx.render.tilebuffer);
    if (native_spills && s->info.agx3_combined_sampler_valid) {
+      mesa_loge("HAL200 combined sampler cannot rebase the spilled tilebuffer heap");
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return false;
    }

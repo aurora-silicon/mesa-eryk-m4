@@ -5131,6 +5131,12 @@ hk_shader_can_use_direct_ubos_uncached(struct hk_cmd_buffer *cmd,
    if (!api || !api->variants[variant].info.ubo_prefetch_direct)
       return false;
    const struct hk_shader_info *info = &api->variants[variant].info;
+   /* Tilebuffer spill shaders need the global image heap in the same native
+    * prefix as a rebased sampled table. Retain the general executable when
+    * those two address spaces cannot share the texture0/sampler0 ABI. */
+   if (info->agx3_combined_sampler_valid &&
+       agx_tilebuffer_spills(&gfx->render.tilebuffer))
+      return false;
    const struct hk_descriptor_state *state = &gfx->descriptors;
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    for (unsigned i = 0; i < info->plain_sampler_count; ++i) {

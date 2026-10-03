@@ -685,6 +685,12 @@ struct hk_cmd_buffer {
       uint64_t address;
       unsigned size;
    } native_pointer_uploads[4];
+   /* Last immutable entry-zero texture table. Descriptor contents, rather
+    * than a push-descriptor allocation's address, identify a reusable copy. */
+   struct {
+      uint8_t bytes[32];
+      uint64_t address;
+   } native_texture_upload;
    uint64_t native_prefetch_eligible[2];
 
    struct {
