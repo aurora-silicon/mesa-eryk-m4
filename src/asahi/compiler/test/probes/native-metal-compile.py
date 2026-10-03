@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile a Metal compute/render pipeline or BTNF builtin for G16G on the Mac.
+"""Compile a Metal compute/render pipeline or BTNF builtin for an explicit AGX target on the Mac.
 
 Runs Apple's offline compiler, not a GPU workload. Retains source, tool versions,
 commands, archive, and checked Mach-O text sections in a new output directory.
@@ -15,6 +15,9 @@ p.add_argument('--compiler', help='Absolute offline compiler path on the Mac; de
 p.add_argument('--vertex-function', default='vs', help='Vertex function for render pipelines')
 p.add_argument('--samples',type=int,default=1,choices=[1,2,4],help='Render pipeline raster sample count')
 p.add_argument('--pixel-format',default='RGBA8Unorm',help='Native color attachment format for render pipelines')
+p.add_argument('--target', default='applegpu_g16g',
+               choices=['applegpu_g15s', 'applegpu_g16g', 'applegpu_g17p'],
+               help='Explicit offline compiler target; compile success is not hardware qualification')
 p.add_argument('--host', default='m1@51.159.120.23')
 a = p.parse_args()
 a.output.mkdir(parents=True, exist_ok=False)
@@ -47,17 +50,17 @@ compiler=([request['compiler']] if request['compiler'] else
           ['xcrun','metal-nt' if request['stage']=='builtin' else 'applegpu-nt'])
 ok=run(['sw_vers']) and run(compiler+['--version'])
 if request['stage']=='builtin':
-    if ok:ok=run(compiler+['-arch','applegpu_g16g','-platform_version','macos','26.0','26.0','-N','source.btnf','-o','output.archive'])
+    if ok:ok=run(compiler+['-arch',request['target'],'-platform_version','macos','26.0','26.0','-N','source.btnf','-o','output.archive'])
 else:
     if ok:ok=run(['xcrun','metal','source.metal','-o','source.metallib'])
-    if ok:ok=run(compiler+['-arch','applegpu_g16g','-platform_version','macos','26.0','26.5','source.metallib','-N','pipeline.mtlp-json','-o','output.archive'])
+    if ok:ok=run(compiler+['-arch',request['target'],'-platform_version','macos','26.0','26.5','source.metallib','-N','pipeline.mtlp-json','-o','output.archive'])
 files={f.name:base64.b64encode(f.read_bytes()).decode() for f in root.iterdir() if f.is_file()}
-print(json.dumps({'ok':ok,'target':'applegpu_g16g','remote_directory':str(root),'commands':records,'files':files}))
+print(json.dumps({'ok':ok,'target':request['target'],'remote_directory':str(root),'commands':records,'files':files}))
 '''
 r = subprocess.run(['ssh','-o','ConnectTimeout=10',a.host,shlex.join(['python3','-c',remote])],
                    input=json.dumps({'source':base64.b64encode(source).decode(),'function':a.function,
                                      'stage':a.stage,'vertex_function':a.vertex_function,'pixel_format':a.pixel_format,'samples':a.samples,
-                                     'source_name':source_name,'compiler':a.compiler}),
+                                     'target':a.target,'source_name':source_name,'compiler':a.compiler}),
                    text=True,capture_output=True,timeout=180)
 (a.output/'transport-stderr.log').write_text(r.stderr)
 r.check_returncode()
