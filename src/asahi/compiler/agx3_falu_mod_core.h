@@ -39,6 +39,16 @@ struct agx3_falu_mods {
 };
 
 #define AGX3_FALU_MOD_MAX_LENGTH 16u
+struct agx3_falu_runtime;
+
+/* F32 FMA with an aligned uniform multiplier and/or addend. The other
+ * multiplier remains a GPR. Mask bits name src0 and addend (1 and 4);
+ * operands are half indices. No modifiers, half sources or immediate operands.
+ * Uniforms have no GPR lifetime hints. */
+bool agx3_falu_fma_uniform(enum agx_isa_encoding enc, uint16_t dest,
+                           unsigned uniform_mask, const uint16_t src[3],
+                           const struct agx3_falu_runtime *runtime,
+                           uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len);
 
 /* dest = sat?(srcmods(src0) OP srcmods(src1)). abs applies before neg. */
 bool agx3_falu_add_mod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src0,

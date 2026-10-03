@@ -61,6 +61,49 @@ regs_ok(uint16_t a, uint16_t b_, uint16_t c)
 }
 
 bool
+agx3_falu_fma_uniform(enum agx_isa_encoding enc, uint16_t dest,
+                      unsigned uniform_mask, const uint16_t src[3],
+                      const struct agx3_falu_runtime *runtime,
+                      uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !src || !runtime || !out || !len ||
+       dest >= 256 || (dest & 1) ||
+       (uniform_mask != 1 && uniform_mask != 4 && uniform_mask != 5) ||
+       runtime->wait_mask > 63)
+      return false;
+   for (unsigned i = 0; i < 3; ++i) {
+      bool uniform = uniform_mask & (1u << i);
+      if ((src[i] & 1) || src[i] >= (uniform ? 512 : 256) ||
+          (runtime->cache[i] && runtime->discard[i]) ||
+          (uniform && (runtime->cache[i] || runtime->discard[i])))
+         return false;
+   }
+
+   /* Apple G15S loop witnesses: 09010e0f200a (uniform multiplier),
+    * 09010e0b21080200 (uniform addend), 09010e1721080202 (both).
+    * Uniform sources use f36/f53, distinct from GPR fields f35/f52.
+    * Keep independent register hints and all six dependency slots. */
+   struct agx3_field_kv ov[20] = {
+      KV(2,dest), KV(18,src[1]),
+      KV(42,(uniform_mask & 1) ? 3 : 2),
+      KV((uniform_mask & 1) ? 36 : 35,src[0]),
+      KV(59,(uniform_mask & 4) ? 3 : 2),
+      KV((uniform_mask & 4) ? 53 : 52,src[2]),
+      KV(11,runtime->dest_cache), KV(44,runtime->cache[0]),
+      KV(46,runtime->discard[0]), KV(27,runtime->cache[1]),
+      KV(29,runtime->discard[1]), KV(61,runtime->cache[2]),
+      KV(63,runtime->discard[2]),
+   };
+   unsigned n = 13;
+   for (unsigned i = 0; i < 6; ++i)
+      ov[n++] = (struct agx3_field_kv)KV(97+i, (runtime->wait_mask >> i) & 1);
+   for (unsigned ep = 2; ep <= 5; ++ep)
+      if (agx3_bind_compose(enc, "f32fma", ep, fma_b, 14, ov, n, out, len))
+         return true;
+   return false;
+}
+
+bool
 agx3_falu_add_mod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src0,
                   uint16_t src1, const struct agx3_falu_mods *m,
                   uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)

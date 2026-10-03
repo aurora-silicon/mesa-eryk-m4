@@ -67,6 +67,67 @@ mixed_fma_vectors(void)
 }
 
 static unsigned
+uniform_fma_vectors(void)
+{
+   /* Fresh strict-math applegpu_g15s compiler witnesses, three loop kernels.
+    * Each row uses four independent values; the overwritten x GPR is discarded
+    * while the second varying argument remains live across iterations. */
+   const struct {
+      unsigned mask; uint16_t s0, add; uint8_t size, bytes[4][8];
+   } vectors[] = {
+      {1,14,10,6,{{0x09,0x01,0x0e,0x0f,0x20,0x0a},
+                  {0x19,0x03,0x0e,0x0d,0x20,0x0c},
+                  {0x29,0x05,0x0e,0x0b,0x20,0x0e},
+                  {0x39,0x07,0x0e,0x09,0x20,0x10}}},
+      {4,10,8,8,{{0x09,0x01,0x0e,0x0b,0x21,0x08,0x02,0x00},
+                 {0x19,0x03,0x0e,0x0d,0x21,0x0a,0x02,0x00},
+                 {0x29,0x05,0x0e,0x0f,0x21,0x0c,0x02,0x00},
+                 {0x39,0x07,0x0e,0x11,0x21,0x0e,0x02,0x00}}},
+      {5,22,8,8,{{0x09,0x01,0x0e,0x17,0x21,0x08,0x02,0x02},
+                 {0x19,0x03,0x0e,0x15,0x21,0x0a,0x02,0x02},
+                 {0x29,0x05,0x0e,0x13,0x21,0x0c,0x02,0x02},
+                 {0x39,0x07,0x0e,0x11,0x21,0x0e,0x02,0x02}}},
+   };
+   unsigned fail = 0;
+   for (unsigned i = 0; i < sizeof(vectors)/sizeof(vectors[0]); ++i) {
+      for (unsigned c = 0; c < 4; ++c) {
+         const uint16_t src[] = {
+            vectors[i].s0 + ((vectors[i].mask & 1) ? -2 * (int)c : 2 * (int)c),
+            2*c, vectors[i].add + 2*c,
+         };
+         const struct agx3_falu_runtime rt = {.discard={false,true,false}};
+         uint8_t bytes[16], size = 0;
+         if (!agx3_falu_fma_uniform(AGX_ISA_ENCODING_AGX3B, 2*c,
+                 vectors[i].mask, src, &rt, bytes, &size) ||
+             size != vectors[i].size || memcmp(bytes,vectors[i].bytes[c],size))
+            fail++;
+      }
+   }
+   uint16_t src[] = {510,254,508};
+   struct agx3_falu_runtime rt = {.wait_mask=63};
+   uint8_t bytes[16], size = 0;
+   fail += !agx3_falu_fma_uniform(AGX_ISA_ENCODING_AGX3B,254,5,src,&rt,bytes,&size);
+   for (unsigned mask = 0; mask < 8; ++mask)
+      if (mask != 1 && mask != 4 && mask != 5)
+         fail += agx3_falu_fma_uniform(AGX_ISA_ENCODING_AGX3B,0,mask,src,&rt,bytes,&size);
+   fail += agx3_falu_fma_uniform(AGX_ISA_ENCODING_AGX3C,0,5,src,&rt,bytes,&size);
+   for (unsigned s = 0; s < 3; ++s) {
+      uint16_t old = src[s]; src[s] = old | 1;
+      fail += agx3_falu_fma_uniform(AGX_ISA_ENCODING_AGX3B,0,5,src,&rt,bytes,&size);
+      src[s] = s == 1 ? 256 : 512;
+      fail += agx3_falu_fma_uniform(AGX_ISA_ENCODING_AGX3B,0,5,src,&rt,bytes,&size);
+      src[s] = old;
+      rt.cache[s] = rt.discard[s] = true;
+      fail += agx3_falu_fma_uniform(AGX_ISA_ENCODING_AGX3B,0,5,src,&rt,bytes,&size);
+      rt.cache[s] = rt.discard[s] = false;
+   }
+   rt.wait_mask = 64;
+   fail += agx3_falu_fma_uniform(AGX_ISA_ENCODING_AGX3B,0,5,src,&rt,bytes,&size);
+   printf("native uniform FMA: 12 Apple vectors and invalid operands: %u failures\n",fail);
+   return fail;
+}
+
+static unsigned
 narrow_runtime_vectors(void)
 {
    const struct {
@@ -448,7 +509,7 @@ fma_two_vectors(void)
 int
 main(void)
 {
-   unsigned pass = 0, fail = mixed_fma_vectors() + runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors() + fma_two_vectors();
+   unsigned pass = 0, fail = uniform_fma_vectors() + mixed_fma_vectors() + runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors() + fma_two_vectors();
    for (size_t i = 0; i < mod_vec_count; ++i) {
       const struct mod_vec *v = &mod_vecs[i];
       const enum agx_isa_encoding e =

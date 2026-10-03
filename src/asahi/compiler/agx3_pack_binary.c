@@ -7567,6 +7567,43 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FFMA &&
+             (I->src[0].type == AGX_INDEX_UNIFORM ||
+              I->src[1].type == AGX_INDEX_UNIFORM ||
+              I->src[2].type == AGX_INDEX_UNIFORM)) {
+            if (I->saturate || I->nr_dests != 1 || I->nr_srcs != 3 ||
+                !agx3_vary_reg32(I->dest[0]) || agx_channels(I->dest[0]) != 1)
+               AGX3_REFUSE(I);
+            /* FMA's multipliers commute exactly. Keep the grounded uniform
+             * in source 0, moving its source index and lifetime hints together. */
+            agx_index src[3] = {I->src[0], I->src[1], I->src[2]};
+            if (src[1].type == AGX_INDEX_UNIFORM) {
+               agx_index swap = src[0]; src[0] = src[1]; src[1] = swap;
+            }
+            struct agx3_falu_runtime runtime = {
+               .dest_cache = I->dest[0].cache, .wait_mask = wait,
+            };
+            uint16_t values[3];
+            unsigned mask = 0;
+            for (unsigned s = 0; s < 3; ++s) {
+               const bool uniform = src[s].type == AGX_INDEX_UNIFORM;
+               if (src[s].size != AGX_SIZE_32 || agx_channels(src[s]) != 1 ||
+                   src[s].abs || src[s].neg || src[s].memory || src[s].kill ||
+                   (!uniform && !agx3_src_is_register(src[s])))
+                  AGX3_REFUSE(I);
+               values[s] = src[s].value;
+               mask |= uniform << s;
+               runtime.cache[s] = src[s].cache;
+               runtime.discard[s] = src[s].discard;
+            }
+            uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], length;
+            if (!agx3_falu_fma_uniform(enc, I->dest[0].value, mask, values,
+                    &runtime, bytes, &length) ||
+                !agx3_append(emission, bytes, length))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FFMA &&
              !I->saturate && I->nr_dests == 1 && I->nr_srcs == 3 &&
              agx3_vary_reg32(I->dest[0]) && agx_channels(I->dest[0]) == 1 &&
              agx3_mod_src_ok(I->src[0]) && !I->src[0].abs &&

@@ -191,6 +191,60 @@ TEST_F(AGX3PackBinary, UniformWritesUsePhysicalRegisterLifetime)
    }
 }
 
+TEST_F(AGX3PackBinary, NativeFmaUniformMultipliersCommuteWithLifetime)
+{
+   for (bool commute : {false, true}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index x = agx_register(0, AGX_SIZE_32);
+      x.discard = true;
+      agx_index a = agx_uniform(22, AGX_SIZE_32);
+      agx_ffma_to(b, agx_register(0, AGX_SIZE_32),
+                  commute ? x : a, commute ? a : x,
+                  agx_uniform(8, AGX_SIZE_32));
+      agx_stop(b);
+      const std::vector<uint8_t> expected = {
+         0x09,0x01,0x0e,0x17,0x21,0x08,0x02,0x02,0x0e,0,0,0,
+      };
+      EXPECT_EQ(pack(b), expected) << "commute=" << commute;
+   }
+}
+
+TEST_F(AGX3PackBinary, NativeFmaUniformLegalizationRejectsUnsupportedShapes)
+{
+   const char *old = getenv("AGX_NATIVE_FMA_UNIFORMS");
+   const bool had_old = old != nullptr;
+   const std::string saved = old ? old : "";
+   setenv("AGX_NATIVE_FMA_UNIFORMS", "true", 1);
+   for (unsigned mode = 0; mode < 5; ++mode) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index x = agx_temp(b->shader, AGX_SIZE_32);
+      agx_index a = agx_uniform(22, AGX_SIZE_32);
+      agx_index c = agx_uniform(8, AGX_SIZE_32);
+      agx_instr *fma = agx_ffma_to(b, agx_temp(b->shader, AGX_SIZE_32),a,x,c);
+      switch (mode) {
+      case 0: break;
+      case 1: fma->saturate = true; break;
+      case 2: fma->src[0].neg = true; break;
+      case 3: fma->src[1] = agx_uniform(24, AGX_SIZE_32); break;
+      case 4: fma->src[2].size = AGX_SIZE_16; break;
+      }
+      agx_lower_uniform_sources(b->shader);
+      EXPECT_EQ(fma->src[0].type, mode == 0 || mode == 3 ?
+                 AGX_INDEX_UNIFORM : AGX_INDEX_NORMAL);
+      EXPECT_EQ(fma->src[1].type, AGX_INDEX_NORMAL);
+      EXPECT_EQ(fma->src[2].type, mode == 0 || mode == 3 ?
+                 AGX_INDEX_UNIFORM : AGX_INDEX_NORMAL);
+   }
+   EXPECT_TRUE(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX2,
+                  AGX_OPCODE_FFMA, 0, 300, AGX_SIZE_32));
+   EXPECT_FALSE(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX3C,
+                   AGX_OPCODE_FFMA, 0, 22, AGX_SIZE_32));
+   if (had_old)
+      setenv("AGX_NATIVE_FMA_UNIFORMS", saved.c_str(), 1);
+   else
+      unsetenv("AGX_NATIVE_FMA_UNIFORMS");
+}
+
 TEST_F(AGX3PackBinary, NativeLayeredColorEOTMatchesJ713Capture)
 {
    /* Working 25G83 capture055829, resource1+0x2700, RGBA32Float. */

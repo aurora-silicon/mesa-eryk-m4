@@ -4,6 +4,30 @@
  */
 #include "agx_builder.h"
 #include "agx_compiler.h"
+#include "util/u_debug.h"
+
+bool
+agx_native_fma_uniforms_enabled(void)
+{
+   return debug_get_bool_option("AGX_NATIVE_FMA_UNIFORMS", false);
+}
+
+static bool
+native_uniform_fma(const agx_instr *I)
+{
+   if (I->op != AGX_OPCODE_FFMA || I->saturate || I->nr_dests != 1 ||
+       I->dest[0].size != AGX_SIZE_32 || agx_channels(I->dest[0]) != 1 ||
+       I->nr_srcs != 3)
+      return false;
+   for (unsigned s = 0; s < 3; ++s)
+      if (I->src[s].size != AGX_SIZE_32 || agx_channels(I->src[s]) != 1 ||
+          I->src[s].abs || I->src[s].neg || I->src[s].memory ||
+          (I->src[s].type != AGX_INDEX_NORMAL &&
+           I->src[s].type != AGX_INDEX_REGISTER &&
+           I->src[s].type != AGX_INDEX_UNIFORM))
+         return false;
+   return true;
+}
 
 /*
  * Not all instructions can take uniforms. Memory instructions can take
@@ -28,6 +52,11 @@ agx_instr_accepts_uniform(enum agx_isa_encoding encoding, enum agx_opcode op,
       (encoding == AGX_ISA_ENCODING_AGX2 || !(value & 3));
 
    switch (op) {
+   case AGX_OPCODE_FFMA:
+      if (encoding == AGX_ISA_ENCODING_AGX3B)
+         return agx_native_fma_uniforms_enabled() && src_index < 3 &&
+                size == AGX_SIZE_32 && value < 512 && !(value & 1);
+      return encoding == AGX_ISA_ENCODING_AGX2 && !is_64;
    case AGX_OPCODE_FLTNORM_AGX3:
       /* G17P colour packing has native uniform operands in both lanes.
        * Preserve aligned float32 sources instead of allocating temporary
@@ -99,14 +128,9 @@ agx_instr_accepts_uniform(enum agx_isa_encoding encoding, enum agx_opcode op,
       /* We would fail validation otherwise */
       return true;
    default:
-      /* Generic ALU.  AGX2 can read the uniform file directly here; AGX3
-       * cannot -- its ALU operands are register-or-immediate only
-       * (agx3_pack_binary.c:141-145 agx3_src_is_register, and the whole
-       * agx3_sel_instr operand form has no uniform encoding).  Every
-       * AGX_INDEX_UNIFORM the AGX3 packer does accept is a memory-op base,
-       * texture heap, or subgroup source, all named explicitly above.  So on
-       * AGX3 the generic case must be lowered to a move, or the shader is
-       * refused at pack time with no way to recover.
+      /* Keep AGX3 uniform operands only for the qualified instructions named
+       * above. The generic selector accepts registers and immediates; other
+       * uniform operands must still be materialized before packing.
        */
       if (encoding != AGX_ISA_ENCODING_AGX2)
          return false;
@@ -141,11 +165,23 @@ agx_lower_uniform_sources(agx_context *ctx)
       agx_index materialized_from[8] = {0};
       agx_index materialized_to[8] = {0};
       unsigned materialized = 0;
+      const bool fma = ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+                       native_uniform_fma(I);
+      const bool two_uniform_multipliers = fma &&
+         I->src[0].type == AGX_INDEX_UNIFORM &&
+         I->src[1].type == AGX_INDEX_UNIFORM;
 
       agx_foreach_src(I, s) {
+         /* The qualified FMA permits one uniform multiplier, commuted into
+          * source 0 by the packer, and/or a uniform addend. All other shapes
+          * keep the ordinary source legalization. */
+         const bool lower_fma = I->op == AGX_OPCODE_FFMA &&
+            ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+            (!fma || (s == 1 && two_uniform_multipliers));
          if (I->src[s].type == AGX_INDEX_UNIFORM &&
-             !agx_instr_accepts_uniform(ctx->key->dev.encoding, I->op, s,
-                                        I->src[s].value, I->src[s].size)) {
+             (lower_fma ||
+              !agx_instr_accepts_uniform(ctx->key->dev.encoding, I->op, s,
+                                         I->src[s].value, I->src[s].size))) {
             agx_index idx = I->src[s];
             idx.abs = idx.neg = false;
 
