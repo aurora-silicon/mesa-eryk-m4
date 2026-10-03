@@ -1287,6 +1287,7 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
       native_schedule |= agx_native_early_textures_enabled() << 4;
       native_schedule |= hk_repeated_sampler_enabled(pdev->dev.chip) << 5;
       native_schedule |= agx_native_binary_uniforms_enabled() << 6;
+      native_schedule |= agx_native_minifloat_fma_negate_enabled() << 7;
    }
    _mesa_blake3_update(&blake3_ctx, &native_schedule, sizeof(native_schedule));
 

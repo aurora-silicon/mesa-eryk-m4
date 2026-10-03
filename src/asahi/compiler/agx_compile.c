@@ -3116,7 +3116,13 @@ agx_lower_agx3_half_integer_sources(agx_context *ctx)
    }
 }
 
-static void
+bool
+agx_native_minifloat_fma_negate_enabled(void)
+{
+   return debug_get_bool_option("AGX_NATIVE_MINIFLOAT_FMA_NEGATE", false);
+}
+
+void
 agx_lower_agx3_fma_sources(agx_context *ctx)
 {
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B)
@@ -3364,6 +3370,29 @@ agx_lower_agx3_fma_sources(agx_context *ctx)
          agx_index widened = agx_temp(ctx, AGX_SIZE_32);
          agx_fmov_to(&b, widened, I->src[s]);
          I->src[s] = widened;
+      }
+
+      /* The existing native minifloat-multiplier encoder already supports
+       * a negated F32 GPR addend. Do not turn that qualified modifier into
+       * a separate sign-bit XOR. Keep all other mixed-source legalization. */
+      if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_preamble &&
+          !ctx->key->secondary && !ctx->nir->info.internal &&
+          agx_native_minifloat_fma_negate_enabled()) {
+         const bool imm_first = I->src[0].type == AGX_INDEX_IMMEDIATE;
+         const agx_index imm = I->src[imm_first ? 0 : 1];
+         const agx_index reg = I->src[imm_first ? 1 : 0];
+         const agx_index add = I->src[2];
+         if (I->dest[0].size == AGX_SIZE_32 &&
+             agx_channels(I->dest[0]) == 1 &&
+             imm.type == AGX_INDEX_IMMEDIATE && imm.value <= UINT8_MAX &&
+             !imm.abs && !imm.neg && !imm.memory &&
+             (reg.type == AGX_INDEX_NORMAL || reg.type == AGX_INDEX_REGISTER) &&
+             reg.size == AGX_SIZE_32 && agx_channels(reg) == 1 &&
+             !reg.abs && !reg.neg && !reg.memory &&
+             (add.type == AGX_INDEX_NORMAL || add.type == AGX_INDEX_REGISTER) &&
+             add.size == AGX_SIZE_32 && agx_channels(add) == 1 &&
+             !add.abs && add.neg && !add.memory)
+            continue;
       }
 
       bool mixed = false, has_modifier = false, unsupported_modifier = false;

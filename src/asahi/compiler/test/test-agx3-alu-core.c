@@ -916,8 +916,30 @@ test_native_fma_minifloat(void)
             AGX_ISA_ENCODING_AGX3B, negative_addend[i].dest,
             negative_addend[i].src, negative_addend[i].immediate,
             negative_addend[i].addend, true, false, negative_addend[i].src_hint,
-            negative_addend[i].addend_hint, false, 0, out, &len));
+            negative_addend[i].addend_hint, false, 32, out, &len));
          exact(out, len, negative_addend[i].bytes);
+      }
+   }
+   /* Fresh own strict-math G15S fragment probe, AIR-NT 32023.921.
+    * Complete native instructions include retained and discarded addends. */
+   {
+      const struct {
+         uint16_t dest, src, addend;
+         uint8_t immediate;
+         enum agx3_alu_hint hint;
+         const char *bytes;
+      } vectors[] = {
+         {0,4,6,64,AGX3_ALU_HINT_CACHE,"098526c111860202"},
+         {2,10,2,64,AGX3_ALU_HINT_DISCARD,"190b2ec191020202"},
+         {4,6,4,32,AGX3_ALU_HINT_DISCARD,"29072ea191040202"},
+      };
+      for (unsigned i=0; i<sizeof(vectors)/sizeof(vectors[0]); ++i) {
+         uint8_t out[16], len;
+         assert(agx3_alu_fma_minifloat_mod(AGX_ISA_ENCODING_AGX3B,
+            vectors[i].dest,vectors[i].src,vectors[i].immediate,
+            vectors[i].addend,true,false,vectors[i].hint,vectors[i].hint,
+            true,0,out,&len));
+         exact(out,len,vectors[i].bytes);
       }
    }
    {const uint8_t native[]={0x49,0x11,0x2e,0xc1,0x81,0x08,0x02,0x42};uint8_t out[16],len;

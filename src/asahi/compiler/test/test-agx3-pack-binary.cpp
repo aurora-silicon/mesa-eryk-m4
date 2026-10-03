@@ -7650,6 +7650,77 @@ TEST_F(AGX3PackBinary, NativeBinaryUniformsCommuteNegateAndLifetime)
    }
 }
 
+TEST_F(AGX3PackBinary, NativeMinifloatFmaNegateSurvivesLegalization)
+{
+   ScopedPreambleOption option("AGX_NATIVE_MINIFLOAT_FMA_NEGATE",true);
+   for (bool commute : {false,true}) {
+      auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_index reg = agx_register(4,AGX_SIZE_32);
+      reg.cache = true;
+      agx_index add = agx_register(6,AGX_SIZE_32);
+      add.neg = add.cache = true;
+      const auto imm = agx_immediate(64);
+      agx_index dest = agx_register(0,AGX_SIZE_32);
+      dest.cache = true;
+      auto *I = agx_ffma_to(b,dest,
+         commute ? reg : imm,commute ? imm : reg,add);
+      agx_stop(b);
+      agx_lower_agx3_fma_sources(b->shader);
+      EXPECT_TRUE(I->src[2].neg);
+      const std::vector<uint8_t> expected = {
+         0x09,0x85,0x26,0xc1,0x11,0x86,0x02,0x02,0x0e,0,0,0,
+      };
+      EXPECT_EQ(pack(b),expected);
+   }
+}
+
+TEST_F(AGX3PackBinary, NativeMinifloatFmaNegateScopeAndFallback)
+{
+   for (unsigned mode=0; mode<10; ++mode) {
+      ScopedPreambleOption option("AGX_NATIVE_MINIFLOAT_FMA_NEGATE",mode!=1);
+      auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = mode==2 ? MESA_SHADER_VERTEX : MESA_SHADER_FRAGMENT;
+      b->shader->is_preamble = mode==3;
+      key.secondary = mode==4;
+      b->shader->nir->info.internal = mode==5;
+      agx_index reg = mode==8 ? agx_uniform(20,AGX_SIZE_32) :
+                               agx_register(0,AGX_SIZE_32);
+      reg.abs = mode==6;
+      agx_index add = mode==9 ? agx_uniform(22,AGX_SIZE_32) :
+                               agx_register(2,AGX_SIZE_32);
+      add.neg = true;
+      add.abs = mode==7;
+      auto *I = agx_ffma_to(b,agx_register(4,AGX_SIZE_32),
+                            agx_immediate(64),reg,add);
+      agx_lower_agx3_fma_sources(b->shader);
+      EXPECT_EQ(I->src[2].neg,mode==0);
+      EXPECT_FALSE(I->src[2].abs);
+      EXPECT_EQ(I->src[2].type,mode==0 ? AGX_INDEX_REGISTER : AGX_INDEX_NORMAL);
+   }
+}
+
+TEST_F(AGX3PackBinary, NativeMinifloatFmaNegateRetainsProducerWait)
+{
+   ScopedPreambleOption option("AGX_NATIVE_MINIFLOAT_FMA_NEGATE",true);
+   auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   const auto reg = agx_register(2,AGX_SIZE_32);
+   agx_device_load_to(b,reg,agx_register(8,AGX_SIZE_64),
+      agx_immediate(0),AGX_FORMAT_I32,1,0,false);
+   auto add = agx_register(4,AGX_SIZE_32);
+   add.neg = true;
+   agx_ffma_to(b,agx_register(6,AGX_SIZE_32),agx_immediate(64),reg,add);
+   agx_stop(b);
+   agx_lower_agx3_fma_sources(b->shader);
+   const auto bin = pack(b);
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], length;
+   ASSERT_TRUE(agx3_alu_fma_minifloat_mod(AGX_ISA_ENCODING_AGX3B,
+      6,2,64,4,true,false,AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_NONE,
+      false,1,bytes,&length));
+   EXPECT_NE(std::search(bin.begin(),bin.end(),bytes,bytes+length),bin.end());
+}
+
 TEST_F(AGX3PackBinary, NativeBinaryUniformsRetainAsynchronousProducerWait)
 {
    for (bool multiply : {false,true}) {

@@ -1081,6 +1081,7 @@ unsigned agx_reserved_register_count(agx_context *ctx);
  * two-address ABI without clobbering the independently evaluated index. */
 void agx_lower_agx3_half_converts(agx_context *ctx);
 bool agx_lower_agx3_cf_constants(agx_context *ctx);
+void agx_lower_agx3_fma_sources(agx_context *ctx);
 bool agx_lower_agx3_widening_iadd(agx_context *ctx);
 bool agx_lower_agx3_half_iadd_constants(agx_context *ctx);
 void agx_lower_64bit_postra(agx_context *ctx);
