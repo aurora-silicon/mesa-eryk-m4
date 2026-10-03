@@ -551,16 +551,9 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
    const bool compute_copies = dev->dev.chip == AGX_CHIP_G16G &&
       (dev->dev.params.features & DRM_ASAHI_FEATURE_COMPUTE_TIMESTAMP_COPIES) &&
       debug_get_bool_option("HK_M4_COMPUTE_TIMESTAMP_COPIES", false);
-   const bool coalesce_empty = compute_copies && cmd->current_cs.cs &&
-      cmd->current_cs.cs->timestamp_only && cmd->current_cs.cs->stats.cmds == 1 &&
-      !cmd->current_cs.cs->ends_timestamp_reset &&
-      !cmd->current_cs.cs->ends_memory_dependency &&
-      cmd->current_cs.cs->timestamp.end_copy_count <
-         ARRAY_SIZE(cmd->current_cs.cs->timestamp.end_copies);
-
-   /* Except for M4's adjacent timestamp-only fanout above, split the compute
-    * control stream at each write. This avoids shader timestamp copies, which would
-    * require an extra control stream anyway. Unlike graphics, splitting compute
+   /* Split the compute control stream at each write. This avoids shader
+    * timestamp copies, which would require an extra control stream anyway.
+    * Unlike graphics, splitting compute
     * control streams is inexpensive so there's not a strong performance reason
     * to do otherwise. Finally, batching multiple timestamp writes (like we do
     * for graphics) would destroy the ability to profile individual compute
@@ -568,7 +561,7 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
     * apps. So.. don't do that.
     */
    if (!after_gfx && cmd->current_cs.cs &&
-       cmd->current_cs.cs->timestamp.end.addr && !coalesce_empty) {
+       cmd->current_cs.cs->timestamp.end.addr) {
 
       perf_debug(cmd, "Splitting for compute timestamp");
       hk_cmd_buffer_end_compute(cmd);
@@ -596,13 +589,18 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
        !list_is_empty(&cmd->control_streams)) {
       struct hk_cs *tail =
          list_last_entry(&cmd->control_streams, struct hk_cs, node);
+      const bool adjacent_timestamps =
+         compute_copies && tail->type == HK_CS_CDM && tail->timestamp_only &&
+         tail->stats.cmds == 1 && !tail->timestamp.start.handle &&
+         !tail->ends_memory_dependency;
       if (tail->type == HK_CS_VDM &&
           (!tail->timestamp.end.addr ||
            (retirement_copies && tail->timestamp.end_copy_count <
                                    ARRAY_SIZE(tail->timestamp.end_copies))))
          cs = tail;
       else if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) &&
-               debug_get_bool_option("HK_M4_COMPUTE_TAIL_TIMESTAMP", false) &&
+               (debug_get_bool_option("HK_M4_COMPUTE_TAIL_TIMESTAMP", false) ||
+                adjacent_timestamps) &&
                tail->type == HK_CS_CDM && tail->stats.cmds > 0 &&
                !tail->ends_timestamp_reset &&
                (!tail->timestamp.end.handle ||
@@ -685,6 +683,16 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
       if (num_queries > 1)
          emit_zero_queries(cmd, pool, query + 1, num_queries - 1, true);
    }
+
+   /* The native timestamp is written when this firmware command retires.
+    * Leave its boundary closed: appending a later dispatch would move this
+    * timestamp past that dispatch, making a TOP/BOTTOM pair around it measure
+    * only the trailing no-op. EndCommandBuffer may still replace a standalone
+    * timestamp with a following command's start, preserving this boundary.
+    * Graphics keeps its existing render-pass timestamp batching. */
+   if (agx_native_graphics(&dev->dev) && !after_gfx &&
+       cs->type == HK_CS_CDM && cmd->current_cs.cs == cs)
+      hk_cmd_buffer_end_compute(cmd);
 }
 
 static void
