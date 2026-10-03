@@ -1070,6 +1070,35 @@ test_register_lod(void)
 }
 
 static int
+test_parallel_zero_lod_fetch(void)
+{
+   /* AIR-NT32023.921, own four texture.read fragment. Full G15S and G16G
+    * text sections are identical; fetches use banks 0/4/8/12. */
+   const uint8_t native[4][14] = {
+      {0x45,0x80,0x0c,0x38,0xb0,0,0x17,1,0,1,0,0,1,0},
+      {0x65,0x82,0x0c,0x38,0x30,1,0x17,1,0,1,0,0,1,0},
+      {0x25,0x84,0x0c,0x38,0xb0,0x25,0x17,1,0,1,0,0,1,0},
+      {0x05,0x86,0x0c,0xb8,0x30,0x4a,0x17,1,0,1,0,0,1,0},
+   };
+   const uint16_t dest[] = {16,24,8,0};
+   const uint8_t slots[] = {1,1,2,3};
+   uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+   for (unsigned n = 0; n < 4; ++n) {
+      const struct agx3_tex_fetch_desc d = {
+         .dest = dest[n], .coord = n * 4, .width = AGX3_TEX_W32, .mask = 15,
+         .slot = slots[n], .wait_mask = 1u << n, .coord_kill = true,
+         .final = n == 3, .sampler_value = 1,
+      };
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+      CHECK(len == 14 && !memcmp(bytes, native[n], len));
+      struct agx3_tex_fetch_desc decoded;
+      CHECK(agx3_tex_decode_fetch(AGX_ISA_ENCODING_AGX3B, native[n], 14, &decoded));
+      CHECK(decoded.coord == n * 4 && decoded.slot == slots[n]);
+   }
+   return 0;
+}
+
+static int
 test_parallel_register_lod(void)
 {
    /* AIR-NT32023.921, own four varying-LOD fragment: G15S and G16G text
@@ -1869,6 +1898,7 @@ main(void)
       CHECK(len == sizeof(shadow_min) && !memcmp(out, shadow_min, len));
    }
    CHECK(test_parallel_register_lod() == 0);
+   CHECK(test_parallel_zero_lod_fetch() == 0);
    CHECK(test_m4_explicit_gradients() == 0);
    CHECK(test_m4_shadow_gradient_witnesses() == 0);
    CHECK(test_m4_cube_query_bias_witnesses() == 0);
