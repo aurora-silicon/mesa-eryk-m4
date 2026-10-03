@@ -7798,3 +7798,99 @@ TEST_F(AGX3PackBinary, EarlyLoopCompareRetainsExpensiveBodyForwardSkip)
    EXPECT_EQ(jump->target, footer);
    EXPECT_FALSE(pack(b).empty());
 }
+
+TEST_F(AGX3PackBinary, ParallelLodBanksRetainDependenciesAcrossWraparound)
+{
+   for (bool enabled : {false, true}) {
+      ScopedPreambleOption option("AGX_NATIVE_PARALLEL_LOD", enabled);
+      auto enc = AGX_ISA_ENCODING_AGX3B;
+      auto *b = builder(enc);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      key.no_stop = true;
+      for (unsigned n = 0; n < 5; ++n) {
+         agx_index dest = agx_register(72 + n * 8, AGX_SIZE_32);
+         dest.channels_m1 = 3;
+         agx_index coord = agx_register(40, AGX_SIZE_32);
+         coord.channels_m1 = 1;
+         agx_texture_sample_to(b, dest, coord, agx_register(60, AGX_SIZE_16),
+            agx_immediate(0), agx_immediate(0), agx_immediate(0), agx_null(),
+            AGX_DIM_2D, AGX_LOD_MODE_LOD_MIN, 15, false, false, false,
+            AGX_GATHER_NONE, false);
+      }
+      agx_stop(b);
+      auto bytes = pack(b);
+      ASSERT_FALSE(bytes.empty());
+      EXPECT_EQ(b->shader->agx3_staging_halfs, enabled ? 32 : 8);
+      for (unsigned n = 0; n < 5; ++n) {
+         const unsigned bank = enabled ? (n % 4) * 8 : 0;
+         const unsigned wait = enabled ? (n == 4 ? 1 : 0) :
+                                        (n ? 1u << (n - 1) : 0);
+         uint8_t lod[AGX3_TEX_MAX_LENGTH], length;
+         ASSERT_TRUE(agx3_tex_stage_lod_at(enc, 60, bank, n + 1, wait,
+                                           false, false, lod, &length));
+         auto found = std::search(bytes.begin(), bytes.end(), lod, lod + length);
+         EXPECT_NE(found, bytes.end()) << "sample " << n;
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, ParallelLodBanksExcludeInternalPreambleAndNonFragment)
+{
+   ScopedPreambleOption option("AGX_NATIVE_PARALLEL_LOD", true);
+   for (unsigned excluded = 0; excluded < 3; ++excluded) {
+      auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = excluded == 2 ? MESA_SHADER_COMPUTE : MESA_SHADER_FRAGMENT;
+      b->shader->nir->info.internal = excluded == 0;
+      b->shader->is_preamble = excluded == 1;
+      key.no_stop = true;
+      for (unsigned n = 0; n < 2; ++n) {
+         agx_index dest = agx_register(72 + n * 8, AGX_SIZE_32);
+         dest.channels_m1 = 3;
+         agx_index coord = agx_register(40, AGX_SIZE_32);
+         coord.channels_m1 = 1;
+         agx_texture_sample_to(b, dest, coord, agx_register(60, AGX_SIZE_16),
+            agx_immediate(0), agx_immediate(0), agx_immediate(0), agx_null(),
+            AGX_DIM_2D, AGX_LOD_MODE_LOD_MIN, 15, false, false, false,
+            AGX_GATHER_NONE, false);
+      }
+      agx_stop(b);
+      EXPECT_FALSE(pack(b).empty());
+      EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
+   }
+}
+
+TEST_F(AGX3PackBinary, ParallelLodBanksLeaveComplexShapesUnchanged)
+{
+   for (unsigned shape = 0; shape < 4; ++shape) {
+      std::vector<uint8_t> baseline;
+      for (bool enabled : {false, true}) {
+         ScopedPreambleOption option("AGX_NATIVE_PARALLEL_LOD", enabled);
+         auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+         b->shader->stage = MESA_SHADER_FRAGMENT;
+         key.no_stop = true;
+         for (unsigned n = 0; n < 2; ++n) {
+            agx_index dest = agx_register(72 + n * 8, AGX_SIZE_32);
+            dest.channels_m1 = 3;
+            agx_index coord = agx_register(40, AGX_SIZE_32);
+            coord.channels_m1 = shape == 0 ? 2 : 1;
+            const bool shadow = shape == 1, offset = shape == 3;
+            agx_texture_sample_to(b, dest, coord,
+               shape == 2 ? agx_immediate(0) : agx_register(60, AGX_SIZE_16),
+               agx_immediate(0), agx_immediate(0), agx_immediate(0),
+               shadow ? agx_register(64, AGX_SIZE_32) :
+               offset ? agx_immediate(0x11) : agx_null(),
+               shape == 0 ? AGX_DIM_2D_ARRAY : AGX_DIM_2D,
+               AGX_LOD_MODE_LOD_MIN, shadow ? 1 : 15, offset, shadow,
+               false, AGX_GATHER_NONE, false);
+         }
+         agx_stop(b);
+         auto bytes = pack(b);
+         ASSERT_FALSE(bytes.empty());
+         EXPECT_EQ(b->shader->agx3_staging_halfs, 8);
+         if (!enabled)
+            baseline = bytes;
+         else
+            EXPECT_EQ(bytes, baseline) << "shape " << shape;
+      }
+   }
+}

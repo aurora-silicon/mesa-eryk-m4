@@ -184,6 +184,13 @@ bool agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
                        uint16_t wait_mask, bool src_cache, bool src_discard,
                        uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
 
+/* Filtered register LOD belongs to coord + 6. Native G15S/G16G programs
+ * issue independent samples from disjoint eight-half coordinate banks. */
+bool agx3_tex_stage_lod_at(enum agx_isa_encoding enc, uint16_t src,
+                          uint16_t coord, uint8_t slot, uint16_t wait_mask,
+                          bool src_cache, bool src_discard,
+                          uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len);
+
 /* Convert F16 minimum into the full-word scalar SMP operand. */
 bool agx3_tex_pack_min_lod(enum agx_isa_encoding enc, uint16_t dest,
                           uint16_t src, uint16_t wait_mask, bool discard,

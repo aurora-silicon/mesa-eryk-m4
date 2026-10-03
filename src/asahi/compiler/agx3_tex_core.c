@@ -793,6 +793,16 @@ agx3_tex_stage_lod(enum agx_isa_encoding enc, uint16_t src, uint8_t slot,
 }
 
 bool
+agx3_tex_stage_lod_at(enum agx_isa_encoding enc, uint16_t src, uint16_t coord,
+                      uint8_t slot, uint16_t wait_mask, bool src_cache,
+                      bool src_discard, uint8_t out[AGX3_TEX_MAX_LENGTH],
+                      uint8_t *len)
+{
+   return stage_lod(enc, src, coord, slot, wait_mask, src_cache, src_discard,
+                    false, false, out, len);
+}
+
+bool
 agx3_tex_pack_min_lod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
                       uint16_t wait_mask, bool discard,
                       uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)

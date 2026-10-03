@@ -25,3 +25,17 @@ Compiler and encoder checks qualify the encoding and dependency accounting;
 hardware image/timing qualification is recorded separately before promotion.
 Raw compiler manifests and archives remain under
 build/m3-texture-bank-study-20261003/native-varying-{g15s,g16g}.
+
+Initial M3 qualification, 2026-10-03: all 321 compiler tests and 6,448
+portable texture checks pass; 32 retained shader inputs compile both ways,
+three binaries change. Both three-frame Minecraft checks match the approved
+reference exactly. Nine same-boot alternating pairs give 164.2933 versus
+172.2898 replay FPS (+4.867%), with the final drain included. This is not
+live Java FPS and the option remains disabled by default pending repeat and
+broader qualification.
+
+The first broad segment has 59 Pass, 12 NotSupported and three Fail.
+All three array textureQueryLod failures reproduce with the option false and
+with the preceding qualified Mesa DSO. They remain failures in the record,
+not skips or new optimization regressions; broader coverage is unfinished.
+Receipts: gpu-replay-bench/diagnostics/m3-macos-driver-gap-20261003/parallel-lod.

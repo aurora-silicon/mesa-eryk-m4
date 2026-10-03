@@ -1091,7 +1091,7 @@ static bool
 agx3_emit_texture_sample(struct util_dynarray *emission,
                          enum agx_isa_encoding enc, const agx_instr *I,
                          uint8_t slot, uint16_t wait_mask, bool final,
-                         bool retain_helpers)
+                         bool retain_helpers, uint16_t sample_bank)
 {
    const bool explicit_lod = I->lod_mode == AGX_LOD_MODE_LOD_MIN;
    const bool min_lod = I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN ||
@@ -1208,7 +1208,8 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
    /* Every native array witness names coordinate bank 0 in SMP, including
     * register-indexed shaders whose physical coordinates live elsewhere.
     * PACK_SMPIR publishes only the layer, so explicitly copy x/y to bank 0. */
-   const uint16_t coord = fixed_coord ? 0 : I->src[0].value;
+   const uint16_t coord = sample_bank != UINT16_MAX ? sample_bank :
+                          fixed_coord ? 0 : I->src[0].value;
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
 
@@ -1271,7 +1272,7 @@ agx3_emit_texture_sample(struct util_dynarray *emission,
          AGX3_TEX_REFUSE();
       wait_mask = 0;
    } else if ((explicit_lod && !immediate_lod) || (bias && (!min_lod || register_min) && !array)) {
-      if (!agx3_tex_stage_lod(enc, I->src[1].value, stage_slot, wait_mask,
+      if (!agx3_tex_stage_lod_at(enc, I->src[1].value, coord, stage_slot, wait_mask,
                              I->src[1].cache, I->src[1].discard,
                              bytes, &len) ||
           !agx3_append(emission, bytes, len))
@@ -2268,7 +2269,8 @@ agx3_translate_static_spill(const agx_instr *I, bool is_store, uint8_t slot,
 
 static bool
 agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
-                                   struct agx3_slot_instr *e)
+                                   struct agx3_slot_instr *e,
+                                   uint16_t sample_bank)
 {
    unsigned base, halves;
    if (I->op == AGX_OPCODE_TEXTURE_SAMPLE) {
@@ -2279,7 +2281,8 @@ agx3_append_texture_staging_tokens(const agx_instr *I, mesa_shader_stage stage,
          I->lod_mode == AGX_LOD_MODE_AUTO_LOD_BIAS_MIN ||
          I->dim == AGX_DIM_2D_ARRAY || I->dim == AGX_DIM_CUBE ||
          I->dim == AGX_DIM_3D;
-      base = fixed ? 0 : I->src[0].value;
+      base = sample_bank != UINT16_MAX ? sample_bank :
+             fixed ? 0 : I->src[0].value;
       /* G16G 3D gradients consume a complete 32-half staging bank,
        * although only halves 0..5 and 8..19 are explicitly published.
        * Reserving 20 or 24 halves returns stale results on J713. */
@@ -4830,8 +4833,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       rzalloc_array(ctx, struct agx3_slot_instr, count ? count : 1);
    struct agx3_slot_result *res =
       rzalloc_array(ctx, struct agx3_slot_result, count ? count : 1);
-   if (sl == NULL || res == NULL)
+   uint16_t *sample_banks = rzalloc_array(ctx, uint16_t, count ? count : 1);
+   if (sl == NULL || res == NULL || sample_banks == NULL)
       goto fail;
+   memset(sample_banks, 0xff, (count ? count : 1) * sizeof(*sample_banks));
+   const bool parallel_lod = enc == AGX_ISA_ENCODING_AGX3B &&
+      ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_preamble &&
+      !ctx->nir->info.internal && agx_native_parallel_lod_enabled();
+   unsigned next_sample_bank = 0;
 
    unsigned k = 0;
    unsigned vertex_loads_scheduled = 0;
@@ -4839,6 +4848,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       agx_foreach_instr_in_block(slot_block, I) {
          if (I->op == AGX_OPCODE_STOP)
             continue;
+         /* Choose the bank before dependency assignment and reuse this exact
+          * choice at emission. Staging tokens keep its contents alive until
+          * the asynchronous sample retires, including wraparound and other
+          * texture operations that overlap these banks. */
+         if (parallel_lod && I->op == AGX_OPCODE_TEXTURE_SAMPLE &&
+             I->dim == AGX_DIM_2D && I->lod_mode == AGX_LOD_MODE_LOD_MIN &&
+             !I->shadow && I->gather == AGX_GATHER_NONE && !I->sparse &&
+             !I->query_lod && !I->offset && agx3_tex_plain_reg(I->src[1]) &&
+             I->src[1].size == AGX_SIZE_16 && agx_channels(I->src[1]) == 1)
+            sample_banks[k] = 8 * (next_sample_bank++ % 4);
          struct agx3_slot_instr *e = &sl[k++];
          /* EXPORT is a zero-byte register-ABI declaration after RA, not a
           * physical read. Letting it consume an async dependency marks the
@@ -4882,7 +4901,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          e->nr_dsts = (uint8_t)nd;
          e->nr_srcs = (uint8_t)ns;
          if (enc == AGX_ISA_ENCODING_AGX3B &&
-             !agx3_append_texture_staging_tokens(I, ctx->stage, e)) {
+             !agx3_append_texture_staging_tokens(I, ctx->stage, e,
+                                                sample_banks[k - 1])) {
             agx3_report_refusal(I, __LINE__);
             goto fail;
          }
@@ -4982,6 +5002,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                     k, outstanding, res[k].wait_mask, res[k].slot);
             agx_print_instr(I, stderr);
          }
+         const uint16_t sample_bank = sample_banks[k];
          const uint8_t slot = res[k].slot;
          uint16_t wait = res[k].wait_mask;
          if (reuse_waits && slot) {
@@ -5388,11 +5409,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                  !gather) ||
                 !agx3_emit_texture_sample(emission, enc, I, slot, sample_wait,
                                           final, enc == AGX_ISA_ENCODING_AGX3B &&
-                                             needs_quad_helpers))
+                                             needs_quad_helpers, sample_bank))
                AGX3_REFUSE(I);
             /* Projected cubes share the array face/layer staging bank. */
             ctx->agx3_staging_halfs =
                MAX2(ctx->agx3_staging_halfs,
+                    sample_bank != UINT16_MAX ? sample_bank + 8 :
                     (I->lod_mode == AGX_LOD_MODE_LOD_GRAD ||
                      I->lod_mode == AGX_LOD_MODE_LOD_GRAD_MIN) ?
                        (I->dim == AGX_DIM_3D ? 32 : 16) :

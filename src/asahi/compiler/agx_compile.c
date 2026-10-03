@@ -6930,6 +6930,12 @@ agx_native_early_compare_enabled(void)
    return debug_get_bool_option("AGX_NATIVE_EARLY_COMPARE", false);
 }
 
+bool
+agx_native_parallel_lod_enabled(void)
+{
+   return debug_get_bool_option("AGX_NATIVE_PARALLEL_LOD", false);
+}
+
 static bool
 agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)

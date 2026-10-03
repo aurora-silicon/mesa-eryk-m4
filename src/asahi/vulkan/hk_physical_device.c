@@ -1281,6 +1281,7 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
    if (agx_chip_isa_encoding(pdev->dev.chip) == AGX_ISA_ENCODING_AGX3B) {
       native_schedule |= agx_native_fragment_loads_enabled();
       native_schedule |= agx_native_early_compare_enabled() << 1;
+      native_schedule |= agx_native_parallel_lod_enabled() << 2;
    }
    _mesa_blake3_update(&blake3_ctx, &native_schedule, sizeof(native_schedule));
 

@@ -1070,6 +1070,44 @@ test_register_lod(void)
 }
 
 static int
+test_parallel_register_lod(void)
+{
+   /* AIR-NT32023.921, own four varying-LOD fragment: G15S and G16G text
+    * byte-identical. Independent samples use coordinate banks 0/8/16/24. */
+   const uint8_t native[4][14] = {
+      {0x45,0x80,0x0c,0x38,0xb0,0,0,1,0,0,0x10,0,1,0},
+      {0x65,0x84,0x0c,0x38,0x30,1,0,1,0,0,0x10,0,1,0},
+      {0x25,0x80,0x0c,0x39,0xb0,0x25,0,1,0,0,0x10,0,1,0},
+      {0x05,0x84,0x0c,0xb9,0x30,0x4a,0,1,1,0,0x10,0,1,0},
+   };
+   const uint16_t dest[] = {16,24,8,0};
+   const uint8_t slots[] = {1,1,2,3};
+   uint8_t bytes[AGX3_TEX_MAX_LENGTH], len;
+   for (unsigned n=0;n<4;++n) {
+      const struct agx3_tex_sample_desc d = {
+         .dest=dest[n], .coord=n*8, .width=AGX3_TEX_W32, .mask=15,
+         .lod=AGX3_TEX_LOD_REGISTER, .slot=slots[n], .wait_mask=1u<<n,
+         .coord_kill=true, .final=n==3, .retain_helpers=n!=3,
+      };
+      CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,bytes,&len));
+      CHECK(len==14 && !memcmp(bytes,native[n],len));
+   }
+   uint8_t zero[AGX3_TEX_MAX_LENGTH], zero_len;
+   CHECK(agx3_tex_stage_lod(AGX_ISA_ENCODING_AGX3B,17,2,4,false,true,zero,&zero_len));
+   CHECK(agx3_tex_stage_lod_at(AGX_ISA_ENCODING_AGX3B,17,0,2,4,false,true,bytes,&len));
+   CHECK(len==zero_len && !memcmp(zero,bytes,len));
+   for (unsigned bank=0;bank<=56;bank+=8) {
+      CHECK(agx3_tex_stage_lod_at(AGX_ISA_ENCODING_AGX3B,17,bank,2,4,false,true,bytes,&len));
+      /* f5 is the six-bit staging half offset in word1 bits8..13. */
+      CHECK((bytes[3]&0x3f) == bank+6);
+   }
+   CHECK(!agx3_tex_stage_lod_at(AGX_ISA_ENCODING_AGX3B,17,4,2,4,false,true,bytes,&len));
+   CHECK(!agx3_tex_stage_lod_at(AGX_ISA_ENCODING_AGX3B,17,64,2,4,false,true,bytes,&len));
+   CHECK(!agx3_tex_stage_lod_at(AGX_ISA_ENCODING_AGX3C,17,0,2,4,false,true,bytes,&len));
+   return 0;
+}
+
+static int
 test_m4_register_bias(void)
 {
    /* AIR-NT 32023.917 G16G: texture2d.sample(..., bias(uv.x + u[0])).
@@ -1828,6 +1866,7 @@ main(void)
       CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
       CHECK(len == sizeof(shadow_min) && !memcmp(out, shadow_min, len));
    }
+   CHECK(test_parallel_register_lod() == 0);
    CHECK(test_m4_explicit_gradients() == 0);
    CHECK(test_m4_shadow_gradient_witnesses() == 0);
    CHECK(test_m4_cube_query_bias_witnesses() == 0);
