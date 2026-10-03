@@ -59,6 +59,14 @@ bool agx3_falu_fma_uniform(enum agx_isa_encoding enc, uint16_t dest,
                            const struct agx3_falu_runtime *runtime,
                            uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len);
 
+/* The same uniform FMA with fused negate modifiers. Absolute values and
+ * saturation remain outside this qualified interface. */
+bool agx3_falu_fma_uniform_negate(enum agx_isa_encoding enc, uint16_t dest,
+                                 unsigned uniform_mask, const uint16_t src[3],
+                                 const struct agx3_falu_mods *mods,
+                                 const struct agx3_falu_runtime *runtime,
+                                 uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len);
+
 /* dest = sat?(srcmods(src0) OP srcmods(src1)). abs applies before neg. */
 bool agx3_falu_add_mod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src0,
                        uint16_t src1, const struct agx3_falu_mods *m,

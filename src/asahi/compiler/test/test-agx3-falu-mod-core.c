@@ -152,6 +152,65 @@ mixed_fma_vectors(void)
 }
 
 static unsigned
+uniform_fma_negate_vectors(void)
+{
+   /* Own strict-math G15S fragment loop, Metal 32023.921: complete native
+    * instructions combining a uniform operand with a negated GPR. Apple
+    * pre-negates the constant inputs; uniform-negate combinations below are
+    * encoder domain checks, not additional whole-instruction Apple vectors. */
+   const struct {
+      unsigned mask;
+      uint16_t dest, src[3];
+      struct agx3_falu_mods mods;
+      struct agx3_falu_runtime runtime;
+      uint8_t bytes[8];
+   } vectors[] = {
+      {1,2,{4,2,0},{.addend_neg=true},
+       {.dest_cache=true,.cache={false,false,true},
+        .discard={false,true,false}},
+       {0x19,0x03,0x2e,0x05,0x11,0x80,0x02,0x02}},
+      {4,0,{4,0,6},{.src0_neg=true},
+       {.dest_cache=true,.cache={true,false,false},
+        .discard={false,true,false}},
+       {0x09,0x01,0x2e,0x85,0x21,0x06,0x02,0x08}},
+   };
+   unsigned fail = 0;
+   uint8_t bytes[16], size = 0;
+   for (unsigned i=0; i<sizeof(vectors)/sizeof(vectors[0]); ++i) {
+      if (!agx3_falu_fma_uniform_negate(AGX_ISA_ENCODING_AGX3B,
+            vectors[i].dest,vectors[i].mask,vectors[i].src,&vectors[i].mods,
+            &vectors[i].runtime,bytes,&size) || size != 8 ||
+          memcmp(bytes,vectors[i].bytes,8)) {
+         fprintf(stderr,"native uniform FMA negate vector %u failed\n",i);
+         ++fail;
+      }
+   }
+   const uint16_t src[] = {510,254,508};
+   for (unsigned neg=0; neg<8; ++neg) {
+      struct agx3_falu_mods mods = {
+         .src0_neg=neg&1,.src1_neg=neg&2,.addend_neg=neg&4,
+      };
+      for (unsigned wait=0; wait<64; ++wait) {
+         const struct agx3_falu_runtime rt = {.wait_mask=wait};
+         fail += !agx3_falu_fma_uniform_negate(AGX_ISA_ENCODING_AGX3B,
+                    254,5,src,&mods,&rt,bytes,&size);
+      }
+      for (unsigned mod=0; mod<4; ++mod) {
+         struct agx3_falu_mods invalid = mods;
+         if (mod==0) invalid.src0_abs=true;
+         if (mod==1) invalid.src1_abs=true;
+         if (mod==2) invalid.addend_abs=true;
+         if (mod==3) invalid.saturate=true;
+         const struct agx3_falu_runtime rt = {0};
+         fail += agx3_falu_fma_uniform_negate(AGX_ISA_ENCODING_AGX3B,
+                    254,5,src,&invalid,&rt,bytes,&size);
+      }
+   }
+   printf("native uniform FMA negate: two Apple vectors, modifier/wait domain: %u failures\n",fail);
+   return fail;
+}
+
+static unsigned
 uniform_fma_vectors(void)
 {
    /* Fresh strict-math applegpu_g15s compiler witnesses, three loop kernels.
@@ -594,7 +653,7 @@ fma_two_vectors(void)
 int
 main(void)
 {
-   unsigned pass = 0, fail = uniform_fma_vectors() + uniform_binary_vectors() + mixed_fma_vectors() + runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors() + fma_two_vectors();
+   unsigned pass = 0, fail = uniform_fma_vectors() + uniform_fma_negate_vectors() + uniform_binary_vectors() + mixed_fma_vectors() + runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors() + mul_runtime_vectors() + fma_addend_vectors() + fma_two_vectors();
    for (size_t i = 0; i < mod_vec_count; ++i) {
       const struct mod_vec *v = &mod_vecs[i];
       const enum agx_isa_encoding e =

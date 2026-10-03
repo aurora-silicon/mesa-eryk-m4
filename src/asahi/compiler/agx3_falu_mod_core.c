@@ -103,7 +103,20 @@ agx3_falu_fma_uniform(enum agx_isa_encoding enc, uint16_t dest,
                       const struct agx3_falu_runtime *runtime,
                       uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
 {
-   if (enc != AGX_ISA_ENCODING_AGX3B || !src || !runtime || !out || !len ||
+   const struct agx3_falu_mods mods = {0};
+   return agx3_falu_fma_uniform_negate(enc, dest, uniform_mask, src, &mods,
+                                      runtime, out, len);
+}
+
+bool
+agx3_falu_fma_uniform_negate(enum agx_isa_encoding enc, uint16_t dest,
+                            unsigned uniform_mask, const uint16_t src[3],
+                            const struct agx3_falu_mods *mods,
+                            const struct agx3_falu_runtime *runtime,
+                            uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !src || !mods || !runtime || !out || !len ||
+       mods->src0_abs || mods->src1_abs || mods->addend_abs || mods->saturate ||
        dest >= 256 || (dest & 1) ||
        (uniform_mask != 1 && uniform_mask != 4 && uniform_mask != 5) ||
        runtime->wait_mask > 63)
@@ -119,8 +132,11 @@ agx3_falu_fma_uniform(enum agx_isa_encoding enc, uint16_t dest,
    /* Apple G15S loop witnesses: 09010e0f200a (uniform multiplier),
     * 09010e0b21080200 (uniform addend), 09010e1721080202 (both).
     * Uniform sources use f36/f53, distinct from GPR fields f35/f52.
+    * Own strict-math fragment-loop witnesses additionally combine a uniform
+    * with a negated GPR: 19032e0511800202 and 09012e8521060208. Apple hoists
+    * negated constants, so those are not witnesses for negated uniforms.
     * Keep independent register hints and all six dependency slots. */
-   struct agx3_field_kv ov[20] = {
+   struct agx3_field_kv ov[23] = {
       KV(2,dest), KV(18,src[1]),
       KV(42,(uniform_mask & 1) ? 3 : 2),
       KV((uniform_mask & 1) ? 36 : 35,src[0]),
@@ -130,8 +146,9 @@ agx3_falu_fma_uniform(enum agx_isa_encoding enc, uint16_t dest,
       KV(46,runtime->discard[0]), KV(27,runtime->cache[1]),
       KV(29,runtime->discard[1]), KV(61,runtime->cache[2]),
       KV(63,runtime->discard[2]),
+      KV(48,mods->src0_neg), KV(31,mods->src1_neg), KV(65,mods->addend_neg),
    };
-   unsigned n = 13;
+   unsigned n = 16;
    for (unsigned i = 0; i < 6; ++i)
       ov[n++] = (struct agx3_field_kv)KV(97+i, (runtime->wait_mask >> i) & 1);
    for (unsigned ep = 2; ep <= 5; ++ep)
