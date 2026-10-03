@@ -2,7 +2,7 @@
 
 `HK_NATIVE_REPEATED_SAMPLER=true` is an opt-in G15S Vulkan experiment. The
 default and other chips are unchanged. Its policy occupies compiler flag bit
-61, including shader and pipeline cache UUIDs.
+5 of the separate native-policy byte, including shader and pipeline cache UUIDs.
 
 The existing single-sample texture0/sampler0 ABI can also serve multiple
 statically addressed samples of the same set-zero combined descriptor. The

@@ -179,7 +179,6 @@ hk_physical_device_compiler_flags(const struct hk_physical_device *pdev)
    if (agx_chip_isa_encoding(pdev->dev.chip) == AGX_ISA_ENCODING_AGX3B) {
       flags |= (uint64_t)agx_native_fma_uniforms_enabled() << 59;
       flags |= (uint64_t)agx_native_late_loop_enabled() << 60;
-      flags |= (uint64_t)hk_repeated_sampler_enabled(pdev->dev.chip) << 61;
    }
    if (agx_chip_uses_g15_g16_shader_abi(pdev->dev.chip)) {
       flags |= (uint64_t)hk_ubo_prefetch_enabled(pdev->dev.chip) << 32;
