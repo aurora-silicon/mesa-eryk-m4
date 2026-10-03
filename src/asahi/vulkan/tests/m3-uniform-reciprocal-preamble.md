@@ -225,3 +225,20 @@ The independent scheduling control matches all three images but disabling
 the pressure scheduler regresses nine-pair replay performance: 166.390 versus
 161.150 median FPS, paired mean -3.535%, median -3.727%, one win. Scheduling
 remains enabled. Evidence: `scheduler-control/`.
+
+The new private Vulkan library also completes a bounded 23.060-second real
+Minecraft gameplay run from a copied demo save. The maximized F3 screenshot
+shows the world, HUD, 3024 x 1837 window and the M3 Pro Vulkan renderer; retained
+process maps identify the tested library. This is application validation, not a
+live-game performance score. The normal accelerated Plasma session is restored
+and its separate application/screenshot probe passes. Evidence: the `live/`,
+`desktop/` and `unmask/` subdirectories of the narrow-export experiment.
+
+A separate same-library trial enables the existing compressed-mipmap option.
+Both variants reproduce all three images exactly, but nine alternating pairs
+measure 167.918 versus 167.568 median FPS, paired mean -0.112%, median -0.009%,
+four wins. Logging-only allocation audits confirm that this was an effective
+change: compressed allocations increase from 58 to 698 and the 2048 x 2048
+five-level RGBA8 atlas changes from uncompressed to compressed. The option
+remains unchanged because this replay shows no speedup; these images are not
+full mipmap CTS qualification. Evidence: `mip-compression/`.
