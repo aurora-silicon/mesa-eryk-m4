@@ -6247,6 +6247,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    if (likely(!(agx_compiler_debug & AGX_DBG_NOSCHED))) {
       AGX_PASS(ctx, agx_pressure_schedule);
+      if (agx_native_early_textures_enabled())
+         AGX_PASS(ctx, agx_schedule_native_samples);
    }
 
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
@@ -6962,6 +6964,12 @@ bool
 agx_native_parallel_lod_enabled(void)
 {
    return debug_get_bool_option("AGX_NATIVE_PARALLEL_LOD", false);
+}
+
+bool
+agx_native_early_textures_enabled(void)
+{
+   return debug_get_bool_option("AGX_NATIVE_EARLY_TEXTURES", false);
 }
 
 static bool

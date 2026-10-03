@@ -284,6 +284,80 @@ native_schedule_register_overlap(agx_index a, agx_index b)
           b.value < a.value + agx_index_size_16(a);
 }
 
+/* In SSA, an independent sample can start before intervening arithmetic
+ * consumes previous samples. Doing this after RA cannot overlap those reads
+ * when pressure-oriented allocation reuses their destination registers.
+ *
+ * Stay inside a basic block and cross only eliminable arithmetic with no
+ * scheduling side effects. In particular, derivative/coverage operations,
+ * memory reads/writes, uniform publishers, other samples and system values
+ * retain their order. Normal allocation and scoreboard assignment run later.
+ * This opt-in experiment can increase demand; it does not change RA's budget.
+ */
+static bool
+native_sample_can_cross(const agx_instr *sample, const agx_instr *alu)
+{
+   const struct agx_opcode_info *info = &agx_opcodes_info[alu->op];
+   if (!agx_is_alu(alu) || info->schedule_class != AGX_SCHEDULE_CLASS_NONE ||
+       !info->can_reorder || !info->can_eliminate || alu->op == AGX_OPCODE_GET_SR)
+      return false;
+
+   agx_foreach_dest(alu, d) {
+      agx_foreach_src(sample, s) {
+         if ((alu->dest[d].type == AGX_INDEX_NORMAL &&
+              sample->src[s].type == AGX_INDEX_NORMAL &&
+              alu->dest[d].value == sample->src[s].value) ||
+             native_schedule_register_overlap(alu->dest[d], sample->src[s]))
+            return false;
+      }
+      agx_foreach_dest(sample, a) {
+         if (native_schedule_register_overlap(alu->dest[d], sample->dest[a]))
+            return false;
+      }
+   }
+   agx_foreach_dest(sample, d) {
+      agx_foreach_src(alu, s) {
+         if ((sample->dest[d].type == AGX_INDEX_NORMAL &&
+              alu->src[s].type == AGX_INDEX_NORMAL &&
+              sample->dest[d].value == alu->src[s].value) ||
+             native_schedule_register_overlap(sample->dest[d], alu->src[s]))
+            return false;
+      }
+   }
+   return true;
+}
+
+bool
+agx_schedule_native_samples(agx_context *ctx)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B ||
+       ctx->stage != MESA_SHADER_FRAGMENT || ctx->is_preamble ||
+       ctx->key->secondary || ctx->key->is_helper || ctx->nir->info.internal)
+      return false;
+
+   bool progress = false;
+   agx_foreach_block(ctx, block) {
+      agx_foreach_instr_in_block_safe(block, I) {
+         if (I->op != AGX_OPCODE_TEXTURE_SAMPLE)
+            continue;
+         agx_instr *first = I;
+         for (unsigned distance = 0; distance < 32 &&
+              first->link.prev != &block->instructions; ++distance) {
+            agx_instr *prev = list_entry(first->link.prev, agx_instr, link);
+            if (!native_sample_can_cross(I, prev))
+               break;
+            first = prev;
+         }
+         if (first != I) {
+            agx_remove_instruction(I);
+            list_addtail(&I->link, &first->link);
+            progress = true;
+         }
+      }
+   }
+   return progress;
+}
+
 static bool
 native_schedule_can_cross(const agx_instr *load, const agx_instr *alu)
 {

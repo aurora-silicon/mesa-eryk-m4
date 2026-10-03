@@ -5321,6 +5321,97 @@ TEST_F(AGX3PackBinary, InstanceIdDoesNotPreventTerminalVertexOutputs)
    EXPECT_EQ(b->shader->agx3_staging_halfs, 14u);
 }
 
+static agx_instr *
+early_texture_sample(agx_builder *b, agx_index coord, agx_index dest)
+{
+   return agx_texture_sample_to(b, dest, coord, agx_immediate(0),
+      agx_immediate(0), agx_immediate(0), agx_immediate(0), agx_null(),
+      AGX_DIM_2D, AGX_LOD_MODE_AUTO_LOD, 1, false, false, false,
+      AGX_GATHER_NONE, false);
+}
+
+TEST_F(AGX3PackBinary, EarlyTextureStartsBeforePreviousResultArithmetic)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   agx_index value = agx_temp(b->shader, AGX_SIZE_32);
+   agx_instr *first = early_texture_sample(b, agx_register(4, AGX_SIZE_32), value);
+   agx_instr *sum = agx_fadd_to(b, agx_temp(b->shader, AGX_SIZE_32),
+                               value, agx_uniform(2, AGX_SIZE_32));
+   agx_instr *second = early_texture_sample(b, agx_register(6, AGX_SIZE_32),
+                                            agx_temp(b->shader, AGX_SIZE_32));
+   agx_stop(b);
+   ASSERT_TRUE(agx_schedule_native_samples(b->shader));
+   EXPECT_EQ(first->link.next, &second->link);
+   EXPECT_EQ(second->link.next, &sum->link);
+}
+
+TEST_F(AGX3PackBinary, EarlyTextureRetainsSSAAndPhysicalDependencies)
+{
+   for (unsigned mode = 0; mode < 4; ++mode) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_index coord = mode == 0 ? agx_temp(b->shader, AGX_SIZE_32) :
+                                    agx_register(8, AGX_SIZE_32);
+      agx_index dest = mode >= 2 ? agx_register(10, AGX_SIZE_32) :
+                                   agx_temp(b->shader, AGX_SIZE_32);
+      if (mode < 2)
+         agx_fadd_to(b, coord, agx_register(4, AGX_SIZE_32), agx_immediate(0));
+      else if (mode == 2)
+         agx_fadd_to(b, dest, agx_register(4, AGX_SIZE_32), agx_immediate(0));
+      else
+         agx_fadd_to(b, agx_temp(b->shader, AGX_SIZE_32), dest, agx_immediate(0));
+      early_texture_sample(b, coord, dest);
+      agx_stop(b);
+      EXPECT_FALSE(agx_schedule_native_samples(b->shader)) << mode;
+   }
+}
+
+TEST_F(AGX3PackBinary, EarlyTextureRetainsCoverageMemoryAndUniformPublishers)
+{
+   for (unsigned mode = 0; mode < 6; ++mode) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_index value = agx_temp(b->shader, AGX_SIZE_32);
+      agx_fadd_to(b, value, agx_register(4, AGX_SIZE_32), agx_immediate(0));
+      if (mode == 0) agx_dfdx_to(b, agx_temp(b->shader, AGX_SIZE_32), value);
+      if (mode == 1) agx_device_load_to(b, agx_temp(b->shader, AGX_SIZE_32),
+                                       agx_uniform(4, AGX_SIZE_64),
+                                       agx_immediate(0), AGX_FORMAT_I32, 1, 0, false);
+      if (mode == 2) agx_uniform_store(b, value, agx_immediate(8), 1);
+      if (mode == 3) agx_sample_mask(b, agx_immediate(0xff), agx_immediate(0xff));
+      if (mode == 4) agx_get_sr_to(b, agx_temp(b->shader, AGX_SIZE_32), AGX_SR_VERTEX_ID);
+      if (mode == 5) agx_wait_pix(b, 0);
+      early_texture_sample(b, agx_register(6, AGX_SIZE_32),
+                           agx_temp(b->shader, AGX_SIZE_32));
+      agx_stop(b);
+      EXPECT_FALSE(agx_schedule_native_samples(b->shader)) << mode;
+   }
+}
+
+TEST_F(AGX3PackBinary, EarlyTextureIsBoundedAndKeepsShaderExclusions)
+{
+   for (unsigned mode = 0; mode < 8; ++mode) {
+      agx_builder *b = builder(mode == 1 ? AGX_ISA_ENCODING_AGX2 :
+                               mode == 2 ? AGX_ISA_ENCODING_AGX3C :
+                                           AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = mode == 3 ? MESA_SHADER_VERTEX : MESA_SHADER_FRAGMENT;
+      b->shader->is_preamble = mode == 4;
+      key.secondary = mode == 5;
+      key.is_helper = mode == 6;
+      b->shader->nir->info.internal = mode == 7;
+      std::vector<agx_instr *> alus;
+      for (unsigned i = 0; i < 40; ++i)
+         alus.push_back(agx_fadd_to(b, agx_temp(b->shader, AGX_SIZE_32),
+                                    agx_register(4, AGX_SIZE_32), agx_immediate(0)));
+      auto *sample = early_texture_sample(b, agx_register(6, AGX_SIZE_32),
+                                           agx_temp(b->shader, AGX_SIZE_32));
+      agx_stop(b);
+      EXPECT_EQ(agx_schedule_native_samples(b->shader), mode == 0);
+      EXPECT_EQ(sample->link.prev, &alus[mode == 0 ? 7 : 39]->link);
+   }
+}
+
 TEST_F(AGX3PackBinary, SixOutputTailSinkingRefusesWithoutMutation)
 {
    for (unsigned mode = 0; mode < 9; ++mode) {

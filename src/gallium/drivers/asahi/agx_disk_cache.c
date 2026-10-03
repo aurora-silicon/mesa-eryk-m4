@@ -225,6 +225,7 @@ agx_disk_cache_init(struct agx_screen *screen)
       driver_flags |= (uint64_t)agx_native_fragment_loads_enabled() << 32;
       driver_flags |= (uint64_t)agx_native_early_compare_enabled() << 33;
       driver_flags |= (uint64_t)agx_native_parallel_lod_enabled() << 34;
+      driver_flags |= (uint64_t)agx_native_early_textures_enabled() << 35;
    }
    screen->disk_cache = disk_cache_create(renderer, timestamp, driver_flags);
 #endif
