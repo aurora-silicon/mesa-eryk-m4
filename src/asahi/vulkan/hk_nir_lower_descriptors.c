@@ -34,6 +34,7 @@ struct lower_descriptors_ctx {
    unsigned descriptor_generation;
    bool software_native_bias;
    bool reconstruct_lod_query;
+   bool reconstruct_array_lod_query;
    bool software_sampler_state;
    mesa_shader_stage stage;
 };
@@ -825,7 +826,10 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    nir_def *query_bias = NULL;
    nir_def *query_sampler = NULL;
    nir_def *query_view_min = NULL;
-   if (ctx->reconstruct_lod_query && tex->op == nir_texop_lod) {
+   if (tex->op == nir_texop_lod &&
+       (ctx->reconstruct_lod_query ||
+        (ctx->reconstruct_array_lod_query && tex->is_array &&
+         tex->sampler_dim == GLSL_SAMPLER_DIM_2D))) {
       query_bias = nir_steal_tex_src(tex, nir_tex_src_bias);
       if (query_bias) {
          query_sampler = load_resource_deref_desc(
@@ -1173,7 +1177,13 @@ hk_nir_lower_descriptors(nir_shader *nir, enum agx_chip chip, bool view_min,
        * reconstructs clamping/mip selection from its raw footprint instead. */
       .reconstruct_lod_query = agx_chip_sampler_generation(chip) ==
                                  AGX_SAMPLER_GENERATION_GEN4_HAL200,
-      .software_sampler_state = chip == AGX_CHIP_G16G && view_min,
+      /* Gen4 biased 2D-array queries return zero on G15S. Native G15S
+       * calculate_*_lod uses the unbiased footprint instruction, identical
+       * to G16G. Apply API bias and the Gen4 sampler/view clamps in NIR;
+       * retain the qualified instruction-bias path for other Gen4 shapes. */
+      .reconstruct_array_lod_query = agx_chip_sampler_generation(chip) ==
+                                       AGX_SAMPLER_GENERATION_GEN4,
+      .software_sampler_state = agx_chip_uses_g15_g16_shader_abi(chip) && view_min,
       .clamp_desc_array_bounds =
          rs->storage_buffers !=
             VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT ||

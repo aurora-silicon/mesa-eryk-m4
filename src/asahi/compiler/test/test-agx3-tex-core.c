@@ -1712,7 +1712,9 @@ test_m4_query_lod(void)
    uint8_t out[AGX3_TEX_MAX_LENGTH], len;
    CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
    CHECK(len == sizeof(native) && !memcmp(out, native, len));
-   /* Independent G16G texture2d_array calculate_*_lod, text-1220 +126. */
+   /* Independent G16G texture2d_array calculate_*_lod, text-1220 +126.
+    * G15S AIR-NT32023.921 emits the same bytes at text-1230 +126;
+    * retained own source and full text: probes/g15s-array-lod-query.*. */
    const uint8_t native_array[] = {
       0x05,0x80,0x0c,0xa8,0xb0,0,0x0d,0,1,0,0x20,0,1,0};
    d.array = true;
