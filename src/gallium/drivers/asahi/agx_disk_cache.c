@@ -219,6 +219,10 @@ agx_disk_cache_init(struct agx_screen *screen)
    _mesa_sha1_format(timestamp, id_sha1);
 
    uint64_t driver_flags = screen->dev.debug;
+   /* Device debug occupies the low 32 bits; retain a distinct namespace for
+    * the opt-in fragment load schedule without disabling ordinary caching. */
+   if (agx_chip_isa_encoding(screen->dev.chip) == AGX_ISA_ENCODING_AGX3B)
+      driver_flags |= (uint64_t)agx_native_fragment_loads_enabled() << 32;
    screen->disk_cache = disk_cache_create(renderer, timestamp, driver_flags);
 #endif
 }

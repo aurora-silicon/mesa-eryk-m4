@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include "util/macros.h"
 
 #ifdef __cplusplus
@@ -32,6 +33,7 @@ enum agx_compiler_dbg {
 /* clang-format on */
 
 uint64_t agx_get_compiler_debug(void);
+bool agx_native_fragment_loads_enabled(void);
 
 #ifdef __cplusplus
 } /* extern C */

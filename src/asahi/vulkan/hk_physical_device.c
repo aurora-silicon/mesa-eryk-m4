@@ -6,6 +6,7 @@
  */
 #include "hk_physical_device.h"
 
+#include "asahi/compiler/agx_debug.h"
 #include "asahi/compiler/agx_nir_texture.h"
 #include "asahi/lib/agx_device.h"
 #include "asahi/lib/agx_nir_lower_vbo.h"
@@ -1272,6 +1273,14 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
 
    const uint64_t compiler_flags = hk_physical_device_compiler_flags(pdev);
    _mesa_blake3_update(&blake3_ctx, &compiler_flags, sizeof(compiler_flags));
+
+   /* The original 64-bit option key is full. Extend the identity explicitly
+    * rather than aliasing a device-debug or code-motion bit. This hash feeds
+    * imported shader/pipeline UUIDs and the disk-cache namespace alike. */
+   const uint8_t fragment_loads =
+      agx_chip_isa_encoding(pdev->dev.chip) == AGX_ISA_ENCODING_AGX3B &&
+      agx_native_fragment_loads_enabled();
+   _mesa_blake3_update(&blake3_ctx, &fragment_loads, sizeof(fragment_loads));
 
    /* Driconf and HK_PERFTEST affect shader lowering (notably custom borders).
     * They must partition imported binaries and the on-disk shader cache too.

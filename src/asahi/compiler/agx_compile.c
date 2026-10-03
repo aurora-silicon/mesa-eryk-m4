@@ -6289,7 +6289,9 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    agx_lower_pseudo(ctx);
 
    if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
-       ctx->stage == MESA_SHADER_COMPUTE && !ctx->is_preamble &&
+       (ctx->stage == MESA_SHADER_COMPUTE ||
+        (ctx->stage == MESA_SHADER_FRAGMENT &&
+         agx_native_fragment_loads_enabled())) && !ctx->is_preamble &&
        !nir->info.internal)
       agx_schedule_native_loads(ctx);
 
@@ -6914,6 +6916,12 @@ bool
 agx_native_late_loop_enabled(void)
 {
    return debug_get_bool_option("AGX_NATIVE_LATE_LOOP", false);
+}
+
+bool
+agx_native_fragment_loads_enabled(void)
+{
+   return debug_get_bool_option("AGX_NATIVE_FRAGMENT_LOADS", false);
 }
 
 static bool
