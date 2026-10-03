@@ -32,6 +32,10 @@ Validation on 2026-10-03:
   enabled both complete all 30 frames. Frames 1, 16 and 31 match the approved
   baseline exactly in RGB. Each run verifies a 60-second watchdog and retains
   all-channel thermal evidence.
+- On the clean committed Vulkan DSO, the pinned 2,322-case texture selection
+  completes with 1,789 Pass, 533 NotSupported and zero failures. Every catalog
+  index is retained; the tests include all selected vertex texture-fetch and
+  LOD-query cases. This is focused coverage, not a full conformance run.
 - Full serialization and serialization before loads/ALU also repaired the
   original replay; serialization only at vertex writeout did not. Those are
   diagnostic controls, not the implemented fix.
