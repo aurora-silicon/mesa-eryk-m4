@@ -122,3 +122,11 @@ arithmetic. Run `agx3_graphics_compile_test --packed-hdr-only` on the host.
 This is offline compiler coverage; native EOT support and pixel readback remain
 necessary before qualifying the game. Partial write masks and explicit tile
 store coordinates are not enabled by this lowering.
+
+The CPU-only `--native-preamble` diagnostic also accepts a captured main AGX3b
+vertex program. It aligns the input/output uniform boundary to 128 bits and
+keeps constants in instructions because the experimental native vertex loader
+has no rodata binding. This changes only the diagnostic compiler key: the normal
+driver still disables vertex arithmetic preambles. Smaller offline bodies do
+not establish a hardware speedup; the retained arithmetic-only and input-CSE
+experiments preserved Minecraft pixels but regressed completed-frame timings.

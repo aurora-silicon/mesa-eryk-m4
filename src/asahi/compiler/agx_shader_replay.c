@@ -156,12 +156,17 @@ int main(int argc, char **argv)
    if (argc == 3 && !strcmp(argv[2], "--native-preamble")) {
       if (key.dev.encoding != AGX_ISA_ENCODING_AGX3B || key.secondary ||
           (nir->info.stage != MESA_SHADER_FRAGMENT &&
-           nir->info.stage != MESA_SHADER_COMPUTE)) {
-         fprintf(stderr, "Native preamble diagnostic requires a main AGX3b fragment or compute shader\n");
+           nir->info.stage != MESA_SHADER_COMPUTE &&
+           nir->info.stage != MESA_SHADER_VERTEX)) {
+         fprintf(stderr, "Native preamble diagnostic requires a main AGX3b graphics or compute shader\n");
          return 2;
       }
       key.no_preamble = false;
       key.promote_textures = false;
+      if (nir->info.stage == MESA_SHADER_VERTEX) {
+         key.reserved_preamble = ALIGN_POT(key.reserved_preamble, 8);
+         key.promote_constants = false;
+      }
       fprintf(stderr, "Diagnostic compiler option: native arithmetic preamble enabled\n");
    }
    nir_print_shader(nir, stdout);
