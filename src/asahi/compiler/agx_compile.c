@@ -6924,6 +6924,12 @@ agx_native_fragment_loads_enabled(void)
    return debug_get_bool_option("AGX_NATIVE_FRAGMENT_LOADS", false);
 }
 
+bool
+agx_native_early_compare_enabled(void)
+{
+   return debug_get_bool_option("AGX_NATIVE_EARLY_COMPARE", false);
+}
+
 static bool
 agx_compile_shader_nir_inner(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)

@@ -1277,10 +1277,12 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
    /* The original 64-bit option key is full. Extend the identity explicitly
     * rather than aliasing a device-debug or code-motion bit. This hash feeds
     * imported shader/pipeline UUIDs and the disk-cache namespace alike. */
-   const uint8_t fragment_loads =
-      agx_chip_isa_encoding(pdev->dev.chip) == AGX_ISA_ENCODING_AGX3B &&
-      agx_native_fragment_loads_enabled();
-   _mesa_blake3_update(&blake3_ctx, &fragment_loads, sizeof(fragment_loads));
+   uint8_t native_schedule = 0;
+   if (agx_chip_isa_encoding(pdev->dev.chip) == AGX_ISA_ENCODING_AGX3B) {
+      native_schedule |= agx_native_fragment_loads_enabled();
+      native_schedule |= agx_native_early_compare_enabled() << 1;
+   }
+   _mesa_blake3_update(&blake3_ctx, &native_schedule, sizeof(native_schedule));
 
    /* Driconf and HK_PERFTEST affect shader lowering (notably custom borders).
     * They must partition imported binaries and the on-disk shader cache too.

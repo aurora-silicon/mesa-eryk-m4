@@ -6,6 +6,7 @@
 #include "util/list.h"
 #include "agx_builder.h"
 #include "agx_compiler.h"
+#include "agx_debug.h"
 
 /*
  * Replaces conditional breaks:
@@ -57,7 +58,18 @@ match_block(agx_context *ctx, agx_block *block)
    unsigned new_nest = break_->nest - 1;
 
    /* Rewrite */
-   agx_builder b = agx_init_builder(ctx, agx_before_block(after));
+   /* Keeping an integer loop test at the old if lets the AGX3B packer
+    * schedule its predicate before independent arithmetic in this block.
+    * The removed then/else must have no other entries: their labels will
+    * now follow the test rather than precede it. No exec-mask operation
+    * moves relative to another surviving instruction. */
+   const bool keep_test = ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+      !ctx->is_preamble && !ctx->nir->info.internal && new_nest == 1 &&
+      if_->op == AGX_OPCODE_IF_ICMP && agx_native_early_compare_enabled() &&
+      agx_num_predecessors(then_block) == 1 &&
+      agx_num_predecessors(else_block) == 1;
+   agx_builder b = agx_init_builder(ctx, keep_test ? agx_before_instr(if_)
+                                                : agx_before_block(after));
 
    if (if_->op == AGX_OPCODE_IF_FCMP) {
       agx_break_if_fcmp(&b, if_->src[0], if_->src[1], new_nest,

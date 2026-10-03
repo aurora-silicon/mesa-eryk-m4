@@ -7628,3 +7628,173 @@ TEST_F(AGX3PackBinary, NativeReciprocalPreambleMovesUniformTextureSizeDependenci
    EXPECT_EQ(moved, 5u);
    ralloc_free(b.shader);
 }
+
+TEST_F(AGX3PackBinary, EarlyLoopComparePreservesMathMaskAndBranchFixup)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_push_exec(b, 1);
+   agx_block *body = agx_test_block(b->shader);
+   agx_block *after = agx_test_block(b->shader);
+   agx_builder lb = agx_init_builder(b->shader, agx_after_block(body));
+   for (unsigned r : {16u, 18u}) {
+      agx_ffma_to(&lb, agx_register(r, AGX_SIZE_32),
+         agx_register(r, AGX_SIZE_32), agx_register(2, AGX_SIZE_32),
+         agx_register(6, AGX_SIZE_32));
+   }
+   agx_index counter = agx_register(2, AGX_SIZE_32);
+   counter.discard = true; /* Still read by both preceding FMAs. */
+   agx_break_if_icmp(&lb, counter, agx_register(4, AGX_SIZE_32),
+                     1, true, AGX_ICOND_ULT, after);
+   agx_jmp_exec_any(&lb, body);
+   agx_pop_exec(&lb, 1);
+   agx_builder ab = agx_init_builder(b->shader, agx_after_block(after));
+   agx_stop(&ab);
+
+   std::vector<uint8_t> baseline;
+   {
+      ScopedPreambleOption option("AGX_NATIVE_EARLY_COMPARE", false);
+      baseline = pack(b);
+   }
+   uint8_t compare[AGX3_CF_MAX_LENGTH], compare_len;
+   ASSERT_TRUE(agx3_cf_icmp_reg(AGX_ISA_ENCODING_AGX3B,
+                               AGX3_CF_ICOND_ULT, 1, 2, 4,
+                               compare, &compare_len));
+   uint8_t push[AGX3_CF_MAX_LENGTH], push_len;
+   ASSERT_TRUE(agx3_cf_cndst(AGX_ISA_ENCODING_AGX3B, 6, false, 2,
+                            push, &push_len));
+   auto where = std::search(baseline.begin() + push_len, baseline.end(),
+                            compare, compare + compare_len);
+   ASSERT_NE(where, baseline.end());
+   ASSERT_GT(where - baseline.begin(), push_len);
+   std::vector<uint8_t> expected = baseline;
+   const size_t old_offset = where - baseline.begin();
+   expected.erase(expected.begin() + old_offset,
+                   expected.begin() + old_offset + compare_len);
+   expected.insert(expected.begin() + push_len, compare, compare + compare_len);
+   ScopedPreambleOption option("AGX_NATIVE_EARLY_COMPARE", true);
+   /* The CND stays after both FMAs. The branch bytes still reach the start
+    * of the body, which now begins with the predicate, on every iteration. */
+   EXPECT_EQ(pack(b), expected);
+}
+
+TEST_F(AGX3PackBinary, EarlyLoopCompareRespectsPhysicalAndExecutionHazards)
+{
+   for (unsigned mode = 0; mode < 6; ++mode) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_push_exec(b, 1);
+      agx_block *body = agx_test_block(b->shader);
+      agx_block *after = agx_test_block(b->shader);
+      agx_builder lb = agx_init_builder(b->shader, agx_after_block(body));
+      const unsigned dest = mode == 0 ? 2 : 16;
+      if (mode == 3) {
+         agx_device_load_to(&lb, agx_register(2, AGX_SIZE_32),
+                            agx_register(8, AGX_SIZE_64), agx_immediate(0),
+                            AGX_FORMAT_I32, 1, 0, false);
+      }
+      agx_ffma_to(&lb, agx_register(dest, AGX_SIZE_32),
+                  agx_register(16, AGX_SIZE_32), agx_register(6, AGX_SIZE_32),
+                  agx_register(8, AGX_SIZE_32));
+      if (mode == 1)
+         agx_iadd_to(&lb, agx_register(20, AGX_SIZE_32),
+                     agx_register(20, AGX_SIZE_32), agx_immediate(1), 0);
+      if (mode == 2)
+         agx_pop_exec(&lb, 1);
+      b->shader->is_preamble = mode == 4;
+      b->shader->nir->info.internal = mode == 5;
+      agx_break_if_icmp(&lb, agx_register(2, AGX_SIZE_32),
+                        agx_register(4, AGX_SIZE_32),
+                        1, true, AGX_ICOND_ULT, after);
+      agx_jmp_exec_any(&lb, body);
+      agx_pop_exec(&lb, 1);
+      agx_builder ab = agx_init_builder(b->shader, agx_after_block(after));
+      agx_stop(&ab);
+      std::vector<uint8_t> baseline;
+      {
+         ScopedPreambleOption option("AGX_NATIVE_EARLY_COMPARE", false);
+         baseline = pack(b);
+      }
+      ScopedPreambleOption option("AGX_NATIVE_EARLY_COMPARE", true);
+      EXPECT_EQ(pack(b), baseline) << "hazard=" << mode;
+   }
+}
+
+TEST_F(AGX3PackBinary, EarlyLoopCompareKeepsFusedTestAtSingleEntryIf)
+{
+   for (unsigned mode = 0; mode < 4; ++mode) {
+      ScopedPreambleOption option("AGX_NATIVE_EARLY_COMPARE", mode != 0);
+      agx_builder *b = builder(mode == 2 ? AGX_ISA_ENCODING_AGX2
+                                       : AGX_ISA_ENCODING_AGX3B);
+      agx_block *body = agx_start_block(b->shader);
+      agx_block *then_block = agx_test_block(b->shader);
+      agx_block *else_block = agx_test_block(b->shader);
+      agx_block *footer = agx_test_block(b->shader);
+      agx_block *after = agx_test_block(b->shader);
+      agx_block_add_successor(body, then_block);
+      agx_block_add_successor(body, else_block);
+      agx_block_add_successor(else_block, footer);
+      if (mode == 3)
+         agx_block_add_successor(after, then_block);
+      agx_ffma_to(b, agx_register(16, AGX_SIZE_32),
+                  agx_register(16, AGX_SIZE_32), agx_register(6, AGX_SIZE_32),
+                  agx_register(8, AGX_SIZE_32));
+      agx_if_icmp(b, agx_register(2, AGX_SIZE_32),
+                  agx_register(4, AGX_SIZE_32), 1, AGX_ICOND_ULT, true, after);
+      agx_builder tb = agx_init_builder(b->shader, agx_after_block(then_block));
+      agx_break(&tb, 2, after);
+      agx_builder eb = agx_init_builder(b->shader, agx_after_block(else_block));
+      agx_pop_exec(&eb, 1);
+      agx_opt_break_if(b->shader);
+      ASSERT_TRUE(list_is_empty(&then_block->instructions));
+      ASSERT_TRUE(list_is_empty(&else_block->instructions));
+      if (mode == 1) {
+         EXPECT_EQ(agx_last_instr(body)->op, AGX_OPCODE_BREAK_IF_ICMP);
+         EXPECT_TRUE(list_is_empty(&footer->instructions));
+      } else {
+         EXPECT_EQ(agx_last_instr(body)->op, AGX_OPCODE_FFMA);
+         EXPECT_EQ(agx_first_instr(footer)->op, AGX_OPCODE_BREAK_IF_ICMP);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, EarlyLoopCompareRetainsExpensiveBodyForwardSkip)
+{
+   ScopedPreambleOption option("AGX_NATIVE_EARLY_COMPARE", true);
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_block *entry = agx_start_block(b->shader);
+   agx_push_exec(b, 1);
+   agx_block *body = agx_test_block(b->shader);
+   agx_block *then_block = agx_test_block(b->shader);
+   agx_block *else_block = agx_test_block(b->shader);
+   agx_block *tail = agx_test_block(b->shader);
+   agx_block *footer = agx_test_block(b->shader);
+   agx_block *after = agx_test_block(b->shader);
+   agx_block_add_successor(entry, body);
+   agx_block_add_successor(body, then_block);
+   agx_block_add_successor(body, else_block);
+   agx_block_add_successor(else_block, tail);
+   agx_builder lb = agx_init_builder(b->shader, agx_after_block(body));
+   agx_ffma_to(&lb, agx_register(16, AGX_SIZE_32),
+               agx_register(16, AGX_SIZE_32), agx_register(6, AGX_SIZE_32),
+               agx_register(8, AGX_SIZE_32));
+   agx_if_icmp(&lb, agx_register(2, AGX_SIZE_32),
+               agx_register(4, AGX_SIZE_32), 1, AGX_ICOND_ULT, true, after);
+   agx_builder tb = agx_init_builder(b->shader, agx_after_block(then_block));
+   agx_break(&tb, 2, after);
+   agx_builder eb = agx_init_builder(b->shader, agx_after_block(else_block));
+   agx_pop_exec(&eb, 1);
+   agx_builder tail_b = agx_init_builder(b->shader, agx_after_block(tail));
+   for (unsigned i = 0; i < 220; ++i)
+      agx_iadd_to(&tail_b, agx_register(20, AGX_SIZE_32),
+                  agx_register(20, AGX_SIZE_32), agx_immediate(1), 0);
+   agx_builder fb = agx_init_builder(b->shader, agx_after_block(footer));
+   agx_jmp_exec_any(&fb, body);
+   agx_pop_exec(&fb, 1);
+   agx_builder ab = agx_init_builder(b->shader, agx_after_block(after));
+   agx_stop(&ab);
+   agx_opt_break_if(b->shader);
+   agx_opt_jmp_none(b->shader);
+   const agx_instr *jump = agx_last_instr(body);
+   ASSERT_EQ(jump->op, AGX_OPCODE_JMP_EXEC_NONE_AFTER);
+   EXPECT_EQ(jump->target, footer);
+   EXPECT_FALSE(pack(b).empty());
+}

@@ -172,10 +172,20 @@ agx_opt_jmp_none(agx_context *ctx)
 
       /* Handle end of block instructions */
       agx_foreach_instr_in_block_rev(blk, I) {
-         if (!instr_after_logical_end(I))
+         if (!instr_after_logical_end(I) &&
+             I->op != AGX_OPCODE_BREAK_IF_ICMP &&
+             I->op != AGX_OPCODE_BREAK_IF_FCMP)
             break;
 
-         if (I->op == AGX_OPCODE_IF_ICMP || I->op == AGX_OPCODE_IF_FCMP) {
+         if ((I->op == AGX_OPCODE_BREAK_IF_ICMP ||
+              I->op == AGX_OPCODE_BREAK_IF_FCMP) && I->nest == 1 &&
+             I != first_) {
+            /* AGX3B's optional predicate scheduling retains a fused test
+             * at the old if, at the end of a non-empty block. Apply the
+             * same forward-skip heuristic as for a block-entry test. */
+            try_insert_jmp(ctx, blk, I, agx_prev_block(I->target), true, 10);
+            break;
+         } else if (I->op == AGX_OPCODE_IF_ICMP || I->op == AGX_OPCODE_IF_FCMP) {
             try_insert_jmp(ctx, blk, I, I->target, false, 2);
             break;
          }

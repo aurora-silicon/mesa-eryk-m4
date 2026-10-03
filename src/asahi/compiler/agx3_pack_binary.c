@@ -3014,7 +3014,8 @@ agx3_cf_is_zero(agx_index src)
 }
 
 /* Emit the compare half of a fused AGX IR control-flow instruction. The flag
- * is consumed by the immediately following cnd instruction. Loop predicates
+ * is consumed by the following cnd, optionally after flag-preserving math.
+ * Loop predicates
  * use distinct persistent slots by nesting depth; ordinary ifs reuse slot 0. */
 static bool
 agx3_emit_cf_compare(struct util_dynarray *emission, enum agx_isa_encoding enc,
@@ -3274,12 +3275,58 @@ agx3_is_nested_loop_push(const agx_instr *I)
           agx3_cf_is_zero(I->src[0]) && agx3_cf_is_zero(I->src[1]);
 }
 
+/* Apple's plain arithmetic loops compute their persistent predicate before
+ * independent FMAs. Limit this diagnostic to a single loop test and at most
+ * eight FFMA instructions in one basic block. No memory, mask or flag-writing
+ * operation is crossed. The pack walk additionally requires an empty
+ * scoreboard before publishing the compare. */
+static const agx_instr *
+agx3_early_loop_compare(const agx_block *block, const agx_instr *first)
+{
+   const struct list_head *link = &first->link;
+   unsigned distance = 0;
+   while (link != &block->instructions && distance < 8) {
+      const agx_instr *alu = list_entry(link, agx_instr, link);
+      if (alu->op != AGX_OPCODE_FFMA)
+         return NULL;
+      link = link->next;
+      distance++;
+      if (link == &block->instructions)
+         return NULL;
+      const agx_instr *test = list_entry(link, agx_instr, link);
+      if (test->op != AGX_OPCODE_BREAK_IF_ICMP || test->nest != 1 ||
+          test->nr_srcs != 2 || !agx3_cf_reg32(test->src[0]) ||
+          !agx3_cf_reg32(test->src[1]) ||
+          agx_channels(test->src[0]) != 1 || agx_channels(test->src[1]) != 1)
+         continue;
+
+      /* A physical source must have the same value at both positions,
+       * including overlap through a 16-bit half or vector destination. */
+      for (const struct list_head *cross = &first->link; cross != link;
+           cross = cross->next) {
+         const agx_instr *math = list_entry(cross, agx_instr, link);
+         agx_foreach_dest(math, d) {
+            const agx_index dst = math->dest[d];
+            if (dst.type != AGX_INDEX_REGISTER || dst.memory)
+               return NULL;
+            for (unsigned s = 0; s < 2; s++) {
+               if (dst.value < test->src[s].value + 2 &&
+                   test->src[s].value < dst.value + agx_index_size_16(dst))
+                  return NULL;
+            }
+         }
+      }
+      return test;
+   }
+   return NULL;
+}
+
 static int
 agx3_try_control_flow(struct util_dynarray *emission,
                       struct util_dynarray *fixups, enum agx_isa_encoding enc,
                       const agx_instr *I, uint16_t wait_mask,
                       uint16_t outstanding, bool after_loop_backedge,
-                      unsigned loop_depth)
+                      unsigned loop_depth, bool compare_prepared)
 {
    const bool is_if =
       I->op == AGX_OPCODE_IF_ICMP || I->op == AGX_OPCODE_IF_FCMP;
@@ -3344,15 +3391,16 @@ agx3_try_control_flow(struct util_dynarray *emission,
        * is the number of exec-mask levels a break exits and is not this
        * depth. The linear pack walk tracks each native nested-loop push and
        * its matching backedge pop. */
-      /* Every compare here immediately precedes the CND that consumes it,
-       * so a slot is only busy for that pair. Apple's seven- and
+      /* A compare's slot is busy only through its CND. The optional early
+       * integer predicate crosses only flag-preserving FFMA instructions.
+       * Apple's seven- and
        * eight-deep nested loops (compiler/test/probes/g16g-nested-loops.metal)
        * test every level through flag slot 1, so deeper nests wrap around
        * the six slots rather than being refused. */
       const unsigned flag_slot =
          is_break_if || is_while ? (loop_depth - 1) % 6 : 0;
-      if (!agx3_emit_cf_compare(emission, enc, I, is_float, flag_slot,
-                                &invert))
+      if (!compare_prepared &&
+          !agx3_emit_cf_compare(emission, enc, I, is_float, flag_slot, &invert))
          return -1;
       if (is_break_if && I->nest > 1) {
          /* CNDLT is a loop test, not a general nested exit. CNDCF marks
@@ -4909,6 +4957,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    agx_foreach_block(ctx, block) {
       block->offset = emission->size;
       bool after_loop_backedge = false;
+      const agx_instr *prepared_compare = NULL;
       agx_foreach_instr_in_block(block, I) {
          block->last_offset = emission->size;
 
@@ -4988,6 +5037,27 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (slot)
             outstanding |= (uint16_t)(1u << (slot - 1));
 
+         if (enc == AGX_ISA_ENCODING_AGX3B && !ctx->is_preamble &&
+             !ctx->nir->info.internal && agx_native_early_compare_enabled() &&
+             !prepared_compare && !wait && !outstanding) {
+            const agx_instr *test = agx3_early_loop_compare(block, I);
+            if (test) {
+               /* Lifetime hints were computed for the original read order.
+                * Never discard a compare source before intervening math has
+                * had a chance to read it. This emits no exec-mask change. */
+               agx_instr early = *test;
+               agx_index sources[2] = {test->src[0], test->src[1]};
+               early.src = sources;
+               for (unsigned s = 0; s < 2; s++)
+                  early.src[s].cache = early.src[s].discard = false;
+               bool invert = early.invert_cond;
+               if (!agx3_emit_cf_compare(emission, enc, &early, false,
+                                         (loop_depth - 1) % 6, &invert))
+                  AGX3_REFUSE(I);
+               prepared_compare = test;
+            }
+         }
+
          /* Give every control-flow boundary an empty scoreboard, rather
           * than refusing the shader when something is still in flight. */
          uint16_t cf_wait = wait;
@@ -5008,10 +5078,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             I->op == AGX_OPCODE_POP_EXEC && after_loop_backedge;
          const int cf = agx3_try_control_flow(
             emission, &fixups, enc, I, cf_wait, cf_outstanding,
-            after_loop_backedge, loop_depth);
+            after_loop_backedge, loop_depth, prepared_compare == I);
          if (cf < 0)
             AGX3_REFUSE(I);
          if (cf > 0) {
+            if (prepared_compare == I)
+               prepared_compare = NULL;
             if (nested_loop_push)
                loop_depth++;
             else if (loop_pop && loop_depth > 1) {
