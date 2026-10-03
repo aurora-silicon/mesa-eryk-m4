@@ -7,6 +7,11 @@ and a versioned manifest. Successful compilations publish nothing by default. Se
 `AGX_COMPILER_CAPTURE_SUCCESS=fragment` to retain successful fragment inputs;
 optionally set `AGX_COMPILER_CAPTURE_BINARY_HASH=12345678,abcdef01` to select
 executables by the eight-digit lowercase hash reported by HK_M4_SHADER_PROFILE.
+`HK_M4_PROGRAM_PROFILE=true` additionally reports the selected graphics shader
+body hash and byte count for every profiled stage, including hardware vertex
+programs. Use `body_hash` with the same capture filter; it hashes the compiler
+body before link-time prolog/epilog additions, not the full linked executable.
+The address report remains bounded and does not count all shader invocations.
 To retain the same source before and after a transform, use
 `AGX_COMPILER_CAPTURE_SOURCE_HASH` with the 64-digit source BLAKE3 printed by
 NIR shader bisection. Unlike the executable hash, this survives code-generation
