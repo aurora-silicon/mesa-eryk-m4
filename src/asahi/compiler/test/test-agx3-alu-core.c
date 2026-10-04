@@ -1631,7 +1631,50 @@ test_native_bit_reverse(void)
                                  true, AGX3_ALU_HINT_NONE, false, 0, bytes, &len));
 }
 
+static void
+test_native_uniform_select(void)
+{
+   /* Fresh strict-math own G15S fragment, offsets148/158/186/196. */
+   const struct {
+      uint16_t dest, src[4];
+      unsigned mask, condition;
+      enum agx3_alu_hint hints[4];
+      const char *hex;
+   } witnesses[] = {
+      {8,{8,4,6,0},6,1,{AGX3_ALU_HINT_DISCARD,0,0,AGX3_ALU_HINT_CACHE},"42092f05220603020080"},
+      {0,{8,0,4,10},9,1,{0,AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_CACHE,0},"0209370102848300200a"},
+      {4,{4,10,4,2},6,0,{AGX3_ALU_HINT_DISCARD,0,0,AGX3_ALU_HINT_CACHE},"22052f0b260400020082"},
+      {2,{2,6,2,6},10,7,{AGX3_ALU_HINT_DISCARD,0,AGX3_ALU_HINT_DISCARD,0},"12032e070002"},
+   };
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+   for (unsigned i = 0; i < sizeof(witnesses)/sizeof(witnesses[0]); ++i) {
+      assert(agx3_alu_fcmp_select_uniform(AGX_ISA_ENCODING_AGX3B,
+         witnesses[i].dest,witnesses[i].src,witnesses[i].mask,0,
+         witnesses[i].hints,witnesses[i].condition,true,0,bytes,&len));
+      exact(bytes,len,witnesses[i].hex);
+   }
+   uint16_t sources[] = {0,510,2,4};
+   const enum agx3_alu_hint hints[] = {0,0,0,0};
+   assert(agx3_alu_fcmp_select_uniform(AGX_ISA_ENCODING_AGX3B,
+      0,sources,2,0,hints,1,false,32,bytes,&len));
+   for (unsigned invalid = 0; invalid < 8; ++invalid) {
+      memset(bytes,0xa5,sizeof(bytes));len=0xbc;
+      uint16_t src[4] = {0,6,2,4};
+      if (invalid == 3) src[1]=511;
+      if (invalid == 4) src[1]=512;
+      assert(!agx3_alu_fcmp_select_uniform(
+         invalid == 0 ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B,
+         invalid == 1 ? 256 : invalid == 2 ? 1 : 0,
+         src,2,invalid == 5 ? 2 : 0,hints,
+         invalid == 6 ? 7 : 1,false,invalid == 7 ? 1 : 0,bytes,&len));
+      assert(len==0xbc);
+      for(unsigned b=0;b<sizeof(bytes);++b) assert(bytes[b]==0xa5);
+   }
+   puts("Native uniform FSEL: four exact vectors and bounded rejection PASS");
+}
+
 int main(void){
+   test_native_uniform_select();
    test_native_bit_reverse();
    test_register_free_wait_nop();
    test_native_minifloat_half_select();

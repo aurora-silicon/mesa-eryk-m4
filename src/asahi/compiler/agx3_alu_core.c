@@ -1143,6 +1143,61 @@ bool agx3_alu_fcmp_select_reg_imm(enum agx_isa_encoding enc, uint16_t dest,
 }
 
 bool
+agx3_alu_fcmp_select_uniform(enum agx_isa_encoding enc, uint16_t dest,
+                             const uint16_t src[4], unsigned uniform_mask,
+                             unsigned immediate_mask,
+                             const enum agx3_alu_hint hints[4],
+                             unsigned condition, bool dest_cache,
+                             uint16_t wait_mask,
+                             uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
+       dest >= 256 || (dest & 1) || !uniform_mask || (uniform_mask & ~15u) ||
+       (immediate_mask & ~12u) || (uniform_mask & immediate_mask) ||
+       (wait_mask != 0 && wait_mask != 32) ||
+       (condition != 0 && condition != 1 && condition != 2 &&
+        condition != 3 && condition != 5 && condition != 6 && condition != 7))
+      return false;
+   /* NaN-aware min/max must remain tied, including source routing. */
+   if ((condition == 3 || condition == 7) &&
+       (src[0] != src[2] || src[1] != src[3] || immediate_mask ||
+        ((uniform_mask ^ (uniform_mask >> 2)) & 3)))
+      return false;
+
+   const unsigned kinds[] = {42, 59, 76, 93};
+   const unsigned widths[] = {43, 60, 77, 94};
+   const unsigned regs[] = {35, 52, 69, 86};
+   const unsigned uniforms[] = {36, 53, 70, 87};
+   const unsigned immediates[] = {34, 51, 68, 85};
+   const unsigned cache[] = {44, 61, 78, 95};
+   const unsigned discard[] = {46, 63, 80, 97};
+   struct agx3_field_kv base[10] = {{10,2}, {11,2}};
+   struct agx3_field_kv fields[16] = {
+      {3,dest}, {12,dest_cache}, {110,condition}, {107,wait_mask == 32},
+   };
+   unsigned n = 4;
+   for (unsigned i = 0; i < 4; ++i) {
+      const bool uniform = uniform_mask & (1u << i);
+      const bool immediate = immediate_mask & (1u << i);
+      if (src[i] >= (uniform ? 512 : 256) ||
+          (!immediate && (src[i] & 1)) ||
+          (unsigned)hints[i] > AGX3_ALU_HINT_CACHE ||
+          ((uniform || immediate) && hints[i] != AGX3_ALU_HINT_NONE))
+         return false;
+      base[2 + 2*i] = (struct agx3_field_kv){kinds[i], uniform ? 3 : immediate ? 1 : 2};
+      base[3 + 2*i] = (struct agx3_field_kv){widths[i],2};
+      fields[n++] = (struct agx3_field_kv){uniform ? uniforms[i] :
+         immediate ? immediates[i] : regs[i],src[i]};
+      fields[n++] = (struct agx3_field_kv){cache[i],hints[i] == AGX3_ALU_HINT_CACHE};
+      fields[n++] = (struct agx3_field_kv){discard[i],hints[i] == AGX3_ALU_HINT_DISCARD};
+   }
+   for (unsigned ep = 0; ep < 36; ++ep)
+      if (agx3_bind_compose(enc, "fsel", ep, base, 10, fields, n, out, len))
+         return true;
+   return false;
+}
+
+bool
 agx3_alu_fcmp_select_f32_f16(enum agx_isa_encoding enc, uint16_t dest,
                              const uint16_t src[4],
                              const enum agx3_alu_hint hints[4],
