@@ -209,6 +209,11 @@ int main(int argc, char **argv)
               out.info.push_count, out.info.has_preamble,
               out.info.nr_preamble_gprs, out.info.preamble_scratch_size,
               out.info.rodata.base_uniform, out.info.rodata.size_16);
+      fprintf(stderr,
+              "Compiler code: main_offset=%u main_size=%u preamble_offset=%u "
+              "binary_size=%u rodata_offset=%u\n",
+              out.info.main_offset, out.info.main_size, out.info.preamble_offset,
+              out.info.binary_size, out.info.rodata.offset);
       if (argc == 3 && !strncmp(argv[2], "--binary-output=", 16)) {
          FILE *binary = fopen(argv[2] + 16, "wb");
          if (!binary) {
