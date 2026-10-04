@@ -1278,7 +1278,7 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
    /* The original 64-bit option key is full. Extend the identity explicitly
     * rather than aliasing a device-debug or code-motion bit. This hash feeds
     * imported shader/pipeline UUIDs and the disk-cache namespace alike. */
-   uint8_t native_schedule = 0;
+   uint16_t native_schedule = 0;
    if (agx_chip_isa_encoding(pdev->dev.chip) == AGX_ISA_ENCODING_AGX3B) {
       native_schedule |= agx_native_fragment_loads_enabled();
       native_schedule |= agx_native_early_compare_enabled() << 1;
@@ -1288,6 +1288,7 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
       native_schedule |= hk_repeated_sampler_enabled(pdev->dev.chip) << 5;
       native_schedule |= agx_native_binary_uniforms_enabled() << 6;
       native_schedule |= agx_native_minifloat_fma_negate_enabled() << 7;
+      native_schedule |= agx_native_select_uniforms_enabled() << 8;
    }
    _mesa_blake3_update(&blake3_ctx, &native_schedule, sizeof(native_schedule));
 

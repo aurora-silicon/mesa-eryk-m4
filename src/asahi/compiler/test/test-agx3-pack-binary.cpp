@@ -7623,6 +7623,77 @@ public:
    }
 };
 
+TEST_F(AGX3PackBinary, NativeSelectUniformsRetainRoutingAndHints)
+{
+   auto *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   agx_index a = agx_register(8,AGX_SIZE_32);
+   a.discard = true;
+   agx_index c = agx_register(0,AGX_SIZE_32);
+   c.cache = true;
+   agx_index dest = agx_register(8,AGX_SIZE_32);
+   dest.cache = true;
+   agx_fcmpsel_to(b,dest,a,agx_uniform(4,AGX_SIZE_32),
+                    agx_uniform(6,AGX_SIZE_32),c,AGX_FCOND_LT);
+   agx_stop(b);
+   const std::vector<uint8_t> expected = {0x42,0x09,0x2f,0x05,0x22,0x06,0x03,0x02,0x00,0x80,
+                                        0x0e,0,0,0};
+   EXPECT_EQ(pack(b),expected);
+}
+
+TEST_F(AGX3PackBinary, NativeSelectUniformsLegalizeExcludedShapes)
+{
+   for (unsigned mode = 0; mode < 10; ++mode) {
+      ScopedPreambleOption policy("AGX_NATIVE_SELECT_UNIFORMS",mode != 1);
+      auto *b = builder(mode == 9 ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = mode == 2 ? MESA_SHADER_VERTEX : MESA_SHADER_FRAGMENT;
+      b->shader->is_preamble = mode == 3;
+      b->shader->nir->info.internal = mode == 4;
+      key.secondary = mode == 5;
+      agx_index u = agx_uniform(mode == 6 ? 511 : 4,AGX_SIZE_32);
+      if (mode == 7) u.abs = true;
+      auto *I = agx_fcmpsel_to(b,agx_register(8,AGX_SIZE_32),
+         agx_register(0,AGX_SIZE_32),u,agx_register(2,AGX_SIZE_32),
+         agx_register(4,AGX_SIZE_32),AGX_FCOND_LT);
+      I->saturate = mode == 8;
+      agx_lower_uniform_sources(b->shader);
+      EXPECT_EQ(I->src[1].type,mode == 0 ? AGX_INDEX_UNIFORM : AGX_INDEX_NORMAL);
+   }
+}
+
+TEST_F(AGX3PackBinary, NativeSelectUniformsKeepLiteralsOutOfUpload)
+{
+   ScopedPreambleOption select("AGX_NATIVE_SELECT_UNIFORMS", true);
+   ScopedPreambleOption fma("AGX_NATIVE_FMA_UNIFORMS", true);
+   for (bool shared : {false, true}) {
+      for (auto enc : {AGX_ISA_ENCODING_AGX2, AGX_ISA_ENCODING_AGX3B}) {
+         auto *b = builder(enc);
+         agx_shader_info info = {};
+         b->shader->out = &info;
+         b->shader->stage = MESA_SHADER_FRAGMENT;
+         agx_index literal = agx_mov_imm(b, 32, fui(0.125f));
+         auto *I = agx_fcmpsel_to(b, agx_temp(b->shader, AGX_SIZE_32),
+            agx_register(0, AGX_SIZE_32), literal,
+            agx_uniform(4, AGX_SIZE_32), agx_register(2, AGX_SIZE_32),
+            AGX_FCOND_LT);
+         agx_instr *other = nullptr;
+         if (shared)
+            other = agx_ffma_to(b, agx_temp(b->shader, AGX_SIZE_32),
+               agx_register(0, AGX_SIZE_32), literal,
+               agx_register(2, AGX_SIZE_32));
+         agx_opt_promote_constants(b->shader);
+         EXPECT_EQ(I->src[1].type, enc == AGX_ISA_ENCODING_AGX2 ?
+                      AGX_INDEX_UNIFORM : AGX_INDEX_NORMAL);
+         EXPECT_EQ(I->src[2].type, AGX_INDEX_UNIFORM);
+         EXPECT_EQ(info.rodata.size_16,
+                   shared || enc == AGX_ISA_ENCODING_AGX2 ? 2u : 0u);
+         if (shared) {
+            EXPECT_EQ(other->src[1].type, AGX_INDEX_UNIFORM);
+         }
+      }
+   }
+}
+
 TEST_F(AGX3PackBinary, NativeBinaryUniformsCommuteNegateAndLifetime)
 {
    ScopedPreambleOption option("AGX_NATIVE_BINARY_UNIFORMS", true);
@@ -7764,7 +7835,9 @@ TEST_F(AGX3PackBinary, NativeBinaryUniformsLegalizeUnqualifiedShapes)
       I->saturate = mode == 4;
       agx_lower_uniform_sources(b->shader);
       EXPECT_EQ(I->src[0].type,mode == 3 ? AGX_INDEX_UNIFORM : AGX_INDEX_NORMAL);
-      if (mode == 3) EXPECT_EQ(I->src[1].type,AGX_INDEX_NORMAL);
+      if (mode == 3) {
+         EXPECT_EQ(I->src[1].type,AGX_INDEX_NORMAL);
+      }
    }
    for (bool enabled : {false,true}) {
       ScopedPreambleOption policy("AGX_NATIVE_BINARY_UNIFORMS",enabled);

@@ -31,6 +31,41 @@ native_uniform_binary(const agx_instr *I)
 }
 
 bool
+agx_native_select_uniforms_enabled(void)
+{
+   return debug_get_bool_option("AGX_NATIVE_SELECT_UNIFORMS", false);
+}
+
+static bool
+native_uniform_select(const agx_instr *I)
+{
+   if (I->op != AGX_OPCODE_FCMPSEL || I->saturate || I->nr_dests != 1 ||
+       I->nr_srcs != 4 || I->dest[0].size != AGX_SIZE_32 ||
+       agx_channels(I->dest[0]) != 1)
+      return false;
+   if (I->fcond == AGX_FCOND_LTN || I->fcond == AGX_FCOND_GTN) {
+      if (I->invert_cond || !agx_is_equiv(I->src[0], I->src[2]) ||
+          !agx_is_equiv(I->src[1], I->src[3]))
+         return false;
+   }
+   for (unsigned s = 0; s < 4; ++s) {
+      agx_index src = I->src[s];
+      if (src.abs || src.neg || src.memory || agx_channels(src) != 1)
+         return false;
+      if (src.type == AGX_INDEX_IMMEDIATE) {
+         if (s < 2 || src.value > 255)
+            return false;
+      } else if (src.size != AGX_SIZE_32 ||
+                 (src.type != AGX_INDEX_NORMAL &&
+                  src.type != AGX_INDEX_REGISTER &&
+                  src.type != AGX_INDEX_UNIFORM)) {
+         return false;
+      }
+   }
+   return true;
+}
+
+bool
 agx_native_fma_uniforms_enabled(void)
 {
    return debug_get_bool_option("AGX_NATIVE_FMA_UNIFORMS", false);
@@ -76,6 +111,11 @@ agx_instr_accepts_uniform(enum agx_isa_encoding encoding, enum agx_opcode op,
       (encoding == AGX_ISA_ENCODING_AGX2 || !(value & 3));
 
    switch (op) {
+   case AGX_OPCODE_FCMPSEL:
+      if (encoding == AGX_ISA_ENCODING_AGX3B)
+         return agx_native_select_uniforms_enabled() && src_index < 4 &&
+                size == AGX_SIZE_32 && value < 512 && !(value & 1);
+      return encoding == AGX_ISA_ENCODING_AGX2 && !is_64;
    case AGX_OPCODE_FADD:
    case AGX_OPCODE_FMUL:
       if (encoding == AGX_ISA_ENCODING_AGX3B)
@@ -207,6 +247,10 @@ agx_lower_uniform_sources(agx_context *ctx)
       const bool two_uniform_binary = binary &&
          I->src[0].type == AGX_INDEX_UNIFORM &&
          I->src[1].type == AGX_INDEX_UNIFORM;
+      const bool select = ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+         ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_preamble &&
+         !ctx->key->secondary && !ctx->nir->info.internal &&
+         native_uniform_select(I);
 
       agx_foreach_src(I, s) {
          /* The qualified FMA permits one uniform multiplier, commuted into
@@ -219,8 +263,10 @@ agx_lower_uniform_sources(agx_context *ctx)
             (I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL) &&
             ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
             (!binary || (s == 1 && two_uniform_binary));
+         const bool lower_select = I->op == AGX_OPCODE_FCMPSEL &&
+            ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B && !select;
          if (I->src[s].type == AGX_INDEX_UNIFORM &&
-             (lower_fma || lower_binary ||
+             (lower_fma || lower_binary || lower_select ||
               !agx_instr_accepts_uniform(ctx->key->dev.encoding, I->op, s,
                                          I->src[s].value, I->src[s].size))) {
             agx_index idx = I->src[s];

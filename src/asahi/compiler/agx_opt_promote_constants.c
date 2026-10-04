@@ -8,6 +8,7 @@
 #include "util/hash_table.h"
 #include "util/ralloc.h"
 #include "agx_compiler.h"
+#include "agx_debug.h"
 #include "agx_opcodes.h"
 
 /*
@@ -74,6 +75,22 @@ record_use(void *memctx, struct hash_table_u64 *constants, uint64_t imm,
    info->align_16 = MAX2(info->align_16, agx_size_align_16(size));
 }
 
+static bool
+promotable_use(agx_context *ctx, agx_instr *I, unsigned s, unsigned uniform)
+{
+   /* Native selects can reuse already-pushed uniforms. Promoting their
+    * literals additionally creates a constant upload and an aligned code
+    * prefix; leave those literals in the ordinary register/immediate path.
+    * Apply this to both use counting and replacement, including constants
+    * promoted for another instruction in the same shader. */
+   if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       I->op == AGX_OPCODE_FCMPSEL && agx_native_select_uniforms_enabled())
+      return false;
+
+   return agx_instr_accepts_uniform(ctx->key->dev.encoding, I->op, s,
+                                     uniform, I->src[s].size);
+}
+
 static void
 pass(agx_context *ctx, void *memctx)
 {
@@ -95,9 +112,7 @@ pass(agx_context *ctx, void *memctx)
       } else {
          agx_foreach_ssa_src(I, s) {
             if (BITSET_TEST(is_immediate, I->src[s].value) &&
-                agx_instr_accepts_uniform(ctx->key->dev.encoding, I->op, s,
-                                          ctx->out->push_count,
-                                          I->src[s].size)) {
+                promotable_use(ctx, I, s, ctx->out->push_count)) {
 
                record_use(memctx, constants, values[I->src[s].value],
                           I->src[s].size);
@@ -178,8 +193,7 @@ pass(agx_context *ctx, void *memctx)
             _mesa_hash_table_u64_search(constants, values[I->src[s].value]);
 
          if (info && info->promoted &&
-             agx_instr_accepts_uniform(ctx->key->dev.encoding, I->op, s,
-                                       info->uniform, I->src[s].size)) {
+             promotable_use(ctx, I, s, info->uniform)) {
 
             agx_replace_src(I, s, agx_uniform(info->uniform, I->src[s].size));
          }

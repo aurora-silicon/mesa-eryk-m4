@@ -6351,6 +6351,56 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
+             I->nr_dests == 1 && I->nr_srcs == 4 &&
+             (I->src[0].type == AGX_INDEX_UNIFORM ||
+              I->src[1].type == AGX_INDEX_UNIFORM ||
+              I->src[2].type == AGX_INDEX_UNIFORM ||
+              I->src[3].type == AGX_INDEX_UNIFORM)) {
+            if (I->saturate || !agx3_vary_reg32(I->dest[0]) ||
+                agx_channels(I->dest[0]) != 1)
+               AGX3_REFUSE(I);
+            agx_index sources[4] = {I->src[0], I->src[1], I->src[2], I->src[3]};
+            if (I->invert_cond) {
+               if (I->fcond == AGX_FCOND_LTN || I->fcond == AGX_FCOND_GTN)
+                  AGX3_REFUSE(I);
+               agx_index t = sources[2]; sources[2] = sources[3]; sources[3] = t;
+            }
+            uint16_t src[4];
+            enum agx3_alu_hint hints[4];
+            unsigned uniform_mask = 0, immediate_mask = 0;
+            for (unsigned i = 0; i < 4; ++i) {
+               agx_index s = sources[i];
+               if (s.abs || s.neg || s.memory || s.kill ||
+                   (s.cache && s.discard) || agx_channels(s) != 1)
+                  AGX3_REFUSE(I);
+               const bool uniform = s.type == AGX_INDEX_UNIFORM;
+               const bool immediate = s.type == AGX_INDEX_IMMEDIATE;
+               if ((!immediate && s.size != AGX_SIZE_32) ||
+                   (!immediate && !uniform && s.type != AGX_INDEX_REGISTER) ||
+                   (immediate && (i < 2 || s.value > 255)) ||
+                   (uniform && (s.cache || s.discard)))
+                  AGX3_REFUSE(I);
+               uniform_mask |= uniform << i;
+               immediate_mask |= immediate << i;
+               src[i] = s.value;
+               hints[i] = immediate || uniform ? AGX3_ALU_HINT_NONE : agx3_post_ra_hint(s);
+            }
+            uint16_t fsel_wait = wait;
+            if (fsel_wait != 0 && fsel_wait != 32) {
+               if (!agx3_retire_slots_noop(emission, enc, fsel_wait))
+                  AGX3_REFUSE(I);
+               fsel_wait = 0;
+            }
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+            if (!agx3_alu_fcmp_select_uniform(enc,I->dest[0].value,src,
+                    uniform_mask,immediate_mask,hints,I->fcond,
+                    I->dest[0].cache,fsel_wait,bytes,&len) ||
+                !agx3_append(emission,bytes,len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          /* Native tied half comparison/selection is scalar fmin/fmax. */
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
              I->nr_dests == 1 && I->nr_srcs == 4 && !I->invert_cond &&
