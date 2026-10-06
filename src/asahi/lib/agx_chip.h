@@ -164,7 +164,10 @@ agx_chip_uses_hal200_ioto(enum agx_chip chip)
 static inline bool
 agx_chip_is_m3_runtime(enum agx_chip chip)
 {
-   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G15G;
+   /* This branch targets J613 on 25G83/RTKit3255 (HAL200). G15G's
+    * shader ISA and scheduling remain G15G; it must not receive RTKit2419's
+    * VM reservations or legacy CDM pointer/control encoding. */
+   return chip == AGX_CHIP_G15S;
 }
 
 /* G15S and G16G share AGX3b shader encodings, native sample-loop ABI and

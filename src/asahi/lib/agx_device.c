@@ -779,7 +779,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
       dev->params.gpu_hal_generation == 0 &&
       debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false);
    /* J613 (MacBook Air M3): T8122 / G15G C0, one cluster of ten cores, as
-    * published by the M3 runtime's J613 board record. Exact identity only.
+    * published by the 25G83 J613 board path (USC3/HAL200). Exact identity only.
     *
     * UNMEASURED: no Mesa-generated command stream or shader has executed on
     * a G15G yet. Apple's compiler pads G15G code with 8-byte scheduling
@@ -793,7 +793,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
       dev->params.num_cores_per_cluster == 10 &&
       dev->params.core_masks[0] == 0x3ff &&
       dev->params.usc_generation == 3 &&
-      dev->params.gpu_hal_generation == DRM_ASAHI_GPU_HAL_LEGACY;
+      dev->params.gpu_hal_generation == DRM_ASAHI_GPU_HAL_200;
    const bool m3_g15g_experimental = m3_g15g_identity &&
       debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false);
    dev->g15g_unscheduled = m3_g15g_experimental &&
@@ -1230,7 +1230,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    const char *usc_low_env = getenv("ASAHI_G17P_USC_LOW");
    const bool usc_low = usc_low_env != NULL && usc_low_env[0] == '1' &&
                         usc_low_env[1] == '\0';
-   if (usc_low || dev->chip == AGX_CHIP_G16G || agx_chip_is_m3_runtime(dev->chip))
+   if (usc_low || dev->chip == AGX_CHIP_G16G || dev->chip == AGX_CHIP_G15G || agx_chip_is_m3_runtime(dev->chip))
       dev->usc_heap.alloc_high = false;
 
    if (dev->chip == AGX_CHIP_G17P) {
@@ -1394,7 +1394,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
       }
 
       struct agx_bo *usc_base = agx_create_fixed_bo(
-         dev, usc_base_size, (dev->chip == AGX_CHIP_G16G || agx_chip_is_m3_runtime(dev->chip)) ? 0 : AGX_BO_WRITEBACK, dev->shader_base,
+         dev, usc_base_size, (dev->chip == AGX_CHIP_G16G || dev->chip == AGX_CHIP_G15G || agx_chip_is_m3_runtime(dev->chip)) ? 0 : AGX_BO_WRITEBACK, dev->shader_base,
          DRM_ASAHI_BIND_READ, "HAL200 USC window base");
       if (usc_base == NULL) {
          fprintf(stderr, "Failed to bind the USC window base page\n");

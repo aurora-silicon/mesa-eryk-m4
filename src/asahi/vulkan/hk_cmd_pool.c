@@ -34,7 +34,7 @@ hk_g17p_vdm_low_window_enabled(const struct agx_device *dev)
    if (enabled < 0)
       enabled = debug_get_bool_option("ASAHI_G17P_VDM_LOW_WINDOW", true);
 
-   return agx_chip_is_m3_runtime(dev->chip) || dev->chip == AGX_CHIP_G16G ||
+   return agx_chip_is_m3_runtime(dev->chip) || dev->chip == AGX_CHIP_G15G || dev->chip == AGX_CHIP_G16G ||
           (dev->chip == AGX_CHIP_G17P && enabled);
 }
 
