@@ -955,6 +955,18 @@ agx_get_scissor_extents(const struct pipe_viewport_state *vp,
    }
 }
 
+/* Use the same chip-selected PPP finalizer and payload gate as Vulkan.
+ * A rejected record must never leave a partially published live stream. */
+static void
+agx_batch_ppp_fini(struct agx_batch *batch, uint8_t **out,
+                   struct agx_ppp_update *ppp)
+{
+   struct agx_device *dev = agx_device(batch->ctx->base.screen);
+   if (!agx_ppp_legacy_payload_supported(dev->chip) ||
+       !agx_ppp_fini(dev->chip, out, ppp))
+      agx_native_descriptor_rejected(dev, "PPP state record");
+}
+
 static void
 agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
                             uint8_t **out, const struct pipe_viewport_state *vp,
@@ -1044,7 +1056,7 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
       }
    }
 
-   agx_ppp_fini(out, &ppp);
+   agx_batch_ppp_fini(batch, out, &ppp);
 }
 
 static void
@@ -3459,7 +3471,7 @@ agx_batch_init_state(struct agx_batch *batch)
    agx_ppp_push(&ppp, VARYING_2, cfg);
    /* clang-format on */
 
-   agx_ppp_fini(&out, &ppp);
+   agx_batch_ppp_fini(batch, &out, &ppp);
    batch->vdm.current = out;
 
    /* Mark it as initialized now, since agx_batch_writes() will check this. */
@@ -3829,7 +3841,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out)
          cfg.count = vs->uvs.size;
    }
 
-   agx_ppp_fini(&out, &ppp);
+   agx_batch_ppp_fini(batch, &out, &ppp);
    ppp_updates++;
 
    assert(ppp_updates <= MAX_PPP_UPDATES);
