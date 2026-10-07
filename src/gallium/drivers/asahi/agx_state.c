@@ -4374,14 +4374,15 @@ agx_build_bg_eot(struct agx_batch *batch, bool store, bool partial_render)
    struct agx_bg_eot_key key = {
       .tib = batch->tilebuffer_layout,
       .single_sample_reload =
-         agx_chip_uses_native_gallium(dev->chip) && !store && !partial_render &&
+         agx_chip_uses_native_gallium(dev->chip) &&
+         dev->chip != AGX_CHIP_G15G && !store && !partial_render &&
          batch->tilebuffer_layout.nr_samples > 1 && batch->key.resolve,
       /* A persistent attachment or partial render must keep each sample.
        * Resolving it here would discard data needed by the next reload. */
       .multisample_store =
          agx_chip_uses_native_gallium(dev->chip) && store &&
          batch->tilebuffer_layout.nr_samples > 1 &&
-         (partial_render || !batch->key.resolve),
+         (dev->chip == AGX_CHIP_G15G || partial_render || !batch->key.resolve),
    };
 
    bool needs_textures_for_spilled_rts =

@@ -587,6 +587,13 @@ agx_g17p_attach_direct_resolve(struct agx_context *ctx,
                                struct pipe_resource *msaa,
                                struct pipe_resource *single)
 {
+   /* G15G must retain every sample. The direct EOT path writes a
+    * single-sample PBE with a multisample store program, and treating an API
+    * resolve as transient also loses data required by subsequent reads.
+    * Use the ordinary stored-image resolve, as Honeykrisp does. */
+   if (agx_device(ctx->base.screen)->chip == AGX_CHIP_G15G)
+      return false;
+
    struct agx_batch *batch =
       agx_writer_get(ctx, agx_resource(msaa)->bo->handle);
 
