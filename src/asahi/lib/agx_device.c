@@ -778,7 +778,32 @@ agx_open_device(void *memctx, struct agx_device *dev)
       dev->params.num_clusters_total == 2 && dev->params.usc_generation == 3 &&
       dev->params.gpu_hal_generation == 0 &&
       debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false);
-   if (!m3_experimental && !m4_experimental && !agx_params_driver_supported(&dev->params)) {
+   /* G15G (M3, T8122) on the same M3 runtime: one die, one cluster, USC 3,
+    * legacy HAL, any core count. Like G15S it opens with
+    * ASAHI_M3_EXPERIMENTAL=1. Its shaders carry the G15G scheduling stalls
+    * (agx3_g15g_stalls.c); ASAHI_G15G_UNSCHEDULED=1 turns them off for A/B
+    * tests. */
+   const bool m3_g15g_experimental = dev->chip == AGX_CHIP_G15G &&
+      dev->params.chip_id == 0x8122 && dev->params.num_dies == 1 &&
+      dev->params.num_clusters_total == 1 && dev->params.usc_generation == 3 &&
+      dev->params.gpu_hal_generation == 0 &&
+      debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false);
+   dev->g15g_unscheduled = m3_g15g_experimental &&
+      debug_get_bool_option("ASAHI_G15G_UNSCHEDULED", false);
+   if (m3_g15g_experimental) {
+      static bool logged;
+      if (!logged) {
+         logged = true;
+         fprintf(stderr,
+                 "asahi: G15G admitted: chip 0x%x, %u cluster, %u cores; "
+                 "scheduling stalls %s\n",
+                 dev->params.chip_id, dev->params.num_clusters_total,
+                 agx_get_num_cores(dev),
+                 dev->g15g_unscheduled ? "OFF (ASAHI_G15G_UNSCHEDULED=1)" : "on");
+      }
+   }
+   if (!m3_experimental && !m3_g15g_experimental && !m4_experimental &&
+       !agx_params_driver_supported(&dev->params)) {
       if (dev->chip == AGX_CHIP_UNKNOWN) {
          fprintf(stderr,
                  "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
@@ -1651,6 +1676,7 @@ agx_gather_device_key(struct agx_device *dev)
       .encoding = agx_chip_isa_encoding(dev->chip),
       .needs_g13x_coherency = u_tristate_make(g13x_coh),
       .soft_fault = agx_has_soft_fault(dev),
-      .scheduling_stalls = agx_chip_needs_scheduling_stalls(dev->chip),
+      .scheduling_stalls = agx_chip_needs_scheduling_stalls(dev->chip) &&
+                           !dev->g15g_unscheduled,
    };
 }

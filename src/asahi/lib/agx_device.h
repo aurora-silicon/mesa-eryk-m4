@@ -226,6 +226,9 @@ struct agx_device {
     * fragmented-allocation writeback set.  Other winsys backends retain the
     * upstream optional-hint semantics. */
    bool write_set_contract;
+   /* G15G only: ASAHI_G15G_UNSCHEDULED=1 turns the scheduling-stall pass off
+    * (agx_gather_device_key) for A/B tests. */
+   bool g15g_unscheduled;
    agx_device_ops_t ops;
 
    /* vdrm device */
