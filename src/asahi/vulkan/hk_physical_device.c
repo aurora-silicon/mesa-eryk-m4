@@ -1273,6 +1273,13 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
    const uint64_t compiler_flags = hk_physical_device_compiler_flags(pdev);
    _mesa_blake3_update(&blake3_ctx, &compiler_flags, sizeof(compiler_flags));
 
+   /* The G15G scheduling fallback's stall count (ASAHI_G15G_STALL_WORDS)
+    * changes every binary. It is 0, and not hashed, on every other chip. */
+   if (pdev->dev.agx3_stall_words) {
+      _mesa_blake3_update(&blake3_ctx, &pdev->dev.agx3_stall_words,
+                          sizeof(pdev->dev.agx3_stall_words));
+   }
+
    /* Driconf and HK_PERFTEST affect shader lowering (notably custom borders).
     * They must partition imported binaries and the on-disk shader cache too.
     * Otherwise changing an application workaround silently reuses old code.
