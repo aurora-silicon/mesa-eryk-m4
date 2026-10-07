@@ -26,13 +26,20 @@ Native Gallium OpenGL for the J613 on 25G83 firmware (HAL200 / USC3 path), the u
 - `fe1f6faabf9`: G15G MSAA images survive API resolves: store every sample and use the normal image resolve.
 - `298de3f32e1`: raw vertex prologs for G15G packed attributes (fixes ushort/packed vertex buffers).
 - `eaa3a11e97c`: `tools/j613-d2/`, the session integration for the D2 daily-driver candidate (see its README).
+- Added after these notes were first written:
+  - `783353fb016`: **G15G index-buffer alignment.** G15G fetches direct-draw indices from a dword-aligned address, so
+    a u16 index buffer bound at a 2-byte offset (Qt Quick does this) lost a triangle per quad: the diagonal
+    corruption in the SDDM greeter. Same bug as G17P (aurora-silicon/mesa 325e0839), same fix: copy the selected range
+    to the aligned upload pool. Also on `j613-d3-index-alignment` as `309170e02c7`.
+  - `eca78aa9f20`: `tools/j613-d3/`, D3 session integration: D2's plus SDDM `GreeterEnvironment`, so the Qt greeter
+    gets the Mesa environment (SDDM strips its own).
 
 ## Build
 
-`meson -Dgallium-drivers=asahi -Dvulkan-drivers=asahi -Dplatforms=wayland --prefix=/opt/mesa-j613-25g83-d2` plus
+`meson -Dgallium-drivers=asahi -Dvulkan-drivers=asahi -Dplatforms=wayland --prefix=/opt/mesa-j613-25g83-d3` plus
 `-Dc_args=-DMESA_DYNAMIC_TLS -Dcpp_args=-DMESA_DYNAMIC_TLS` (with the CLC tools from a first LLVM stage, as for the
 14.x branch). Run with `ASAHI_M3_EXPERIMENTAL=1` and the appledrm card
-(see `tools/j613-d2/`).
+(see `tools/j613-d3/`).
 
 ## Tested on hardware vs compile-only
 
@@ -42,7 +49,19 @@ Native Gallium OpenGL for the J613 on 25G83 firmware (HAL200 / USC3 path), the u
 - `fe1f6faabf9`: unflushed 2x/4x full and cropped RGBA8 resolves pass at 32x32 through 900x480. Browser text has a
   separate, still-open bug.
 - `647ca992ed2`: the seccomp test is killed by SIGSYS without the fix and passes with it (aarch64 Linux).
-- `eaa3a11e97c`: offline checks only; not yet booted with D2.
+- `eaa3a11e97c`: offline checks only; D2 itself failed display coldplug (a kernel bug, fixed in D3).
+- **D3, 2026-10-07** (kernel `satchlj/j613-kernel-25g83` with its D3 commit; this branch at `783353fb016`, libgallium
+  sha256 `edb7c015…`; `tools/j613-d3/`), booted from the installed J613 stage 1:
+  - `783353fb016`: before it, every offset-2 u16 case failed 1953/3844 pixels; after it, 17/17 pixel cases pass, with
+    array, aligned, colour and depth controls unchanged. Clean Qt greeter. Indirect indexed draws are not covered.
+  - Installed qualification **PASS**: untouched native-GPU SDDM greeter, 17/17 pixel cases, 3,000 EGL/GLES frames
+    with readbacks, headless browser WebGL readbacks on "Apple M3" through this Gallium driver.
+  - Continuous soak **PARTIAL**: stopped by the owner at 49/120 samples (12 min 20 s) with no failures
+    (49/49 WebGL readbacks, 49/49 indexed-quad checks, 898 → 44,086 frames). System power 10.5–13.4 W (mean 12.0 W)
+    on battery while the J613's USB-C port also powered the debug host, so not a GPU figure. Details in the kernel
+    branch's `J613-NOTES.md`.
+  - A texture-core regression run passed 6,482 checks. A G17P-style helper-invocation patch is not needed here: this
+    compiler already keeps quad helpers alive across samples.
 
 ## Key findings
 
@@ -73,3 +92,5 @@ Native Gallium OpenGL for the J613 on 25G83 firmware (HAL200 / USC3 path), the u
 - `fe1f6faabf9` asahi: preserve G15G MSAA images across API resolves
 - `298de3f32e1` asahi: use raw vertex prologs for G15G packed attributes
 - `eaa3a11e97c` tools: J613 25G83 D2 session integration
+- `783353fb016` asahi: align G15G direct index uploads before drawing
+- `eca78aa9f20` tools: J613 25G83 D3 session integration
