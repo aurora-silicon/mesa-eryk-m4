@@ -1134,8 +1134,29 @@ agx_emit_local_load_pixel(agx_builder *b, agx_index dest,
    const enum agx_format format =
       agx_format_for_pipe(nir_intrinsic_format(instr));
 
-   if (agx_unpack_normalized_agx3(b, dest, instr, format, nr_comps))
+   /* Native normalized loads physically unpack to f32. A half-precision
+    * framebuffer-fetch/epilog destination needs explicit narrowing after
+    * that unpack, rather than a four-half raw tile load. */
+   const bool narrow_normalized =
+      b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+      dest.size == AGX_SIZE_16 &&
+      (format == AGX_FORMAT_RGB10A2 || format == AGX_FORMAT_U8NORM ||
+       format == AGX_FORMAT_S8NORM);
+   agx_index load_dest = narrow_normalized
+      ? agx_vec_temp(b->shader, AGX_SIZE_32, nr_comps) : dest;
+   if (agx_unpack_normalized_agx3(b, load_dest, instr, format, nr_comps)) {
+      if (narrow_normalized) {
+         agx_index wide[4], half[4];
+         agx_emit_split(b, wide, load_dest, nr_comps);
+         for (unsigned i = 0; i < nr_comps; ++i) {
+            half[i] = agx_temp(b->shader, AGX_SIZE_16);
+            agx_fmov_to(b, half[i], wide[i]);
+         }
+         agx_emit_collect_to(b, dest, nr_comps, half);
+         agx_emit_cached_split(b, dest, nr_comps);
+      }
       return;
+   }
 
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
        format == AGX_FORMAT_I8) {

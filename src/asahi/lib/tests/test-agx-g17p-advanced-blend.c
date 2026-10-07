@@ -32,7 +32,7 @@ count_intrinsic(nir_shader *s, nir_intrinsic_op op)
  * render target. Native tile stores need a physical normalized pack in
  * either precision, including the XR30 compositor output. */
 static bool
-check_normalized_precision(unsigned bits, enum pipe_format format)
+check_normalized_precision(unsigned bits, enum pipe_format format, bool blend)
 {
    struct agx_fs_epilog_key key = {
       .link = {
@@ -47,8 +47,10 @@ check_normalized_precision(unsigned bits, enum pipe_format format)
    key.blend.rt[0].colormask = 0xf;
    key.blend.rt[0].mode =
       agx_pack_blend_standard(PIPE_BLEND_ADD, PIPE_BLENDFACTOR_ONE,
-                             PIPE_BLENDFACTOR_ZERO, PIPE_BLEND_ADD,
-                             PIPE_BLENDFACTOR_ONE, PIPE_BLENDFACTOR_ZERO);
+                             blend ? PIPE_BLENDFACTOR_ONE : PIPE_BLENDFACTOR_ZERO,
+                             PIPE_BLEND_ADD,
+                             PIPE_BLENDFACTOR_ONE,
+                             blend ? PIPE_BLENDFACTOR_ONE : PIPE_BLENDFACTOR_ZERO);
    nir_builder b = nir_builder_init_simple_shader(
       0, &agx_nir_options, "native normalized epilog precision");
    agx_nir_fs_epilog(&b, &key);
@@ -62,7 +64,8 @@ check_normalized_precision(unsigned bits, enum pipe_format format)
    const bool compiled = agx_compile_shader_nir(b.shader, &backend_key, &part);
    const bool ok = compiled && part.binary && part.info.binary_size > 0;
    if (!ok)
-      fprintf(stderr, "normalized %u-bit epilog format %u failed\n", bits, format);
+      fprintf(stderr, "normalized %u-bit epilog format %u blend=%u failed\n",
+              bits, format, blend);
    free(part.binary);
    ralloc_free(b.shader);
    return ok;
@@ -139,6 +142,7 @@ main(void)
    };
    for (unsigned bits = 16; bits <= 32; bits += 16)
       for (unsigned i = 0; i < sizeof(formats) / sizeof(formats[0]); ++i)
-         normalized_ok &= check_normalized_precision(bits, formats[i]);
+         for (unsigned blend = 0; blend < 2; ++blend)
+            normalized_ok &= check_normalized_precision(bits, formats[i], blend);
    return ok && normalized_ok ? 0 : 1;
 }
