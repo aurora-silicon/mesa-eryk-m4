@@ -7155,6 +7155,37 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (!indirect && (!draws->count || !info->instance_count))
       return;
 
+   /* G15G direct indexed draws fetch from a dword-aligned address. Qt
+    * Quick strips start at a valid u16 offset of 2, which otherwise rounds
+    * down and consumes the duplicate leading index (half a rectangle).
+    * Map before obtaining a batch: a GPU-written index buffer may need a
+    * flush/wait. The existing user-index upload then copies exactly the
+    * selected range to the batch pool with 64-byte alignment. */
+   if (!indirect && info->index_size && !info->has_user_indices &&
+       agx_device(pctx->screen)->chip == AGX_CHIP_G15G &&
+       (((uint64_t)draws->start * info->index_size) & 3)) {
+      const uint64_t offset = (uint64_t)draws->start * info->index_size;
+      const uint64_t size = (uint64_t)draws->count * info->index_size;
+      struct pipe_resource *resource = info->index.resource;
+      if (offset > resource->width0 || size > resource->width0 - offset)
+         return;
+
+      struct pipe_transfer *transfer;
+      const void *indices = pipe_buffer_map_range(
+         pctx, resource, offset, size, PIPE_MAP_READ, &transfer);
+      if (!indices)
+         return;
+
+      struct pipe_draw_info aligned_info = *info;
+      struct pipe_draw_start_count_bias aligned_draw = *draws;
+      aligned_info.has_user_indices = true;
+      aligned_info.index.user = indices;
+      aligned_draw.start = 0;
+      agx_draw_vbo(pctx, &aligned_info, drawid_offset, NULL, &aligned_draw, 1);
+      pipe_buffer_unmap(pctx, transfer);
+      return;
+   }
+
    /* TODO: stop cheating */
    if (indirect && indirect->indirect_draw_count) {
       perf_debug_ctx(ctx, "multi-draw indirect");
