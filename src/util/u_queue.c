@@ -256,6 +256,15 @@ util_queue_thread_func(void *input)
 
 #if defined(__linux__)
    if (queue->flags & UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY) {
+#if defined(SCHED_BATCH)
+      struct sched_param sched_param = {0};
+
+      /* Set the policy from this worker with pid zero. Browser sandboxes
+       * allow the current thread but may trap a creator's scheduling call
+       * targeting another thread. SCHED_BATCH remains a best-effort hint
+       * that this work is latency insensitive. */
+      sched_setscheduler(0, SCHED_BATCH, &sched_param);
+#endif
       /* The nice() function can only set a maximum of 19. */
       setpriority(PRIO_PROCESS, syscall(SYS_gettid), 19);
    }
@@ -333,20 +342,6 @@ util_queue_create_thread(struct util_queue *queue, unsigned index)
       return false;
    }
 
-   if (queue->flags & UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY) {
-#if defined(__linux__) && defined(SCHED_BATCH)
-      struct sched_param sched_param = {0};
-
-      /* The nice() function can only set a maximum of 19.
-       * SCHED_BATCH gives the scheduler a hint that this is a latency
-       * insensitive thread.
-       *
-       * Note that Linux only allows decreasing the priority. The original
-       * priority can't be restored.
-       */
-      pthread_setschedparam(queue->threads[index], SCHED_BATCH, &sched_param);
-#endif
-   }
    return true;
 }
 
