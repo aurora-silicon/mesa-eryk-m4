@@ -107,6 +107,29 @@ static const struct drm_asahi_params_global params_g15g_j613 = {
    .gpu_hal_generation = DRM_ASAHI_GPU_HAL_LEGACY,
 };
 
+/* Synthetic J613 identity with the 25G83 USC3/HAL200 contract. Other
+ * geometry is inherited from the existing shim fixture; this validates
+ * userspace command construction only, never execution or clock state. */
+static const struct drm_asahi_params_global params_g15g_j613_hal200 = {
+   .gpu_generation = 15,
+   .gpu_variant = 'G',
+   .gpu_revision = 0x20, /* C0, UABI enum. */
+   .chip_id = 0x8122,
+   .num_dies = 1,
+   .num_clusters_total = 1,
+   .num_cores_per_cluster = 10,
+   .core_masks = {0x3ff},
+   .vm_start = 0x4000,
+   .vm_end = 0x2ffffff8000ull,
+   .vm_kernel_min_size = 0x20000000,
+   .max_commands_per_submission = 64,
+   .max_attachments = 16,
+   .max_frequency_khz = 1338000,
+   .command_timestamp_frequency_hz = 1000000000,
+   .usc_generation = 3,
+   .gpu_hal_generation = DRM_ASAHI_GPU_HAL_200,
+};
+
 static const struct drm_asahi_params_global *
 shim_params(void)
 {
@@ -116,6 +139,8 @@ shim_params(void)
       return &params_g17p;
    if (chip && !strcmp(chip, "g16g"))
       return &params_g16g;
+   if (chip && !strcmp(chip, "g15g-hal200"))
+      return &params_g15g_j613_hal200;
    if (chip && !strcmp(chip, "g15g"))
       return &params_g15g_j613;
 
