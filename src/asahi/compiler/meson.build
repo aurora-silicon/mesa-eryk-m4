@@ -192,6 +192,25 @@ if with_tests
   )
 
   test(
+    'agx3_g15g_stalls',
+    executable(
+      'agx3_g15g_stalls_test',
+      files(
+        'agx3_g15g_stalls.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3_decompose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'test/test-agx3-g15g-stalls.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'agx3_pack',
     executable(
       'agx3_pack_test',
