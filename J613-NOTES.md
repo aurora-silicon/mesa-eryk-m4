@@ -32,6 +32,11 @@ its `submit_verified` gate is set.
 - The stall pass runs in that desktop. Its timing effect against `ASAHI_G15G_UNSCHEDULED=1` has not been measured on
   hardware. What is established is that it reproduces Apple's compiler output, below.
 - `test-agx3-g15g-stalls` (in the meson test suite) checks the pass against the vectors offline.
+- **Index-buffer alignment (2026-10-07):** G15G fetches direct-draw indices from a dword-aligned address, so a u16
+  index buffer bound at a 2-byte offset loses a triangle per quad. The fix (`asahi: align G15G direct index uploads
+  before drawing`, on `satchlj/j613-mesa-25g83`) is in the Gallium driver, which this build doesn't use. Honeykrisp
+  adds `firstIndex × index size` to the bound address (`hk_index_buffer()`), so Zink could hit the same fetch with an
+  odd u16 `firstIndex`; not checked yet.
 
 ## Key findings
 
