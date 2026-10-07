@@ -174,7 +174,10 @@ agx_chip_is_m3_runtime(enum agx_chip chip)
 static inline bool
 agx_chip_uses_native_gallium(enum agx_chip chip)
 {
-   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G17P;
+   /* J613 uses the qualified USC3/HAL200 path. Device admission, G15G
+    * scheduling stalls and kernel firmware identity remain unchanged. */
+   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G15G ||
+          chip == AGX_CHIP_G17P;
 }
 
 /* G15S and G16G share AGX3b shader encodings, native sample-loop ABI and
