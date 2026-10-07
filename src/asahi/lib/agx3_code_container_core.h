@@ -16,14 +16,6 @@
 void agx3_build_container_constant_program(
    uint8_t image[AGX3_CONTAINER_CONSTANT_PROGRAM_SIZE], bool fragment);
 
-/* The same program with stall_words scheduling stall words between its
- * instructions, for chips that need scheduling stalls. stall_words = 0 gives
- * the bytes above. At most 25 words fit before the end of the program. */
-#define AGX3_CONTAINER_CONSTANT_PROGRAM_MAX_STALL_WORDS 25u
-void agx3_build_container_constant_program_stalled(
-   uint8_t image[AGX3_CONTAINER_CONSTANT_PROGRAM_SIZE], bool fragment,
-   unsigned stall_words);
-
 /* A CODE block has its size word 0x80 bytes before the main entry and a
  * 0x40-byte constant program immediately before it. Blocks can be packed in
  * a shared code allocation; the independent 0x340-byte allocation lead is

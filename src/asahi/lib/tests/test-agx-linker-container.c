@@ -78,51 +78,6 @@ check_auxiliary_block(void)
    return 0;
 }
 
-/* With scheduling stalls the vertex/compute program keeps its two
- * instructions and puts the stall words between them; 0 words is the
- * unstalled program. */
-static int
-check_stalled_program(const uint8_t *prefix, size_t prefix_size)
-{
-   static const uint8_t stall[] = {0x06, 0xfc};
-   const size_t first = 10;
-   for (unsigned words = 0; words <= AGX3_CONTAINER_CONSTANT_PROGRAM_MAX_STALL_WORDS;
-        ++words) {
-      uint8_t actual[AGX3_CONTAINER_CONSTANT_PROGRAM_SIZE];
-      uint8_t want[AGX3_CONTAINER_CONSTANT_PROGRAM_SIZE];
-      memset(actual, 0xa5, sizeof(actual));
-      agx3_build_container_constant_program_stalled(actual, false, words);
-
-      size_t offset = 0;
-      memcpy(want, prefix, first);
-      offset = first;
-      for (unsigned i = 0; i < words; ++i, offset += sizeof(stall))
-         memcpy(want + offset, stall, sizeof(stall));
-      memcpy(want + offset, prefix + first, prefix_size - first);
-      offset += prefix_size - first;
-      for (; offset < sizeof(want); offset += 2) {
-         want[offset] = 0x06;
-         want[offset + 1] = 0x00;
-      }
-      if (memcmp(actual, want, sizeof(want)) != 0) {
-         fprintf(stderr, "stalled container program mismatch (%u words)\n",
-                 words);
-         return 1;
-      }
-
-      /* A fragment program is a single stop and takes no stall words. */
-      uint8_t fragment[AGX3_CONTAINER_CONSTANT_PROGRAM_SIZE];
-      uint8_t plain[AGX3_CONTAINER_CONSTANT_PROGRAM_SIZE];
-      agx3_build_container_constant_program_stalled(fragment, true, words);
-      agx3_build_container_constant_program(plain, true);
-      if (memcmp(fragment, plain, sizeof(plain)) != 0) {
-         fprintf(stderr, "stalled fragment program mismatch\n");
-         return 1;
-      }
-   }
-   return 0;
-}
-
 int
 main(void)
 {
@@ -144,7 +99,5 @@ main(void)
                         sizeof(vertex_compute_prefix)) ||
           check_program("fragment", true, fragment_prefix,
                         sizeof(fragment_prefix)) ||
-          check_stalled_program(vertex_compute_prefix,
-                                sizeof(vertex_compute_prefix)) ||
           check_auxiliary_block();
 }

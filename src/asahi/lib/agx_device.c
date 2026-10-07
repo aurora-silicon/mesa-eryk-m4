@@ -695,30 +695,6 @@ agx_create_fixed_bo(struct agx_device *dev, size_t size,
    return bo;
 }
 
-/*
- * Stall words per instruction gap for the conservative scheduling fallback
- * (agx3_pack_binary.c). ASAHI_G15G_STALL_WORDS overrides the default for
- * hardware experiments; values outside 1..AGX_SCHEDULING_STALL_WORDS_MAX keep
- * the default.
- */
-#define AGX_SCHEDULING_STALL_WORDS_DEFAULT 8
-
-static uint8_t
-agx_scheduling_stall_words(void)
-{
-   const int64_t words = debug_get_num_option(
-      "ASAHI_G15G_STALL_WORDS", AGX_SCHEDULING_STALL_WORDS_DEFAULT);
-   if (words < 1 || words > AGX_SCHEDULING_STALL_WORDS_MAX) {
-      fprintf(stderr,
-              "asahi: ASAHI_G15G_STALL_WORDS=%" PRId64 " is outside 1..%d; "
-              "using %d\n",
-              words, AGX_SCHEDULING_STALL_WORDS_MAX,
-              AGX_SCHEDULING_STALL_WORDS_DEFAULT);
-      return AGX_SCHEDULING_STALL_WORDS_DEFAULT;
-   }
-   return (uint8_t)words;
-}
-
 bool
 agx_open_device(void *memctx, struct agx_device *dev)
 {
@@ -785,9 +761,6 @@ agx_open_device(void *memctx, struct agx_device *dev)
    }
 
    dev->chip = agx_chip_from_params(&dev->params);
-   dev->agx3_stall_words = agx_chip_needs_scheduling_stalls(dev->chip)
-                              ? agx_scheduling_stall_words()
-                              : 0;
 
    /*
     * Recognition, shader codegen, descriptors and the command stream are
@@ -805,43 +778,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
       dev->params.num_clusters_total == 2 && dev->params.usc_generation == 3 &&
       dev->params.gpu_hal_generation == 0 &&
       debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false);
-   /* G15G (M3, T8122) on the same M3 runtime: one die, one cluster. It needs
-    * ASAHI_M3_G15G=1 on top of ASAHI_M3_EXPERIMENTAL=1, and its shaders take
-    * the conservative scheduling fallback (agx3_stall_words). Without
-    * ASAHI_M3_G15G nothing here changes. */
-   const bool m3_g15g_requested = dev->chip == AGX_CHIP_G15G &&
-      debug_get_bool_option("ASAHI_M3_G15G", false);
-   const bool m3_g15g_experimental = m3_g15g_requested &&
-      dev->params.chip_id == 0x8122 && dev->params.num_dies == 1 &&
-      dev->params.num_clusters_total == 1 && dev->params.usc_generation == 3 &&
-      dev->params.gpu_hal_generation == 0 && dev->agx3_stall_words > 0 &&
-      debug_get_bool_option("ASAHI_M3_EXPERIMENTAL", false);
-   if (m3_g15g_requested) {
-      static bool logged;
-      if (!logged) {
-         logged = true;
-         if (m3_g15g_experimental) {
-            fprintf(stderr,
-                    "asahi: G15G admitted (ASAHI_M3_G15G=1): chip 0x%x, %u "
-                    "cluster, %u cores; conservative scheduling, %u stall "
-                    "words per instruction gap\n",
-                    dev->params.chip_id, dev->params.num_clusters_total,
-                    agx_get_num_cores(dev), dev->agx3_stall_words);
-         } else {
-            fprintf(stderr,
-                    "asahi: G15G refused: ASAHI_M3_G15G=1 also needs "
-                    "ASAHI_M3_EXPERIMENTAL=1 and chip 0x8122 with 1 die, "
-                    "1 cluster, USC 3, legacy HAL (got chip 0x%x, %u dies, "
-                    "%u clusters, USC %u, HAL %u)\n",
-                    dev->params.chip_id, dev->params.num_dies,
-                    dev->params.num_clusters_total,
-                    dev->params.usc_generation,
-                    dev->params.gpu_hal_generation);
-         }
-      }
-   }
-   if (!m3_experimental && !m3_g15g_experimental && !m4_experimental &&
-       !agx_params_driver_supported(&dev->params)) {
+   if (!m3_experimental && !m4_experimental && !agx_params_driver_supported(&dev->params)) {
       if (dev->chip == AGX_CHIP_UNKNOWN) {
          fprintf(stderr,
                  "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
@@ -1714,6 +1651,5 @@ agx_gather_device_key(struct agx_device *dev)
       .encoding = agx_chip_isa_encoding(dev->chip),
       .needs_g13x_coherency = u_tristate_make(g13x_coh),
       .soft_fault = agx_has_soft_fault(dev),
-      .agx3_stall_words = dev->agx3_stall_words,
    };
 }

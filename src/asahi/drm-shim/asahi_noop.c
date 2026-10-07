@@ -111,7 +111,7 @@ static const struct drm_asahi_params_global params_g15s = {
 /* T8122 / M3 with the same M3 runtime: one die, one cluster of ten cores,
  * revision C0, and no optional features, as the runtime's T8122 table
  * reports it. Select with ASAHI_SHIM_CHIP=g15g; Mesa opens it only with
- * ASAHI_M3_EXPERIMENTAL=1 and ASAHI_M3_G15G=1.
+ * ASAHI_M3_EXPERIMENTAL=1, once G15G is admitted.
  */
 static const struct drm_asahi_params_global params_g15g = {
    .features = 0,

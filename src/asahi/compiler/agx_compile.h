@@ -301,13 +301,6 @@ struct agx_device_key {
     * kernel, but that's functionally a hardware feature.
     */
    bool soft_fault;
-
-   /* Standalone scheduling words the AGX3b packer puts in every gap between
-    * two instructions, or 0 for none. Only chips for which
-    * agx_chip_needs_scheduling_stalls() is true set this (G15G); see the
-    * conservative fallback in agx3_pack_binary.c.
-    */
-   uint8_t agx3_stall_words;
 };
 
 struct agx_shader_key {
