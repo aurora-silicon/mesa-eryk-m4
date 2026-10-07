@@ -1016,7 +1016,7 @@ hk_cmd_buffer_end_compute_internal(struct hk_cmd_buffer *cmd,
          hk_dispatch_imm_writes(cmd, cs);
       }
       if ((hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G ||
-           hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G15S) &&
+           agx_chip_uses_g15s_runtime(hk_cmd_buffer_device(cmd)->dev.chip)) &&
           debug_get_bool_option("HK_M4_CDM_END_BARRIER",
              debug_get_bool_option("HK_M4_CDM_VISIBILITY_BARRIER", true))) {
          hk_ensure_cs_has_space(cmd, cs, 0x2000);

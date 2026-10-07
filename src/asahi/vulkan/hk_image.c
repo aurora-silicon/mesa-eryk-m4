@@ -318,7 +318,7 @@ hk_can_compress(const struct agx_device *dev, VkFormat format, unsigned plane,
                 const void *pNext)
 {
    const bool m3_depth_compression =
-      dev->chip == AGX_CHIP_G15S &&
+      agx_chip_uses_g15s_runtime(dev->chip) &&
       debug_get_bool_option("HK_M3_COMPRESSED_DEPTH", false) && samples == 1 &&
       format == VK_FORMAT_D32_SFLOAT;
    const struct vk_format_ycbcr_info *ycbcr_info =
@@ -883,7 +883,7 @@ hk_can_compress_create_info(struct hk_device *dev, unsigned plane,
 {
    /* The depth upload and native ZLS bindings are qualified for one level.
     * The separate experimental color-mipmap switch must not broaden this. */
-   if (dev->dev.chip == AGX_CHIP_G15S &&
+   if (agx_chip_uses_g15s_runtime(dev->dev.chip) &&
        info->format == VK_FORMAT_D32_SFLOAT && info->mipLevels != 1)
       return false;
 

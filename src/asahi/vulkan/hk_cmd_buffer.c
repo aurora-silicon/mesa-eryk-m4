@@ -1878,7 +1878,7 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
     * Buffer contents remain GPU reads; only the immutable resource program
     * and its fragment-equivalent root are shared. */
    const bool reusable = cache && cache->fragment_enabled && !cmd->in_meta &&
-      dev->dev.chip == AGX_CHIP_G15S &&
+      agx_chip_uses_g15s_runtime(dev->dev.chip) &&
       s->info.stage == MESA_SHADER_FRAGMENT && !s->info.writes_memory &&
       !s->b.info.has_preamble && gfx->shaders[MESA_SHADER_VERTEX] &&
       !gfx->shaders[MESA_SHADER_GEOMETRY] &&
@@ -1971,7 +1971,7 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       };
 
       const bool full_reusable = dev->cache_native_programs &&
-         dev->dev.chip == AGX_CHIP_G15S && !cmd->in_meta &&
+         agx_chip_uses_g15s_runtime(dev->dev.chip) && !cmd->in_meta &&
          !s->info.writes_memory && !s->b.info.has_preamble &&
          (s->info.stage == MESA_SHADER_VERTEX || s->info.stage == MESA_SHADER_FRAGMENT) &&
          !gfx->descriptors.root.draw.pipeline_stats_flags &&

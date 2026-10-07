@@ -1196,7 +1196,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    /* The M3 owned parameter pool and render graph occupy the first 128 MiB.
     * Reserve the portion above the common 8 MiB alias start before allocating
     * command streams, matching m3_runtime::new_vm. */
-   if (dev->chip == AGX_CHIP_G15S &&
+   if (agx_chip_uses_g15s_runtime(dev->chip) &&
        !util_vma_heap_alloc_addr(&dev->g17p_vdm_alias_heap,
                                 AGX_G17P_VDM_ALIAS_BASE,
                                 UINT64_C(0x08000000) - AGX_G17P_VDM_ALIAS_OFFSET_START)) {
@@ -1205,7 +1205,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    }
 
    /* Experimental M3 owns a fixed parameter-page list in this aperture. */
-   if (dev->chip == AGX_CHIP_G15S &&
+   if (agx_chip_uses_g15s_runtime(dev->chip) &&
        !util_vma_heap_alloc_addr(&dev->g17p_vdm_alias_heap,
                                 UINT64_C(0x1074000000), 0x28000)) {
       fprintf(stderr, "Failed to reserve M3 parameter page list\n");
@@ -1222,7 +1222,8 @@ agx_open_device(void *memctx, struct agx_device *dev)
    const char *usc_low_env = getenv("ASAHI_G17P_USC_LOW");
    const bool usc_low = usc_low_env != NULL && usc_low_env[0] == '1' &&
                         usc_low_env[1] == '\0';
-   if (usc_low || dev->chip == AGX_CHIP_G16G || dev->chip == AGX_CHIP_G15S)
+   if (usc_low || dev->chip == AGX_CHIP_G16G ||
+       agx_chip_uses_g15s_runtime(dev->chip))
       dev->usc_heap.alloc_high = false;
 
    if (dev->chip == AGX_CHIP_G17P) {
@@ -1386,7 +1387,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
       }
 
       struct agx_bo *usc_base = agx_create_fixed_bo(
-         dev, usc_base_size, (dev->chip == AGX_CHIP_G16G || dev->chip == AGX_CHIP_G15S) ? 0 : AGX_BO_WRITEBACK, dev->shader_base,
+         dev, usc_base_size, (dev->chip == AGX_CHIP_G16G || agx_chip_uses_g15s_runtime(dev->chip)) ? 0 : AGX_BO_WRITEBACK, dev->shader_base,
          DRM_ASAHI_BIND_READ, "HAL200 USC window base");
       if (usc_base == NULL) {
          fprintf(stderr, "Failed to bind the USC window base page\n");

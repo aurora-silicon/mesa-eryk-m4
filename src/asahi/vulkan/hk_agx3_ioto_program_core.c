@@ -953,7 +953,7 @@ hk_agx3_g17p_compute_program_generate(
 
    struct hk_agx3_g17p_compute_program staged = {0};
    size_t written = 0;
-   if (chip == AGX_CHIP_G15S && desc->uniform_range_count == 0) {
+   if (agx_chip_uses_g15s_runtime(chip) && desc->uniform_range_count == 0) {
       /* The qualified RTKit 2419 M3 compute launch loads the body and
        * terminates, without the newer default-profile protocol. Bound this
        * initial form to the register-only shader footprint witnessed there.

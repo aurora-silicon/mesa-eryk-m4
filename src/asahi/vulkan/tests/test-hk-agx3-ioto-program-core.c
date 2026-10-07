@@ -2111,17 +2111,21 @@ test_g17p_rt0_background_pass_control(void)
    CHECK(resource_spec == UINT64_C(0x40));
 
    /* The qualified M3 clear/reload resources use the same extended mask;
-    * packet serialization remains G15-specific. Check the actual values. */
+    * packet serialization remains G15-specific. Check the actual values.
+    * G15G follows the G15S runtime. */
    for (unsigned op = HK_AGX3_G17P_RT0_BG_NONE;
         op <= HK_AGX3_G17P_RT0_BG_RELOAD; ++op) {
       CHECK(hk_agx3_g17p_rt0_bg_resource_spec(AGX_CHIP_G15S, op, &resource_spec));
+      CHECK(resource_spec == (op == HK_AGX3_G17P_RT0_BG_NONE ?
+         UINT64_C(0x40) : UINT64_C(0xffff800000000040)));
+      CHECK(hk_agx3_g17p_rt0_bg_resource_spec(AGX_CHIP_G15G, op, &resource_spec));
       CHECK(resource_spec == (op == HK_AGX3_G17P_RT0_BG_NONE ?
          UINT64_C(0x40) : UINT64_C(0xffff800000000040)));
    }
 
    for (size_t i = 0; i < ARRAY_SIZE(targets); ++i) {
       if (targets[i] == AGX_CHIP_G17P || targets[i] == AGX_CHIP_G16G ||
-          targets[i] == AGX_CHIP_G15S)
+          targets[i] == AGX_CHIP_G15S || targets[i] == AGX_CHIP_G15G)
          continue;
       CHECK(!hk_agx3_g17p_rt0_bg_resource_spec(
          targets[i], HK_AGX3_G17P_RT0_BG_CLEAR, &resource_spec));

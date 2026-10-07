@@ -609,7 +609,7 @@ agx3_cdm_barrier_pack(const struct agx3_cdm_barrier_info *info,
    memset(packed, 0, AGX3_CDM_BARRIER_SIZE);
    if (!info || !agx3_cdm_barrier_flags_grounded(info->chip, info->flags) ||
        (info->wide_visibility && info->chip != AGX_CHIP_G16G &&
-        info->chip != AGX_CHIP_G15S))
+        info->chip != AGX_CHIP_G15S && info->chip != AGX_CHIP_G15G))
       return false;
 
    agx3_cmdstream_store_le32(packed, agx3_cdm_barrier_word(info->flags) |
@@ -632,7 +632,8 @@ agx3_cdm_barrier_unpack(enum agx_chip chip, const void *packed,
    uint32_t word = agx3_cmdstream_load_le32((const uint8_t *)packed);
    const bool wide_visibility = (word & UINT32_C(0x20000)) != 0;
    if (wide_visibility) {
-      if ((chip != AGX_CHIP_G16G && chip != AGX_CHIP_G15S) ||
+      if ((chip != AGX_CHIP_G16G && chip != AGX_CHIP_G15S &&
+           chip != AGX_CHIP_G15G) ||
           (word != UINT32_C(0x600201fe) && word != UINT32_C(0x600215fe)))
          return false;
       word &= ~UINT32_C(0x2009e);

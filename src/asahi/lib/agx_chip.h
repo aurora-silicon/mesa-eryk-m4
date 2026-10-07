@@ -143,23 +143,37 @@ enum agx_submission_model {
 
 #include "drm-uapi/asahi_drm.h"
 
+/* The Mac G15 parts this driver runs on the M3 runtime: G15S (M3 Pro) and
+ * G15G (M3). G15G is the same generation as G15S: the AGX3b encoding, the G15
+ * command stream, Gen9 descriptors, Gen4 samplers, the classic submission
+ * model and the same 14.8.3 firmware interface. It follows every G15S
+ * runtime choice; the differences are one cluster and the scheduling stalls
+ * (agx_chip_needs_scheduling_stalls). Device admission of both stays opt-in
+ * (agx_open_device). */
+static inline bool
+agx_chip_uses_g15s_runtime(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G15G;
+}
+
 /* Shared native shader-loading family. Device admission and render command
  * support remain separate; this does not admit other G16 products. */
 static inline bool
 agx_chip_uses_hal200_ioto(enum agx_chip chip)
 {
-   /* G15S uses the same IOTO/AGX3b shader loading convention. Its kernel
-    * firmware ABI remains distinct and its device admission is opt-in. */
-   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G || chip == AGX_CHIP_G17P;
+   /* G15S and G15G use the same IOTO/AGX3b shader loading convention. Their
+    * kernel firmware ABI remains distinct and device admission is opt-in. */
+   return agx_chip_uses_g15s_runtime(chip) || chip == AGX_CHIP_G16G ||
+          chip == AGX_CHIP_G17P;
 }
 
-/* G15S and G16G share AGX3b shader encodings, native sample-loop ABI and
- * Gen9 texture operations. This selects shader lowerings, not firmware
+/* G15S, G15G and G16G share AGX3b shader encodings, native sample-loop ABI
+ * and Gen9 texture operations. This selects shader lowerings, not firmware
  * packets, VM permissions, sparse support or layered render admission. */
 static inline bool
 agx_chip_uses_g15_g16_shader_abi(enum agx_chip chip)
 {
-   return chip == AGX_CHIP_G15S || chip == AGX_CHIP_G16G;
+   return agx_chip_uses_g15s_runtime(chip) || chip == AGX_CHIP_G16G;
 }
 
 #ifdef __cplusplus

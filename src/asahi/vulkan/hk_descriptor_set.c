@@ -724,7 +724,7 @@ hk_CreateDescriptorPool(VkDevice _device,
       /* Recording reads immutable descriptor metadata on the CPU. Keep this
        * allocation experiment opt-in until its cache policy is qualified on
        * the wider descriptor suite; it does not cache UBO contents. */
-      const unsigned bo_flags = dev->dev.chip == AGX_CHIP_G15S &&
+      const unsigned bo_flags = agx_chip_uses_g15s_runtime(dev->dev.chip) &&
          debug_get_bool_option("HK_M3_WRITEBACK_DESCRIPTOR_POOLS", false) ?
          AGX_BO_WRITEBACK : 0;
       pool->bo = agx_bo_create(&dev->dev, bo_size, 0, bo_flags, "Descriptor pool");

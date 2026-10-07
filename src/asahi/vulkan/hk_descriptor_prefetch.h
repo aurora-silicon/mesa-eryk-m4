@@ -11,25 +11,25 @@
 static inline bool
 hk_ubo_prefetch_enabled(enum agx_chip chip)
 {
-   return debug_get_bool_option("HK_M4_PREFETCH_UBOS", chip == AGX_CHIP_G15S);
+   return debug_get_bool_option("HK_M4_PREFETCH_UBOS", agx_chip_uses_g15s_runtime(chip));
 }
 
 static inline bool
 hk_ubo_prefetch_variant_enabled(enum agx_chip chip)
 {
-   return debug_get_bool_option("HK_M4_PREFETCH_VARIANT", chip == AGX_CHIP_G15S);
+   return debug_get_bool_option("HK_M4_PREFETCH_VARIANT", agx_chip_uses_g15s_runtime(chip));
 }
 
 static inline bool
 hk_plain_samplers_enabled(enum agx_chip chip)
 {
-   return debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", chip == AGX_CHIP_G15S);
+   return debug_get_bool_option("HK_M4_PLAIN_SAMPLERS", agx_chip_uses_g15s_runtime(chip));
 }
 
 static inline bool
 hk_vertex_ubo_prefetch_enabled(enum agx_chip chip)
 {
-   return chip == AGX_CHIP_G15S &&
+   return agx_chip_uses_g15s_runtime(chip) &&
           debug_get_bool_option("HK_M3_VERTEX_PREFETCH_UBOS", true);
 }
 
@@ -39,7 +39,7 @@ hk_vertex_ubo_prefetch_enabled(enum agx_chip chip)
 static inline bool
 hk_vertex_plain_samplers_enabled(enum agx_chip chip)
 {
-   return chip == AGX_CHIP_G15S &&
+   return agx_chip_uses_g15s_runtime(chip) &&
           debug_get_bool_option("HK_M3_VERTEX_PLAIN_SAMPLERS", true);
 }
 
@@ -47,14 +47,14 @@ static inline bool
 hk_vertex_uniform_cse_enabled(enum agx_chip chip)
 {
    return agx_chip_uses_g15_g16_shader_abi(chip) &&
-          debug_get_bool_option("AGX_NATIVE_VERTEX_UNIFORM_CSE", chip == AGX_CHIP_G15S);
+          debug_get_bool_option("AGX_NATIVE_VERTEX_UNIFORM_CSE", agx_chip_uses_g15s_runtime(chip));
 }
 
 static inline bool
 hk_short_sample_loops_enabled(enum agx_chip chip)
 {
    return agx_chip_uses_g15_g16_shader_abi(chip) &&
-          debug_get_bool_option("HK_NATIVE_SHORT_SAMPLE_LOOPS", chip == AGX_CHIP_G15S);
+          debug_get_bool_option("HK_NATIVE_SHORT_SAMPLE_LOOPS", agx_chip_uses_g15s_runtime(chip));
 }
 
 /* Cache resource-program structure, while patching each draw's GPU addresses.
@@ -62,7 +62,7 @@ hk_short_sample_loops_enabled(enum agx_chip chip)
 static inline bool
 hk_ioto_templates_enabled(enum agx_chip chip)
 {
-   return debug_get_bool_option("HK_M4_IOTO_TEMPLATES", chip == AGX_CHIP_G15S);
+   return debug_get_bool_option("HK_M4_IOTO_TEMPLATES", agx_chip_uses_g15s_runtime(chip));
 }
 
 /* One contiguous, immutable-at-execution descriptor span per Vulkan set.

@@ -565,12 +565,17 @@ static int
 test_g15_g16_visibility_barrier(void)
 {
    /* Independent expected words from both G15X_M1 and G16G B0 native
-    * emitters, not a round-trip-only test of our own field definitions. */
+    * emitters, not a round-trip-only test of our own field definitions.
+    * G15G follows the G15S command stream. */
    const uint32_t words[] = {0x600201fe, 0x600215fe};
-   for (unsigned target = 0; target < 2; ++target) {
+   const enum agx_chip wide_targets[] = {
+      AGX_CHIP_G16G, AGX_CHIP_G15S, AGX_CHIP_G15G,
+   };
+   for (unsigned target = 0;
+        target < sizeof(wide_targets) / sizeof(wide_targets[0]); ++target) {
       for (unsigned i = 0; i < 2; ++i) {
          struct agx3_cdm_barrier_info info = {
-            .chip = target ? AGX_CHIP_G15S : AGX_CHIP_G16G, .flags = i ? 5 : 0,
+            .chip = wide_targets[target], .flags = i ? 5 : 0,
             .wide_visibility = true,
          };
          uint8_t bytes[4];
@@ -589,7 +594,8 @@ test_g15_g16_visibility_barrier(void)
          }
          for (unsigned t = 0; t < sizeof(launch_targets)/sizeof(launch_targets[0]); ++t) {
             if (launch_targets[t] == AGX_CHIP_G16G ||
-                launch_targets[t] == AGX_CHIP_G15S)
+                launch_targets[t] == AGX_CHIP_G15S ||
+                launch_targets[t] == AGX_CHIP_G15G)
                continue;
             info.chip = launch_targets[t];
             CHECK(!agx3_cdm_barrier_pack(&info, bytes));

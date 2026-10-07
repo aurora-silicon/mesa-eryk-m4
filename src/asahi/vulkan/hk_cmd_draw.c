@@ -6172,7 +6172,7 @@ hk_draw_indexed_indirect_inner(VkCommandBuffer commandBuffer, uint64_t buffer,
       .capacity = MIN2(drawCount, LIBAGX_ROBUST_INDEX_BATCH_SIZE),
    };
    bool batch_enabled = drawCount > 1 && !cmd->state.conditional &&
-      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G15S &&
+      agx_chip_uses_g15s_runtime(hk_cmd_buffer_device(cmd)->dev.chip) &&
       debug_get_option_hk_batch_robust_index();
 
    /* API bindings cannot change between draws inside this call. Keep this
@@ -6182,7 +6182,7 @@ hk_draw_indexed_indirect_inner(VkCommandBuffer commandBuffer, uint64_t buffer,
    struct hk_multidraw_resource_cache *previous_cache = cmd->multidraw_resources;
    cmd->multidraw_resources = NULL;
    if (drawCount > 1 && !cmd->state.conditional &&
-       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G15S) {
+       agx_chip_uses_g15s_runtime(hk_cmd_buffer_device(cmd)->dev.chip)) {
       resources.fragment_enabled = debug_get_option_hk_m3_multidraw_fs_program();
       resources.ubo_enabled = debug_get_option_hk_m3_multidraw_ubo_proof();
       if (resources.fragment_enabled || resources.ubo_enabled)
