@@ -120,6 +120,14 @@ agx_optimizer_fmov(agx_context *ctx, agx_instr **defs, agx_instr *ins)
       if (src.size == AGX_SIZE_16 && def->src[0].size == AGX_SIZE_32)
          continue;
 
+      /* Native normalized packs have only grounded f32 inputs. Preserve
+       * the exact widening of half-precision epilog colours. */
+      if (ctx->key && ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX2 &&
+          (ins->op == AGX_OPCODE_FLTNORM_AGX3 ||
+           ins->op == AGX_OPCODE_PACK_RGB10A2_AGX3) &&
+          src.size == AGX_SIZE_32 && def->src[0].size == AGX_SIZE_16)
+         continue;
+
       /* AGX3b ADD and transcendental/rounding/derivative encodings require full-width
        * sources. Keep the exact widening instead of creating an unencodable
        * mixed-width operation. */

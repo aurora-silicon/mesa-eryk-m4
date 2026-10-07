@@ -807,40 +807,44 @@ agx_pack_normalized_agx3(agx_builder *b, const agx_index *channels,
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX2)
       return 0;
 
-   if (format == AGX_FORMAT_RGB10A2) {
-      if (nr_channels != 4)
+   if (format != AGX_FORMAT_RGB10A2 &&
+       format != AGX_FORMAT_U8NORM && format != AGX_FORMAT_S8NORM)
+      return 0;
+
+   if (nr_channels < 1 || nr_channels > 4 ||
+       (format == AGX_FORMAT_RGB10A2 && nr_channels != 4))
+      return 0;
+
+   for (unsigned i = 0; i < nr_channels; ++i)
+      if (channels[i].size != AGX_SIZE_16 && channels[i].size != AGX_SIZE_32)
          return 0;
-      for (unsigned i = 0; i < 4; ++i)
-         if (channels[i].size != AGX_SIZE_32)
-            return 0;
-      packed[0] = agx_pack_rgb10a2_agx3(b, channels[0], channels[1],
-                                      channels[2], channels[3]);
-      return 1;
+
+   /* The grounded normalized packs consume f32. Gallium epilogs can
+    * receive f16 colours, including the compositor's RGB10A2 output, so
+    * widen those lanes explicitly before the physical normalized pack. */
+   agx_index wide[4];
+   for (unsigned i = 0; i < nr_channels; ++i) {
+      wide[i] = channels[i];
+      if (channels[i].size == AGX_SIZE_16) {
+         wide[i] = agx_temp(b->shader, AGX_SIZE_32);
+         agx_fmov_to(b, wide[i], channels[i]);
+      }
    }
 
-   /* Only the two normalized 8-bit formats are witnessed. sRGB needs an
-    * encode `fltnorm` has no field for, and every wider format stores its
-    * channels unpacked. */
-   if (format != AGX_FORMAT_U8NORM && format != AGX_FORMAT_S8NORM)
-      return 0;
-
-   if (nr_channels < 1 || nr_channels > 4)
-      return 0;
-
-   /* Every fltnorm witness takes 32-bit float sources. */
-   for (unsigned i = 0; i < nr_channels; ++i) {
-      if (channels[i].size != AGX_SIZE_32)
-         return 0;
+   if (format == AGX_FORMAT_RGB10A2) {
+      packed[0] = agx_pack_rgb10a2_agx3(b, wide[0], wide[1],
+                                      wide[2], wide[3]);
+      return 1;
    }
 
    unsigned n = 0;
    for (unsigned i = 0; i < nr_channels; i += 2) {
       const agx_index hi =
-         (i + 1 < nr_channels) ? channels[i + 1] : agx_null();
+         (i + 1 < nr_channels) ? wide[i + 1] : agx_null();
       /* The destination is a 16-bit half, not the sources' 32 bits, so the
        * generated temp-allocating helper cannot be used here. */
       agx_index dest = agx_temp(b->shader, AGX_SIZE_16);
-      agx_fltnorm_agx3_to(b, dest, channels[i], hi, format);
+      agx_fltnorm_agx3_to(b, dest, wide[i], hi, format);
       packed[n++] = dest;
    }
    return n;

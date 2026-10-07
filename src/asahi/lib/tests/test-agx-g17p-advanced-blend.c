@@ -28,6 +28,46 @@ count_intrinsic(nir_shader *s, nir_intrinsic_op op)
    return count;
 }
 
+/* Gallium may link a half-precision fragment output into a normalized
+ * render target. Native tile stores need a physical normalized pack in
+ * either precision, including the XR30 compositor output. */
+static bool
+check_normalized_precision(unsigned bits, enum pipe_format format)
+{
+   struct agx_fs_epilog_key key = {
+      .link = {
+         .size_32 = bits == 32 ? BITFIELD_BIT(0) : 0,
+         .loc_written = BITFIELD_BIT(0),
+      },
+      .nr_samples = 1,
+   };
+   memset(key.remap, -1, sizeof(key.remap));
+   key.remap[0] = 0;
+   key.rt_formats[0] = format;
+   key.blend.rt[0].colormask = 0xf;
+   key.blend.rt[0].mode =
+      agx_pack_blend_standard(PIPE_BLEND_ADD, PIPE_BLENDFACTOR_ONE,
+                             PIPE_BLENDFACTOR_ZERO, PIPE_BLEND_ADD,
+                             PIPE_BLENDFACTOR_ONE, PIPE_BLENDFACTOR_ZERO);
+   nir_builder b = nir_builder_init_simple_shader(
+      0, &agx_nir_options, "native normalized epilog precision");
+   agx_nir_fs_epilog(&b, &key);
+   agx_preprocess_nir(b.shader);
+   struct agx_shader_key backend_key = {
+      .dev.encoding = AGX_ISA_ENCODING_AGX3B,
+      .secondary = true,
+      .no_preamble = true,
+   };
+   struct agx_shader_part part = {0};
+   const bool compiled = agx_compile_shader_nir(b.shader, &backend_key, &part);
+   const bool ok = compiled && part.binary && part.info.binary_size > 0;
+   if (!ok)
+      fprintf(stderr, "normalized %u-bit epilog format %u failed\n", bits, format);
+   free(part.binary);
+   ralloc_free(b.shader);
+   return ok;
+}
+
 int
 main(void)
 {
@@ -91,5 +131,14 @@ main(void)
 
    free(part.binary);
    ralloc_free(b.shader);
-   return ok ? 0 : 1;
+   bool normalized_ok = true;
+   const enum pipe_format formats[] = {
+      PIPE_FORMAT_R8G8B8A8_UNORM,
+      PIPE_FORMAT_R8G8B8A8_SNORM,
+      PIPE_FORMAT_R10G10B10A2_UNORM,
+   };
+   for (unsigned bits = 16; bits <= 32; bits += 16)
+      for (unsigned i = 0; i < sizeof(formats) / sizeof(formats[0]); ++i)
+         normalized_ok &= check_normalized_precision(bits, formats[i]);
+   return ok && normalized_ok ? 0 : 1;
 }
