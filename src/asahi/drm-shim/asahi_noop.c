@@ -81,6 +81,59 @@ static const struct drm_asahi_params_global params_g16g = {
    .gpu_hal_generation = DRM_ASAHI_GPU_HAL_200,
 };
 
+/* T6030 / M3 Pro as the M3 runtime reports it: one die, two clusters, USC
+ * generation 3, legacy HAL. Select with ASAHI_SHIM_CHIP=g15s; Mesa opens it
+ * only with ASAHI_M3_EXPERIMENTAL=1. Like the G16G profile it exists for
+ * offline compilation and recording and never executes GPU work. The shim
+ * has no VM-status queries, so that feature is not advertised.
+ */
+static const struct drm_asahi_params_global params_g15s = {
+   .features = DRM_ASAHI_FEATURE_COMPUTE_WIDE_VISIBILITY,
+   .gpu_generation = 15,
+   .gpu_variant = 'S',
+   .gpu_revision = 0x11, /* B1, UABI enum. */
+   .chip_id = 0x6030,
+   .num_dies = 1,
+   .num_clusters_total = 2,
+   .num_cores_per_cluster = 10,
+   .core_masks = {0x1ff, 0x1ff},
+   .vm_start = 0x4000,
+   .vm_end = 0x2ffffff8000ull,
+   .vm_kernel_min_size = 0x20000000,
+   .max_commands_per_submission = 64,
+   .max_attachments = 16,
+   .max_frequency_khz = 1380000,
+   .command_timestamp_frequency_hz = 1000000000,
+   .usc_generation = 3,
+   .gpu_hal_generation = DRM_ASAHI_GPU_HAL_LEGACY,
+};
+
+/* T8122 / M3 with the same M3 runtime: one die, one cluster of ten cores,
+ * revision C0, and no optional features, as the runtime's T8122 table
+ * reports it. Select with ASAHI_SHIM_CHIP=g15g; Mesa opens it only with
+ * ASAHI_M3_EXPERIMENTAL=1 and ASAHI_M3_G15G=1.
+ */
+static const struct drm_asahi_params_global params_g15g = {
+   .features = 0,
+   .gpu_generation = 15,
+   .gpu_variant = 'G',
+   .gpu_revision = 0x20, /* C0, UABI enum. */
+   .chip_id = 0x8122,
+   .num_dies = 1,
+   .num_clusters_total = 1,
+   .num_cores_per_cluster = 10,
+   .core_masks = {0x3ff},
+   .vm_start = 0x4000,
+   .vm_end = 0x2ffffff8000ull,
+   .vm_kernel_min_size = 0x20000000,
+   .max_commands_per_submission = 64,
+   .max_attachments = 16,
+   .max_frequency_khz = 1380000,
+   .command_timestamp_frequency_hz = 1000000000,
+   .usc_generation = 3,
+   .gpu_hal_generation = DRM_ASAHI_GPU_HAL_LEGACY,
+};
+
 static const struct drm_asahi_params_global *
 shim_params(void)
 {
@@ -90,6 +143,10 @@ shim_params(void)
       return &params_g17p;
    if (chip && !strcmp(chip, "g16g"))
       return &params_g16g;
+   if (chip && !strcmp(chip, "g15s"))
+      return &params_g15s;
+   if (chip && !strcmp(chip, "g15g"))
+      return &params_g15g;
 
    return &params_g13g;
 }
@@ -298,8 +355,18 @@ drm_shim_driver_init(void)
    const char *chip = getenv("ASAHI_SHIM_CHIP");
    const bool g17p = chip && !strcmp(chip, "g17p");
    const bool g16g = chip && !strcmp(chip, "g16g");
+   const bool g15s = chip && !strcmp(chip, "g15s");
+   const bool g15g = chip && !strcmp(chip, "g15g");
 
-   drm_shim_override_file(g16g ? "DRIVER=asahi\n"
+   drm_shim_override_file(g15s ? "DRIVER=asahi\n"
+                                 "OF_FULLNAME=/soc/agx\n"
+                                 "OF_COMPATIBLE_0=apple,agx-t6030\n"
+                                 "OF_COMPATIBLE_N=1\n"
+                          : g15g ? "DRIVER=asahi\n"
+                                 "OF_FULLNAME=/soc/agx\n"
+                                 "OF_COMPATIBLE_0=apple,agx-t8122\n"
+                                 "OF_COMPATIBLE_N=1\n"
+                          : g16g ? "DRIVER=asahi\n"
                                  "OF_FULLNAME=/soc/agx\n"
                                  "OF_COMPATIBLE_0=apple,gpu-g16g\n"
                                  "OF_COMPATIBLE_N=1\n"
