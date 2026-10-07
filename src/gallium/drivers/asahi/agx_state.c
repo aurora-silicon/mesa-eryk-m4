@@ -2698,9 +2698,16 @@ asahi_fast_link(struct agx_context *ctx, struct agx_uncompiled_shader *so,
              (so->type == MESA_SHADER_GEOMETRY &&
               key->main->b.info.stage == MESA_SHADER_VERTEX));
 
+      /* G15G LDDEV returns packed raw bytes/halves. In particular, Skia's
+       * integer ushort atlas coordinates need unpacking before the prolog
+       * exports 32-bit attribute lanes; the AGX2 zero-extension ABI corrupts
+       * them. Keep the native load and conversion explicit. */
       prolog = agx_build_meta_shader_internal(
-         ctx, agx_gallium_nir_vs_prolog, &key->prolog.vs, sizeof(key->prolog.vs), true,
-         false, 0, false);
+         ctx,
+         agx_device(ctx->base.screen)->chip == AGX_CHIP_G15G
+            ? agx_gallium_nir_vs_prolog_raw
+            : agx_gallium_nir_vs_prolog,
+         &key->prolog.vs, sizeof(key->prolog.vs), true, false, 0, false);
    }
 
    /* A refused prolog or epilog is just as fatal as a refused main: the
