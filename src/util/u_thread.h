@@ -50,7 +50,7 @@
  * but not with __thread
  */
 #define __THREAD_INITIAL_EXEC __thread
-#elif defined(__GLIBC__)
+#elif defined(__GLIBC__) && !defined(MESA_DYNAMIC_TLS)
 #define __THREAD_INITIAL_EXEC thread_local __attribute__((tls_model("initial-exec")))
 #define REALLY_INITIAL_EXEC
 #else
