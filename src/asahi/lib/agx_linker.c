@@ -187,8 +187,13 @@ agx3_build_container_lead(uint8_t *image)
    agx3_build_container_lead_for_chip(image, AGX_CHIP_G17P);
 }
 
+static_assert(AGX_SCHEDULING_STALL_WORDS_MAX <=
+                 AGX3_CONTAINER_CONSTANT_PROGRAM_MAX_STALL_WORDS,
+              "the stalled constant program must fit");
+
 static void
-agx3_build_container(uint8_t *image, size_t code_size, bool fragment, enum agx_chip chip)
+agx3_build_container(uint8_t *image, size_t code_size, bool fragment,
+                     enum agx_chip chip, unsigned stall_words)
 {
    memset(image, 0, agx3_container_size(code_size));
    agx3_build_container_lead_for_chip(image, chip);
@@ -198,7 +203,8 @@ agx3_build_container(uint8_t *image, size_t code_size, bool fragment, enum agx_c
                     ALIGN_POT(code_size, 64));
 
    uint8_t *constant = image + AGX3_CONTAINER_LEAD + AGX3_CONTAINER_BLOCK_HDR;
-   agx3_build_container_constant_program(constant, fragment);
+   agx3_build_container_constant_program_stalled(constant, fragment,
+                                                 stall_words);
 }
 
 static bool
@@ -223,6 +229,13 @@ agx_fast_link_checked(struct agx_linked_shader *linked, struct agx_device *dev,
    uint8_t sample_entry[AGX3_PIXEL_MAX_LENGTH], sample_entry_size = 0;
    uint8_t sample_wait[AGX3_PIXEL_MAX_LENGTH], sample_wait_size = 0;
    uint8_t sample_zs_wait[AGX3_PIXEL_MAX_LENGTH], sample_zs_wait_size = 0;
+   if (native_samples && dev->agx3_stall_words) {
+      /* The per-sample sequence below is assembled here, outside the
+       * packer's scheduling fallback, so it would run without stall words. */
+      fprintf(stderr, "agx_fast_link: per-sample linking has no scheduling "
+                      "stalls on %s; refused\n", agx_chip_name(dev->chip));
+      return AGX_LINK_INVALID;
+   }
    if (native_samples) {
       if (!fragment || !agx_chip_uses_g15_g16_shader_abi(dev->chip) ||
           (nr_samples_shaded != 1 && nr_samples_shaded != 2 &&
@@ -243,7 +256,10 @@ agx_fast_link_checked(struct agx_linked_shader *linked, struct agx_device *dev,
    }
 
    uint8_t fused_colour[AGX3_COLOUR_LINK_SIZE];
+   /* The fused sequence is assembled here rather than by the packer, so a
+    * chip that needs scheduling stalls links the padded parts instead. */
    const bool colour_fused = agx_native_graphics(dev) && fragment &&
+      !dev->agx3_stall_words &&
       !prolog && !nr_samples_shaded && main && epilog &&
       agx3_fuse_colour_parts(&main->info.agx3_colour_link,
                               &epilog->info.agx3_colour_link, fused_colour);
@@ -371,7 +387,8 @@ agx_fast_link_checked(struct agx_linked_shader *linked, struct agx_device *dev,
    }
 
    if (container)
-      agx3_build_container(container_map, size, fragment, dev->chip);
+      agx3_build_container(container_map, size, fragment, dev->chip,
+                           dev->agx3_stall_words);
 
    size_t offset = 0;
    if (colour_fused) {

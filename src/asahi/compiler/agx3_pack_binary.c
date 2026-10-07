@@ -96,11 +96,88 @@ agx3_report_refusal(const agx_instr *I, unsigned line)
       goto fail;                                                               \
    } while (0)
 
+/*
+ * Conservative G15G scheduling.
+ *
+ * G15G executes the AGX3b encoding, but its programs also need standalone
+ * two-byte scheduling words (the AGX3b `nop` form) between instructions. The
+ * rule for where those words go, and which payload each needs, is not
+ * modelled here. Until it is, a device key with agx3_stall_words = N selects
+ * this fallback, which assumes a hazard can exist in every gap:
+ *
+ *  - every gap between two emitted instructions gets N nop words before the
+ *    later instruction: between IR instructions, inside multi-instruction
+ *    sequences (each emitter appends one instruction at a time, and the fixed
+ *    sequences below are split at their instruction boundaries), at branch
+ *    targets (a block's offset is taken before its first gap), and before END;
+ *  - each word has all six dependency fields set, so it waits for every
+ *    scoreboard slot that may still be outstanding; waiting for a slot that
+ *    already retired is the same no-op the native fixed sequences rely on;
+ *  - nothing is added before the first instruction of a shader part, and a
+ *    part that does not end in END ends with one gap, so the next linked part
+ *    is separated as well.
+ *
+ * This is correct only if N such words cover the longest hazard; it is slow
+ * by design. Keys for every other chip carry 0, which leaves the output
+ * byte-for-byte unchanged.
+ */
+#define AGX3_STALL_DEPENDENCY_MASK 0x3fu
+
+struct agx3_stall_state {
+   /* The shader emission being packed and its size when packing began. Gaps
+    * in other buffers (staged sequences) are counted from their start. */
+   const struct util_dynarray *shader;
+   unsigned shader_start;
+   uint8_t words;
+};
+
+static _Thread_local struct agx3_stall_state agx3_stall;
+
 static bool
-agx3_append(struct util_dynarray *emission, const uint8_t *bytes, uint8_t len)
+agx3_append_gap(struct util_dynarray *emission)
 {
+   uint8_t word[AGX3_ALU_MAX_LENGTH], len = 0;
+   if (!agx3_alu_wait_nop(AGX_ISA_ENCODING_AGX3B, AGX3_STALL_DEPENDENCY_MASK,
+                          word, &len) ||
+       len != AGX3_NOP_LENGTH)
+      return false;
+
+   for (unsigned i = 0; i < agx3_stall.words; ++i)
+      memcpy(util_dynarray_grow_bytes(emission, 1, len), word, len);
+   return true;
+}
+
+/* Append one instruction, or one sequence whose own gaps are already in
+ * place. Under the G15G fallback a gap precedes it unless it is the first
+ * instruction of its buffer. */
+static bool
+agx3_append(struct util_dynarray *emission, const uint8_t *bytes, size_t len)
+{
+   if (agx3_stall.words && len) {
+      const unsigned start =
+         emission == agx3_stall.shader ? agx3_stall.shader_start : 0;
+      if (emission->size > start && !agx3_append_gap(emission))
+         return false;
+   }
    memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
    return true;
+}
+
+/* Append a fixed multi-instruction sequence one instruction at a time, so the
+ * G15G fallback can put a gap between its instructions. Without stalls this
+ * is the same bytes as one append. */
+static bool
+agx3_append_sequence(struct util_dynarray *emission, const uint8_t *bytes,
+                     size_t size, const uint8_t *lengths, unsigned count)
+{
+   size_t offset = 0;
+   for (unsigned i = 0; i < count; ++i) {
+      if (offset + lengths[i] > size ||
+          !agx3_append(emission, bytes + offset, lengths[i]))
+         return false;
+      offset += lengths[i];
+   }
+   return offset == size;
 }
 
 static enum agx3_sel_op
@@ -317,8 +394,7 @@ agx3_emit(struct util_dynarray *emission, enum agx_isa_encoding enc,
    if (!agx3_select_encode(enc, S, bytes, &len))
       return false;
 
-   memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
-   return true;
+   return agx3_append(emission, bytes, len);
 }
 
 /* A source usable by the modifier long forms: a plain 32-bit register. */
@@ -425,8 +501,7 @@ agx3_try_float_modifier(struct util_dynarray *emission,
    if (!ok || (wait && enc != AGX_ISA_ENCODING_AGX3B))
       return -1;
 
-   memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
-   return 1;
+   return agx3_append(emission, bytes, len) ? 1 : -1;
 }
 
 /*
@@ -3397,20 +3472,22 @@ agx3_try_control_flow(struct util_dynarray *emission,
          return -1;
 
       const bool is_bn = I->op != AGX_OPCODE_JMP_EXEC_ANY;
+      uint8_t bytes[AGX3_CF_MAX_LENGTH];
+      uint8_t len = 0;
+      if (!agx3_cf_branch(enc, is_bn, bytes, &len) ||
+          !agx3_append(emission, bytes, len))
+         return -1;
+
+      /* The displacement is measured from the branch itself, after any
+       * scheduling gap that agx3_append put in front of it. */
       struct agx3_branch_fixup fixup = {
          .block = I->target,
-         .offset = emission->size,
+         .offset = emission->size - len,
          .skip_to_end = I->op == AGX_OPCODE_JMP_EXEC_NONE_AFTER,
          .is_bn = is_bn,
       };
       util_dynarray_append(fixups, fixup);
-
-      uint8_t bytes[AGX3_CF_MAX_LENGTH];
-      uint8_t len = 0;
-      return agx3_cf_branch(enc, is_bn, bytes, &len) &&
-                   agx3_append(emission, bytes, len)
-                ? 1
-                : -1;
+      return 1;
    }
 
    /* An unconditional break is deliberately not included: no AGX3 witness
@@ -3936,6 +4013,7 @@ agx3_emit_native_layered_eot(struct util_dynarray *emission,
       0x9f,0x10,0x54,0x00,0x00,0x04,0x18,0x00,0x50,0x06,0x0b,0x00,
       0x9f,0x20,0x54,0x02,0x00,0x00,0x14,0x00,0x50,0x06,0x0b,0x00,
    };
+   static const uint8_t header_lengths[] = {4, 4, 4, 4, 4, 12, 12};
    struct util_dynarray staged;
    util_dynarray_init(&staged, NULL);
    uint8_t bytes[AGX3_MAX_WORDS*2], len;
@@ -3952,7 +4030,8 @@ agx3_emit_native_layered_eot(struct util_dynarray *emission,
       {29,selector},{30,ms ? 2 : 1},{45,3},{46,3},{59,1},{60,1},{51,0},
    };
    static const uint8_t stop[] = {0x0e,0,0,0};
-   bool ok = agx3_append(&staged,header,sizeof(header)) &&
+   bool ok = agx3_append_sequence(&staged, header, sizeof(header),
+                                  header_lengths, ARRAY_SIZE(header_lengths)) &&
       agx3_bind_compose(enc,"pack_imgwir",0,layer,ARRAY_SIZE(layer),NULL,0,bytes,&len) &&
       agx3_append(&staged,bytes,len) &&
       agx3_bind_compose(enc,"pack_imgwir",0,offset,ARRAY_SIZE(offset),NULL,0,bytes,&len) &&
@@ -4198,9 +4277,16 @@ agx3_emit_native_mrt_eot(struct util_dynarray *emission,
       0x9f,0x20,0x54,0x02,0x03,0x00,0x20,0x00,0x50,0x26,0x0a,0x00,
       0x97,0x45,0x54,0x00,0x03,0x0c,0x10,0x00,0xf0,0x88,0x00,0x00,
    };
+   static const uint8_t header_lengths[] = {4, 4, 4, 4, 12, 12};
+   static const uint8_t layered_header_lengths[] = {4, 4, 4, 4, 4, 12, 12, 12};
    /* Native type8 MRT builtins keep X/Y/packed-layer in GPR halves4/2/0. */
-   if (!agx3_append(emission, layered ? layered_header : header,
-                    layered ? sizeof(layered_header) : sizeof(header)))
+   if (!(layered ? agx3_append_sequence(emission, layered_header,
+                                        sizeof(layered_header),
+                                        layered_header_lengths,
+                                        ARRAY_SIZE(layered_header_lengths))
+                 : agx3_append_sequence(emission, header, sizeof(header),
+                                        header_lengths,
+                                        ARRAY_SIZE(header_lengths))))
       return false;
    const unsigned slots = 6;
    for (unsigned first = 0; first < count; first += slots) {
@@ -4272,6 +4358,7 @@ agx3_emit_native_ms_eot(struct util_dynarray *emission,
       0x9f,0x20,0x54,0x02,0x00,0x00,0x10,0x00,0x50,0x06,0x0b,0x00,
       0x97,0x05,0x54,0x06,0x00,0x08,0x00,0x00,0xd0,0x40,0x10,0x00,
    };
+   static const uint8_t header_lengths[] = {4, 4, 4, 4, 12, 12, 12};
    const struct agx3_field_kv store[] = {
       {9,5},{5,0},{12,1},{13,1},{17,1},{32,1},{73,1},
       {29,selector},{30,2},{45,3},{46,3},{59,1},{60,1},{51,0},
@@ -4280,7 +4367,8 @@ agx3_emit_native_ms_eot(struct util_dynarray *emission,
    static const uint8_t stop[] = {0x0e,0,0,0};
    return agx3_bind_compose(enc, "imgwblk", 0, store, ARRAY_SIZE(store),
                            NULL, 0, bytes, &len) &&
-          agx3_append(emission, header, sizeof(header)) &&
+          agx3_append_sequence(emission, header, sizeof(header),
+                               header_lengths, ARRAY_SIZE(header_lengths)) &&
           agx3_append(emission, bytes, len) &&
           agx3_append(emission, stop, sizeof(stop));
 }
@@ -4438,8 +4526,8 @@ agx3_post_ra_hint(agx_index index)
           index.cache ? AGX3_ALU_HINT_CACHE : AGX3_ALU_HINT_NONE;
 }
 
-bool
-agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
+static bool
+agx3_pack_shader(agx_context *ctx, struct util_dynarray *emission)
 {
    const enum agx_isa_encoding enc = ctx->key->dev.encoding;
    const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
@@ -4505,11 +4593,17 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          0x00,0x00,0x00,0x80,0x28,0x15,0x00,0x00,0x0e,0x00,0x00,0x00,
       };
 
+      static const uint8_t g17p_rgba16_sint_eot_lengths[] = {
+         4, 4, 4, 4, 4, 12, 12, 12, 12, 12, 4,
+      };
+
       if (rt0_eot == AGX3_G17P_RT0_EOT_I16_SIGNED_TWO_WORDS) {
          ctx->max_reg = MAX2(ctx->max_reg, 7);
          ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 8);
-         return agx3_append(emission, g17p_rgba16_sint_eot,
-                            sizeof(g17p_rgba16_sint_eot));
+         return agx3_append_sequence(emission, g17p_rgba16_sint_eot,
+                                     sizeof(g17p_rgba16_sint_eot),
+                                     g17p_rgba16_sint_eot_lengths,
+                                     ARRAY_SIZE(g17p_rgba16_sint_eot_lengths));
       }
 
       static const uint8_t g17p_rt0_eot[][68] = {{
@@ -4578,9 +4672,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
        * eight staging halves independently. Main68 pads to128: LDSHDR f1=1. */
       ctx->max_reg = MAX2(ctx->max_reg, 7);
       ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 8);
+      /* Every program above has the same instruction boundaries. */
+      static const uint8_t g17p_rt0_eot_lengths[] = {
+         4, 4, 4, 4, 12, 12, 12, 12, 4,
+      };
       const unsigned index = rt0_eot - AGX3_G17P_RT0_EOT_SELECTOR_75;
-      return agx3_append(emission, g17p_rt0_eot[index],
-                         sizeof(g17p_rt0_eot[index]));
+      return agx3_append_sequence(emission, g17p_rt0_eot[index],
+                                  sizeof(g17p_rt0_eot[index]),
+                                  g17p_rt0_eot_lengths,
+                                  ARRAY_SIZE(g17p_rt0_eot_lengths));
    }
 
    struct util_dynarray fixups;
@@ -5760,7 +5860,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                d.original_coverage = false;
             if (!agx3_sr_encode(enc, &d, bytes, &len))
                AGX3_REFUSE(I);
-            memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+            if (!agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
             continue;
          }
 
@@ -5796,7 +5897,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                                : agx3_mem_encode_load(enc, &d, bytes, &len);
             if (!ok)
                AGX3_REFUSE(I);
-            memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+            if (!agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
             continue;
          }
 
@@ -5863,7 +5965,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                         : agx3_local_encode_load(enc, &d, bytes, &len);
             if (!ok)
                AGX3_REFUSE(I);
-            memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+            if (!agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
             continue;
          }
 
@@ -5898,7 +6001,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                         : agx3_scs_encode_load(enc, &d, bytes, &len);
             if (!ok)
                AGX3_REFUSE(I);
-            memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+            if (!agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
             continue;
          }
 
@@ -7849,6 +7953,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
        !agx3_retire_slots_noop(emission, enc, outstanding))
       goto fail;
 
+   /* Under the G15G fallback, a part without END hands over to the next
+    * linked part through one more gap. */
+   if (ctx->key->no_stop && !ctx->is_preamble && agx3_stall.words &&
+       emission->size > initial_size && !agx3_append_gap(emission))
+      goto fail;
+
    if (!ctx->key->no_stop || ctx->is_preamble) {
       const struct agx3_sel_instr end = {.op = AGX3_SEL_OP_END};
       if (!agx3_emit(emission, enc, &end))
@@ -7864,4 +7974,25 @@ fail:
    emission->size = initial_size;
    util_dynarray_fini(&fixups);
    return false;
+}
+
+bool
+agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
+{
+   const uint8_t words = ctx->key->dev.agx3_stall_words;
+   if (words && ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B) {
+      fprintf(stderr, "agx3_pack_binary: scheduling stalls are only "
+                      "defined for AGX3b; shader refused\n");
+      return false;
+   }
+
+   const struct agx3_stall_state saved = agx3_stall;
+   agx3_stall = (struct agx3_stall_state){
+      .shader = emission,
+      .shader_start = emission->size,
+      .words = words,
+   };
+   const bool ok = agx3_pack_shader(ctx, emission);
+   agx3_stall = saved;
+   return ok;
 }

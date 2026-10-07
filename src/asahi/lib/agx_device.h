@@ -213,6 +213,9 @@ int agx_drm_bo_sync_for_device(struct agx_device *dev, struct agx_bo *bo,
                                size_t offset, size_t size);
 void agx_drm_bo_close(struct agx_device *dev, uint32_t handle);
 
+/* Upper bound for agx_device::agx3_stall_words. */
+#define AGX_SCHEDULING_STALL_WORDS_MAX 16
+
 struct agx_device {
    uint32_t debug;
 
@@ -340,6 +343,11 @@ struct agx_device {
 
    /* Simplified device selection */
    enum agx_chip chip;
+
+   /* Scheduling stall words per instruction gap, for chips that need
+    * explicit scheduling stalls (G15G), at most
+    * AGX_SCHEDULING_STALL_WORDS_MAX. 0 everywhere else. */
+   uint8_t agx3_stall_words;
 
    struct {
       uint64_t num;

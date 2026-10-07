@@ -695,6 +695,30 @@ agx_create_fixed_bo(struct agx_device *dev, size_t size,
    return bo;
 }
 
+/*
+ * Stall words per instruction gap for the conservative scheduling fallback
+ * (agx3_pack_binary.c). ASAHI_G15G_STALL_WORDS overrides the default for
+ * hardware experiments; values outside 1..AGX_SCHEDULING_STALL_WORDS_MAX keep
+ * the default.
+ */
+#define AGX_SCHEDULING_STALL_WORDS_DEFAULT 8
+
+static uint8_t
+agx_scheduling_stall_words(void)
+{
+   const int64_t words = debug_get_num_option(
+      "ASAHI_G15G_STALL_WORDS", AGX_SCHEDULING_STALL_WORDS_DEFAULT);
+   if (words < 1 || words > AGX_SCHEDULING_STALL_WORDS_MAX) {
+      fprintf(stderr,
+              "asahi: ASAHI_G15G_STALL_WORDS=%" PRId64 " is outside 1..%d; "
+              "using %d\n",
+              words, AGX_SCHEDULING_STALL_WORDS_MAX,
+              AGX_SCHEDULING_STALL_WORDS_DEFAULT);
+      return AGX_SCHEDULING_STALL_WORDS_DEFAULT;
+   }
+   return (uint8_t)words;
+}
+
 bool
 agx_open_device(void *memctx, struct agx_device *dev)
 {
@@ -761,6 +785,9 @@ agx_open_device(void *memctx, struct agx_device *dev)
    }
 
    dev->chip = agx_chip_from_params(&dev->params);
+   dev->agx3_stall_words = agx_chip_needs_scheduling_stalls(dev->chip)
+                              ? agx_scheduling_stall_words()
+                              : 0;
 
    /*
     * Recognition, shader codegen, descriptors and the command stream are
@@ -1650,5 +1677,6 @@ agx_gather_device_key(struct agx_device *dev)
       .encoding = agx_chip_isa_encoding(dev->chip),
       .needs_g13x_coherency = u_tristate_make(g13x_coh),
       .soft_fault = agx_has_soft_fault(dev),
+      .agx3_stall_words = dev->agx3_stall_words,
    };
 }
