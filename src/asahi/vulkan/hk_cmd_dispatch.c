@@ -52,11 +52,51 @@ hk_cmd_bind_compute_shader(struct hk_cmd_buffer *cmd,
    cmd->state.cs.shader = shader;
 }
 
-/* Emit the ordinary serial barrier an elided application launch still owes
+/* Append one AGX3 CDM barrier word (caller ensures space). */
+void
+hk_cs_emit_cdm_barrier(struct hk_cs *cs, uint32_t flags, bool wide)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cs->cmd);
+   const struct agx3_cdm_barrier_info info = {
+      .chip = dev->dev.chip,
+      .flags = flags,
+      .wide_visibility = wide,
+   };
+   uint8_t packed[AGX3_CDM_BARRIER_SIZE];
+
+   assert((uint8_t *)cs->current + sizeof(packed) < (uint8_t *)cs->end &&
+          "caller must ensure space");
+   if (!agx3_cdm_barrier_pack(&info, packed)) {
+      vk_command_buffer_set_error(&cs->cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+   memcpy(cs->current, packed, sizeof(packed));
+   cs->current = (uint32_t *)((uint8_t *)cs->current + sizeof(packed));
+}
+
+/* G15S single-word compute dependency: whether launches of shader s may
+ * follow a held one-word memory dependency and be counted as buffer-only
+ * producers (see hk_g15_single_word_dependency). */
+static bool
+hk_cs_launch_buffer_only(struct hk_cmd_buffer *cmd, const struct hk_shader *s,
+                         struct agx_grid grid)
+{
+   return s && cmd->state.cs.user_dispatch && !cmd->in_meta &&
+          !agx_is_indirect(grid) && s->b.info.stage == MESA_SHADER_COMPUTE &&
+          s->info.cs.buffer_only;
+}
+
+/* Emit the ordinary serial barrier an elided application launch still owes,
+ * or the wide visibility barrier a held single-word dependency still owes,
  * before any other record. */
 void
 hk_cs_flush_serial_barrier(struct hk_cs *cs)
 {
+   if (cs->dep_wide_pending) {
+      cs->dep_wide_pending = false;
+      hk_cs_emit_cdm_barrier(cs, 0x5, true);
+      return;
+   }
    if (!cs->serial_barrier_pending)
       return;
 
@@ -151,6 +191,7 @@ hk_cdm_cache_flush(struct hk_device *dev, struct hk_cs *cs)
    }
 
    cs->stats.flushes++;
+   cs->segment_non_buffer = false;
 }
 
 void
@@ -822,8 +863,13 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     * dispatch (or starting the stream) may omit the serial barrier. */
    const bool elide = cmd->state.cs.user_dispatch && !cmd->in_meta &&
                       !agx_is_indirect(grid) && hk_elide_dispatch_barrier(dev);
-   if (!elide)
+   const bool buffer_only = hk_cs_launch_buffer_only(cmd, s, grid);
+   /* A held single-word dependency is complete for a buffer-only consumer. */
+   if (cs->dep_wide_pending && buffer_only)
+      cs->dep_wide_pending = false;
+   if (!elide || cs->dep_wide_pending)
       hk_cs_flush_serial_barrier(cs);
+   cs->segment_non_buffer |= !buffer_only;
    struct agx3_compute_dispatch_sink sink = {
       .data = (uint8_t *)cs->current,
       .capacity = (uint8_t *)cs->end - (uint8_t *)cs->current,

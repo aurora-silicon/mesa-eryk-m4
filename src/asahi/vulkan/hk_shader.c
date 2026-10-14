@@ -2682,6 +2682,25 @@ hk_ubo_prefetch_binding_allowed(void *data, unsigned set, unsigned offset)
    return false;
 }
 
+/* No texture or image instruction: memory is reached through buffers only. */
+static bool
+hk_nir_buffer_only(nir_shader *nir)
+{
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type == nir_instr_type_tex)
+               return false;
+            if (instr->type == nir_instr_type_intrinsic &&
+                strstr(nir_intrinsic_infos[nir_instr_as_intrinsic(instr)->intrinsic].name,
+                       "image"))
+               return false;
+         }
+      }
+   }
+   return true;
+}
+
 static VkResult
 hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
                nir_shader *nir, VkShaderCreateFlagsEXT shader_flags,
@@ -2718,6 +2737,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    unsigned nr_vbos = 0;
    bool kill_psiz = false;
    shader->info.writes_memory = nir->info.writes_memory;
+   if (sw_stage == MESA_SHADER_COMPUTE && dev->dev.chip == AGX_CHIP_G15S)
+      shader->info.cs.buffer_only = hk_nir_buffer_only(nir);
 
    if (sw_stage == MESA_SHADER_TESS_EVAL ||
        sw_stage == MESA_SHADER_TESS_CTRL) {

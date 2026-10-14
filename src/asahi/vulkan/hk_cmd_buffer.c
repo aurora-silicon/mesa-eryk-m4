@@ -917,6 +917,45 @@ hk_render_merge_barrier_ok(const VkDependencyInfo *dep)
 }
 
 /*
+ * G15S: a compute->compute memory dependency between buffer-only launches is
+ * encoded as one serial barrier word, 0x60001560 (the native serial
+ * encoder's post-launch barrier with pending visibility), instead of the
+ * ordinary + wide pair. Restricted to what was qualified: no image barriers,
+ * only shader storage read/write access on the destination, producers since
+ * the previous dependency and the consumer all application dispatches whose
+ * shaders contain no texture or image instruction, and no buffer of the
+ * device with its own VA (sparse or capture/replay: physical aliases). A
+ * consumer or record outside that set gets the wide visibility barrier
+ * before it (hk_cs_flush_serial_barrier), and the stream end keeps its own
+ * wide barrier. HK_M3_SINGLE_WORD_DEPENDENCY=0 restores the pair.
+ */
+static bool
+hk_g15_single_word_dependency(struct hk_cmd_buffer *cmd, const VkDependencyInfo *dep,
+                              const struct hk_cs *cs)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   static int enabled = -1;
+   const VkAccessFlags2 storage =
+      VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT |
+      VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT |
+      VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+   VkAccessFlags2 dst_access = 0;
+
+   if (dev->dev.chip != AGX_CHIP_G15S)
+      return false;
+   if (enabled < 0)
+      enabled = debug_get_bool_option("HK_M3_SINGLE_WORD_DEPENDENCY", true);
+   if (!enabled || dep->imageMemoryBarrierCount || cs->segment_non_buffer ||
+       p_atomic_read(&dev->own_va_buffers))
+      return false;
+   for (unsigned i = 0; i < dep->memoryBarrierCount; i++)
+      dst_access |= dep->pMemoryBarriers[i].dstAccessMask;
+   for (unsigned i = 0; i < dep->bufferMemoryBarrierCount; i++)
+      dst_access |= dep->pBufferMemoryBarriers[i].dstAccessMask;
+   return !(dst_access & ~storage);
+}
+
+/*
  * G15S/G16G: a dependency whose source and destination are both compute shaders
  * keeps the open compute stream and is encoded in it, instead of ending the
  * stream and starting a new firmware compute work for the next dispatch:
@@ -995,10 +1034,23 @@ hk_g15_compute_barrier_in_stream(struct hk_cmd_buffer *cmd,
    perf_debug(cmd, "Compute barrier kept in the stream (%s)",
               writes ? "memory" : "execution");
    hk_ensure_cs_has_space(cmd, cs, 0x2000);
-   if (writes)
-      hk_cdm_cache_flush(dev, cs);
-   else
+   if (writes && hk_g15_single_word_dependency(cmd, dep, cs)) {
+      /* Buffer producers: the native serial barrier with pending
+       * visibility (0x60001560) alone; the wide word follows only if the
+       * next record is not a buffer-only application dispatch. */
+      /* The flags-5 word is the elided launches' serial barrier too; only
+       * a wide word still owed by an earlier held dependency precedes it. */
+      cs->serial_barrier_pending = false;
       hk_cs_flush_serial_barrier(cs);
+      hk_cs_emit_cdm_barrier(cs, 0x5, false);
+      cs->dep_wide_pending = true;
+      cs->segment_non_buffer = false;
+      cs->stats.flushes++;
+   } else if (writes) {
+      hk_cdm_cache_flush(dev, cs);
+   } else {
+      hk_cs_flush_serial_barrier(cs);
+   }
    return true;
 }
 

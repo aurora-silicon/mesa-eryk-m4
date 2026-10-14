@@ -476,6 +476,16 @@ struct hk_cs {
     * by the ordinary barrier first, exactly as if each launch carried it. */
    bool serial_barrier_pending;
 
+   /* G15S single-word compute dependency (hk_g15_compute_barrier_in_stream):
+    * dep_wide_pending: a memory dependency was encoded as the one serial
+    * barrier 0x60001560 for buffer-only producers; a consumer that is not a
+    * buffer-only application dispatch, and every other record, is preceded
+    * by the wide visibility barrier first.
+    * segment_non_buffer: a launch since the last dependency used a texture
+    * or image, or has no buffer-only metadata. */
+   bool dep_wide_pending;
+   bool segment_non_buffer;
+
    /* Active-context selector consumed by AGX3 VertexProgramVariant. */
    bool agx3_active_context_selector_valid;
    uint32_t agx3_raw_active_context_selector;
@@ -591,6 +601,7 @@ void *hk_cmd_buffer_emit_cs_jump(struct hk_cmd_buffer *cmd, void *current,
                                  uint64_t target, bool vdm);
 
 void hk_cs_flush_serial_barrier(struct hk_cs *cs);
+void hk_cs_emit_cdm_barrier(struct hk_cs *cs, uint32_t flags, bool wide);
 
 /*
  * Helper to merge two compute control streams, concatenating the second control
@@ -627,6 +638,8 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->ends_memory_dependency |= b->ends_memory_dependency;
    a->ends_wide_visibility = b->ends_wide_visibility;
    a->serial_barrier_pending = b->serial_barrier_pending;
+   a->dep_wide_pending = b->dep_wide_pending;
+   a->segment_non_buffer = b->segment_non_buffer;
 
    a->clear_dispatches += b->clear_dispatches;
    a->fill_dispatches += b->fill_dispatches;

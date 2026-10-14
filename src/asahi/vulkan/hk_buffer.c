@@ -234,6 +234,7 @@ hk_CreateBuffer(VkDevice device, const VkBufferCreateInfo *pCreateInfo,
                           "Sparse VMA allocation failed");
       }
       buffer->vk.device_address = buffer->va->addr;
+      p_atomic_inc(&dev->own_va_buffers);   /* sticky: never decremented */
 
       /* Bind scratch pages to make read/write across the VA valid */
       VkResult result = hk_bind_scratch(dev, buffer->va, 0, vma_size_B);

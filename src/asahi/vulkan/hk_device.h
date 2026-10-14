@@ -115,6 +115,10 @@ struct hk_device {
 
    uint32_t perftest;
 
+   /* Buffers created with their own VA (sparse binding, capture/replay):
+    * their memory has other VAs too (hk_g15_single_word_dependency). */
+   uint32_t own_va_buffers;
+
    /* Recording policy is immutable for this device. Do not rescan the
     * process environment for each draw's resource program/statistics state. */
    bool recording_options_cached;
