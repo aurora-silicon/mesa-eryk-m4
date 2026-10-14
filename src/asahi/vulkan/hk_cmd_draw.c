@@ -1005,13 +1005,13 @@ hk_pack_zls_control(struct agx_zls_control_packed *packed,
 }
 
 /*
- * G15S render merging.
+ * G15S/G16G render merging.
  *
  * On the J514S firmware (RTKit 2419) every hardware render pass costs two
  * firmware works, TA and FS, each with its own admission, start, finalize
  * and completion processing (~50 us per work against a few us of GPU time
- * for a small pass). Early tiling only overlaps them; it does not remove
- * them. When an application ends a rendering and the next command that
+ * for a small pass; ~70 us per pass on J713/G16G). Early tiling only
+ * overlaps them; it does not remove them. When an application ends a rendering and the next command that
  * produces work begins another rendering of exactly the same colour
  * attachments, record both into one VDM stream: one TA and one FS work.
  *
@@ -1044,36 +1044,51 @@ hk_pack_zls_control(struct agx_zls_control_packed *packed,
  * depth bias, side effects) stores everything and the next stream loads it,
  * as for any partial render.
  *
- * HK_M3_RENDER_MERGE=0 disables it; HK_M3_RENDER_MERGE_PASSES (32) and
- * HK_M3_RENDER_MERGE_DRAWS (256) bound one hardware pass.
+ * HK_M3_RENDER_MERGE=0 (G15S) / HK_M4_RENDER_MERGE=0 (G16G) disables it;
+ * HK_M3_/HK_M4_RENDER_MERGE_PASSES (32) and HK_M3_/HK_M4_RENDER_MERGE_DRAWS
+ * (256) bound one hardware pass.
  */
 static bool
 hk_render_merge_enabled(struct hk_device *dev)
 {
-   static int enabled = -1;
+   static int enabled_g15s = -1, enabled_g16g = -1;
 
-   if (dev->dev.chip != AGX_CHIP_G15S)
-      return false;
-   if (enabled < 0)
-      enabled = debug_get_bool_option("HK_M3_RENDER_MERGE", true);
-   return enabled;
+   if (dev->dev.chip == AGX_CHIP_G15S) {
+      if (enabled_g15s < 0)
+         enabled_g15s = debug_get_bool_option("HK_M3_RENDER_MERGE", true);
+      return enabled_g15s;
+   }
+   if (dev->dev.chip == AGX_CHIP_G16G) {
+      if (enabled_g16g < 0)
+         enabled_g16g = debug_get_bool_option("HK_M4_RENDER_MERGE", true);
+      return enabled_g16g;
+   }
+   return false;
 }
 
+/* Bounds of one merged hardware pass, per generation (HK_M3_* on G15S,
+ * HK_M4_* on G16G). */
 static unsigned
-hk_render_merge_max_passes(void)
+hk_render_merge_max_passes(const struct hk_device *dev)
 {
    static int value = -1;
    if (value < 0)
-      value = CLAMP(debug_get_num_option("HK_M3_RENDER_MERGE_PASSES", 32), 2, 1024);
+      value = CLAMP(debug_get_num_option(dev->dev.chip == AGX_CHIP_G16G ?
+                                            "HK_M4_RENDER_MERGE_PASSES" :
+                                            "HK_M3_RENDER_MERGE_PASSES", 32),
+                    2, 1024);
    return value;
 }
 
 static unsigned
-hk_render_merge_max_draws(void)
+hk_render_merge_max_draws(const struct hk_device *dev)
 {
    static int value = -1;
    if (value < 0)
-      value = CLAMP(debug_get_num_option("HK_M3_RENDER_MERGE_DRAWS", 256), 1, 65536);
+      value = CLAMP(debug_get_num_option(dev->dev.chip == AGX_CHIP_G16G ?
+                                            "HK_M4_RENDER_MERGE_DRAWS" :
+                                            "HK_M3_RENDER_MERGE_DRAWS", 256),
+                    1, 65536);
    return value;
 }
 
@@ -1116,8 +1131,9 @@ hk_render_merge_can_defer(struct hk_cmd_buffer *cmd, const struct hk_cs *cs)
           !cs->timestamp.end_copy_count && !cmd->current_cs.pre_gfx &&
           !cmd->current_cs.post_gfx &&
           cmd->state.gfx.occlusion.mode == AGX_VISIBILITY_MODE_NONE &&
-          MAX2(cs->logical_passes, 1) < hk_render_merge_max_passes() &&
-          cs->stats.cmds < hk_render_merge_max_draws();
+          MAX2(cs->logical_passes, 1) <
+             hk_render_merge_max_passes(hk_cmd_buffer_device(cmd)) &&
+          cs->stats.cmds < hk_render_merge_max_draws(hk_cmd_buffer_device(cmd));
 }
 
 /* BeginRendering: may this rendering continue the one left open? */
@@ -1166,7 +1182,7 @@ hk_render_merge_draw_splits(struct hk_cmd_buffer *cmd, const struct hk_cs *cs)
           gfx->shaders[MESA_SHADER_TESS_EVAL] || gfx->xfb_enabled ||
           hk_bound_hw_vs(gfx)->info.writes_memory ||
           (fs && fs->info.writes_memory) ||
-          cs->stats.cmds >= hk_render_merge_max_draws();
+          cs->stats.cmds >= hk_render_merge_max_draws(hk_cmd_buffer_device(cmd));
 }
 
 VKAPI_ATTR void VKAPI_CALL
