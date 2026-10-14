@@ -851,6 +851,81 @@ hk_EndCommandBuffer(VkCommandBuffer commandBuffer)
    return vk_command_buffer_get_record_result(&cmd->vk);
 }
 
+/*
+ * G15S: a dependency whose source and destination are both compute shaders
+ * keeps the open compute stream and is encoded in it, instead of ending the
+ * stream and starting a new firmware compute work for the next dispatch:
+ *
+ * - execution only: the ordinary CDM barrier (0x60000160), which a launch
+ *   whose serial barrier was elided still owes;
+ * - with shader writes in the source scope: that ordinary barrier then the
+ *   flags-5 wide-visibility barrier (0x600215fe), exactly the pair that ends
+ *   a compute stream at a memory dependency today and that the kernel used to
+ *   copy between merged commands.
+ *
+ * Anything else (another stage, a layout transition or ownership transfer,
+ * open graphics or pre/post-graphics streams) keeps the existing boundary.
+ * HK_M3_COMPUTE_BARRIER_IN_STREAM=0 restores the boundary for every barrier.
+ */
+static bool
+hk_g15_compute_barrier_in_stream(struct hk_cmd_buffer *cmd,
+                                 const VkDependencyInfo *dep)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   static int enabled = -1;
+
+   if (dev->dev.chip != AGX_CHIP_G15S)
+      return false;
+   if (enabled < 0)
+      enabled = debug_get_bool_option("HK_M3_COMPUTE_BARRIER_IN_STREAM", true);
+
+   struct hk_cs *cs = cmd->current_cs.cs;
+   if (!enabled || !cs || cmd->current_cs.gfx || cmd->current_cs.pre_gfx ||
+       cmd->current_cs.post_gfx)
+      return false;
+
+   VkPipelineStageFlags2 src = 0, dst = 0;
+   VkAccessFlags2 writes = 0;
+   for (unsigned i = 0; i < dep->memoryBarrierCount; i++) {
+      const VkMemoryBarrier2 *b = &dep->pMemoryBarriers[i];
+      src |= b->srcStageMask;
+      dst |= b->dstStageMask;
+      writes |= vk_filter_src_access_flags2(b->srcStageMask, b->srcAccessMask);
+   }
+   for (unsigned i = 0; i < dep->bufferMemoryBarrierCount; i++) {
+      const VkBufferMemoryBarrier2 *b = &dep->pBufferMemoryBarriers[i];
+      if (b->srcQueueFamilyIndex != b->dstQueueFamilyIndex)
+         return false;
+      src |= b->srcStageMask;
+      dst |= b->dstStageMask;
+      writes |= vk_filter_src_access_flags2(b->srcStageMask, b->srcAccessMask);
+   }
+   for (unsigned i = 0; i < dep->imageMemoryBarrierCount; i++) {
+      const VkImageMemoryBarrier2 *b = &dep->pImageMemoryBarriers[i];
+      if (b->srcQueueFamilyIndex != b->dstQueueFamilyIndex ||
+          b->oldLayout != b->newLayout)
+         return false;
+      src |= b->srcStageMask;
+      dst |= b->dstStageMask;
+      writes |= vk_filter_src_access_flags2(b->srcStageMask, b->srcAccessMask);
+   }
+
+   src = vk_expand_src_stage_flags2(src);
+   dst = vk_expand_dst_stage_flags2(dst);
+   if (!src || !dst || (src & ~VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT) ||
+       (dst & ~VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT))
+      return false;
+
+   perf_debug(cmd, "Compute barrier kept in the stream (%s)",
+              writes ? "memory" : "execution");
+   hk_ensure_cs_has_space(cmd, cs, 0x2000);
+   if (writes)
+      hk_cdm_cache_flush(dev, cs);
+   else
+      hk_cs_flush_serial_barrier(cs);
+   return true;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 hk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
                        const VkDependencyInfo *pDependencyInfo)
@@ -870,6 +945,9 @@ hk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
       destinations |= pDependencyInfo->pBufferMemoryBarriers[i].dstStageMask;
    for (unsigned i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++)
       destinations |= pDependencyInfo->pImageMemoryBarriers[i].dstStageMask;
+
+   if (hk_g15_compute_barrier_in_stream(cmd, pDependencyInfo))
+      return;
 
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip)) {
       VkAccessFlags2 writes = 0;
