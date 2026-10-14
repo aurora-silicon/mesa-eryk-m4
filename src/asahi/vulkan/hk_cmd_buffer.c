@@ -917,7 +917,7 @@ hk_render_merge_barrier_ok(const VkDependencyInfo *dep)
 }
 
 /*
- * G15S: a dependency whose source and destination are both compute shaders
+ * G15S/G16G: a dependency whose source and destination are both compute shaders
  * keeps the open compute stream and is encoded in it, instead of ending the
  * stream and starting a new firmware compute work for the next dispatch:
  *
@@ -930,19 +930,30 @@ hk_render_merge_barrier_ok(const VkDependencyInfo *dep)
  *
  * Anything else (another stage, a layout transition or ownership transfer,
  * open graphics or pre/post-graphics streams) keeps the existing boundary.
- * HK_M3_COMPUTE_BARRIER_IN_STREAM=0 restores the boundary for every barrier.
+ * HK_M3_COMPUTE_BARRIER_IN_STREAM=0 (G15S) or HK_M4_COMPUTE_BARRIER_IN_STREAM=0
+ * (G16G) restores the boundary for every barrier.
  */
 static bool
 hk_g15_compute_barrier_in_stream(struct hk_cmd_buffer *cmd,
                                  const VkDependencyInfo *dep)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
-   static int enabled = -1;
+   static int enabled_g15s = -1, enabled_g16g = -1;
+   bool enabled;
 
-   if (dev->dev.chip != AGX_CHIP_G15S)
+   if (dev->dev.chip == AGX_CHIP_G15S) {
+      if (enabled_g15s < 0)
+         enabled_g15s =
+            debug_get_bool_option("HK_M3_COMPUTE_BARRIER_IN_STREAM", true);
+      enabled = enabled_g15s;
+   } else if (dev->dev.chip == AGX_CHIP_G16G) {
+      if (enabled_g16g < 0)
+         enabled_g16g =
+            debug_get_bool_option("HK_M4_COMPUTE_BARRIER_IN_STREAM", true);
+      enabled = enabled_g16g;
+   } else {
       return false;
-   if (enabled < 0)
-      enabled = debug_get_bool_option("HK_M3_COMPUTE_BARRIER_IN_STREAM", true);
+   }
 
    struct hk_cs *cs = cmd->current_cs.cs;
    if (!enabled || !cs || cmd->current_cs.gfx || cmd->current_cs.pre_gfx ||
