@@ -92,6 +92,7 @@ hk_CmdSetEvent2(VkCommandBuffer commandBuffer, VkEvent _event,
    VK_FROM_HANDLE(hk_event, event, _event);
 
    perf_debug(cmd, "Set event");
+   cmd->barrier_seen = true;
    hk_cmd_buffer_end_compute(cmd);
    hk_cmd_buffer_end_graphics(cmd);
    hk_queue_write(cmd, event->bo->va->addr, VK_EVENT_SET, false);
@@ -105,6 +106,7 @@ hk_CmdResetEvent2(VkCommandBuffer commandBuffer, VkEvent _event,
    VK_FROM_HANDLE(hk_event, event, _event);
 
    perf_debug(cmd, "Reset event");
+   cmd->barrier_seen = true;
    hk_cmd_buffer_end_compute(cmd);
    hk_cmd_buffer_end_graphics(cmd);
    hk_queue_write(cmd, event->bo->va->addr, VK_EVENT_RESET, false);
@@ -118,6 +120,7 @@ hk_CmdWaitEvents2(VkCommandBuffer commandBuffer, uint32_t eventCount,
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    perf_debug(cmd, "Wait events");
+   cmd->barrier_seen = true;
    cmd->graphics_dependency_stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
    /* The big hammer. Need to check if this is actually needed.

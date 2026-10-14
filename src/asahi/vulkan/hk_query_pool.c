@@ -529,6 +529,7 @@ hk_CmdResetQueryPool(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
                      uint32_t firstQuery, uint32_t queryCount)
 {
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
+   cmd->barrier_seen = true; /* ordered in submission order */
    hk_render_merge_flush(cmd);
    VK_FROM_HANDLE(hk_query_pool, pool, queryPool);
 
@@ -544,6 +545,7 @@ hk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
                       uint32_t query)
 {
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
+   cmd->barrier_seen = true; /* ordered in submission order */
    hk_render_merge_flush(cmd);
    VK_FROM_HANDLE(hk_query_pool, pool, queryPool);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
@@ -771,6 +773,7 @@ hk_CmdBeginQueryIndexedEXT(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
                            uint32_t index)
 {
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
+   cmd->barrier_seen = true; /* ordered in submission order */
    hk_render_merge_flush(cmd);
    VK_FROM_HANDLE(hk_query_pool, pool, queryPool);
 
@@ -782,6 +785,7 @@ hk_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
                          uint32_t query, uint32_t index)
 {
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
+   cmd->barrier_seen = true; /* ordered in submission order */
    hk_render_merge_flush(cmd);
    VK_FROM_HANDLE(hk_query_pool, pool, queryPool);
 
@@ -913,6 +917,7 @@ hk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
                            VkDeviceSize stride, VkQueryResultFlags flags)
 {
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
+   cmd->barrier_seen = true; /* ordered in submission order */
    hk_render_merge_flush(cmd);
    VK_FROM_HANDLE(hk_query_pool, pool, queryPool);
    VK_FROM_HANDLE(hk_buffer, dst_buffer, dstBuffer);

@@ -792,6 +792,13 @@ struct hk_cmd_buffer {
 
    /* Execution destinations accumulated since the preceding graphics CS. */
    VkPipelineStageFlags2 graphics_dependency_stages;
+   /* A command ordered against earlier submissions was recorded: a
+    * pipeline barrier or event wait (their first scope includes every
+    * earlier submission), an event set/reset, or a query operation (resets,
+    * begin/end, timestamps and result copies are implicitly ordered in
+    * submission order). Such a command buffer keeps the ordinary wait on
+    * previously submitted work; one without may name BARRIER_NONE on G16G. */
+   bool barrier_seen;
 
    /* Owned BOs and retained references needed by recorded commands. */
    struct util_dynarray large_bos;

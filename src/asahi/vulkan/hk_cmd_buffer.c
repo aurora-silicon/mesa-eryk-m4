@@ -334,6 +334,7 @@ hk_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
     * checks the preceding CB's trailing barriers and memory writes. */
    cmd->graphics_dependency_stages = hk_cmd_buffer_device(cmd)->cross_cb_tiling
       ? 0 : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+   cmd->barrier_seen = false;
 
    memset(&cmd->state, 0, sizeof(cmd->state));
 }
@@ -1077,6 +1078,7 @@ hk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
    if (HK_PERF(dev, NOBARRIER))
       return;
 
+   cmd->barrier_seen = true;
    perf_debug(cmd, "Pipeline barrier");
 
    VkPipelineStageFlags2 destinations = 0;

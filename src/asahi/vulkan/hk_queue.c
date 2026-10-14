@@ -1262,6 +1262,8 @@ hk_queue_submit_bind_sparse_memory(struct hk_device *device,
    return VK_SUCCESS;
 }
 
+static bool hk_batch_enabled(struct hk_device *dev);
+
 static VkResult
 queue_submit_now(struct hk_device *dev, struct hk_queue *queue,
                  struct vk_queue_submit *submit)
@@ -1360,6 +1362,25 @@ queue_submit_now(struct hk_device *dev, struct hk_queue *queue,
 
    unsigned nr_vdm = 0, nr_cdm = 0;
 
+   /* G16G: a submission that waits on no semaphore and none of whose
+    * command buffers records a command ordered against earlier submissions
+    * (barrier_seen) has no execution dependency on earlier work. Its
+    * commands name BARRIER_NONE instead of "all previous work" for a subqueue
+    * this submission has not used yet; the kernel may still order it, and
+    * fence and semaphore signals keep submission order. Not with submission
+    * batching: its joined batches are ordered and would only wait in the
+    * kernel behind independent submissions overlapping each other. */
+   bool independent = dev->dev.chip == AGX_CHIP_G16G && !hk_batch_enabled(dev) &&
+      !submit->wait_count &&
+      !submit->buffer_bind_count && !submit->image_opaque_bind_count &&
+      !submit->image_bind_count &&
+      debug_get_bool_option("HK_M4_BARRIER_NONE", true);
+   for (unsigned i = 0; independent && i < submit->command_buffer_count; ++i) {
+      const struct hk_cmd_buffer *cb =
+         (const struct hk_cmd_buffer *)submit->command_buffers[i];
+      independent = !cb->barrier_seen;
+   }
+
    const struct hk_cs *previous_cs = NULL;
    VkPipelineStageFlags2 trailing_stages = 0;
    for (unsigned i = 0; i < submit->command_buffer_count; ++i) {
@@ -1408,6 +1429,10 @@ queue_submit_now(struct hk_device *dev, struct hk_queue *queue,
          /* Barrier on previous command */
          struct drm_asahi_cmd_header header =
             agx_cmd_header(cs->type == HK_CS_CDM, nr_vdm, nr_cdm);
+         if (independent && !nr_vdm)
+            header.vdm_barrier = DRM_ASAHI_BARRIER_NONE;
+         if (independent && !nr_cdm)
+            header.cdm_barrier = DRM_ASAHI_BARRIER_NONE;
 
          if (cs->type == HK_CS_CDM) {
             perf_debug(
