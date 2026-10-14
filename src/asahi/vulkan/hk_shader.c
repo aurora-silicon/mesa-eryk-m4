@@ -456,7 +456,32 @@ enum hk_feature_key {
    HK_FEAT_STRICT_SPARSE = BITFIELD_BIT(3),
    HK_FEAT_DEPTH_CLIP_CONTROL = BITFIELD_BIT(4),
    HK_FEAT_DIRECT_BUFFER_DESCRIPTORS = BITFIELD_BIT(5),
+   HK_FEAT_NO_BUFFER_ALIASES = BITFIELD_BIT(6),
 };
+
+/*
+ * G15S: only buffers created with SPARSE_BINDING or
+ * DEVICE_ADDRESS_CAPTURE_REPLAY own a VA and get entries in the device's
+ * buffer alias table (and read-only shadow addresses). A device created
+ * without sparseBinding and bufferDeviceAddressCaptureReplay can never create
+ * one, so its alias table stays empty and every global address a shader sees
+ * is already canonical: the alias lookup (two dependent table loads before
+ * each buffer access) is an identity. Compute shaders of such a device skip
+ * it. Graphics stages keep the established lookup (see
+ * hk_native_direct_buffers_enabled). HK_M3_CANONICAL_COMPUTE_BUFFERS=0
+ * restores the lookup.
+ */
+static bool
+hk_no_buffer_aliases(const struct vk_physical_device *vk_pdev,
+                     const struct vk_features *feats)
+{
+   const struct hk_physical_device *pdev =
+      container_of(vk_pdev, struct hk_physical_device, vk);
+
+   return feats && pdev->dev.chip == AGX_CHIP_G15S && !feats->sparseBinding &&
+          !feats->sparseResidencyBuffer && !feats->bufferDeviceAddressCaptureReplay &&
+          debug_get_bool_option("HK_M3_CANONICAL_COMPUTE_BUFFERS", true);
+}
 
 static enum hk_feature_key
 hk_make_feature_key(const struct vk_physical_device *pdev,
@@ -472,7 +497,8 @@ hk_make_feature_key(const struct vk_physical_device *pdev,
               ? HK_FEAT_STRICT_SPARSE : 0) |
           ((hk_native_direct_buffers_enabled() && feats &&
             !feats->sparseBinding && !feats->descriptorBuffer)
-              ? HK_FEAT_DIRECT_BUFFER_DESCRIPTORS : 0);
+              ? HK_FEAT_DIRECT_BUFFER_DESCRIPTORS : 0) |
+          (hk_no_buffer_aliases(pdev, feats) ? HK_FEAT_NO_BUFFER_ALIASES : 0);
 }
 
 static void
@@ -2314,7 +2340,9 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
         hk_ubo_prefetch_enabled(dev->dev.chip)) ||
        (nir->info.stage == MESA_SHADER_VERTEX &&
         hk_vertex_ubo_prefetch_enabled(dev->dev.chip)));
-   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && !defer_ubo_aliases)
+   if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && !defer_ubo_aliases &&
+       !(nir->info.stage == MESA_SHADER_COMPUTE &&
+         (features & HK_FEAT_NO_BUFFER_ALIASES)))
       NIR_PASS(_, nir, hk_nir_lower_memory_aliases);
 
    if (agx_chip_uses_g15_g16_shader_abi(dev->dev.chip) && !defer_ubo_aliases &&
