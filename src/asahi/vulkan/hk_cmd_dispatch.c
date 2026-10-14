@@ -77,15 +77,27 @@ hk_cs_flush_serial_barrier(struct hk_cs *cs)
    cs->current = (uint32_t *)((uint8_t *)cs->current + sizeof(packed));
 }
 
-/* G16G: encode consecutive application dispatches without the serial
- * barrier between them (see hk_cs::serial_barrier_pending). */
+/* Encode consecutive application dispatches without the serial barrier
+ * between them (see hk_cs::serial_barrier_pending). Gated per generation:
+ * G16G by HK_M4_ELIDE_DISPATCH_BARRIER, G15S by HK_M3_ELIDE_DISPATCH_BARRIER.
+ */
 static bool
 hk_elide_dispatch_barrier(struct hk_device *dev)
 {
-   static int enabled = -1;
-   if (enabled < 0)
-      enabled = debug_get_bool_option("HK_M4_ELIDE_DISPATCH_BARRIER", true);
-   return enabled && dev->dev.chip == AGX_CHIP_G16G;
+   static int g16g = -1, g15s = -1;
+
+   switch (dev->dev.chip) {
+   case AGX_CHIP_G16G:
+      if (g16g < 0)
+         g16g = debug_get_bool_option("HK_M4_ELIDE_DISPATCH_BARRIER", true);
+      return g16g;
+   case AGX_CHIP_G15S:
+      if (g15s < 0)
+         g15s = debug_get_bool_option("HK_M3_ELIDE_DISPATCH_BARRIER", true);
+      return g15s;
+   default:
+      return false;
+   }
 }
 
 void

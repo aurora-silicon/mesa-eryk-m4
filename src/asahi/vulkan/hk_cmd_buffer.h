@@ -465,7 +465,7 @@ struct hk_cs {
    /* Exact native wide-visibility operation is at the end of this CDM. */
    bool ends_wide_visibility;
 
-   /* G16G: the newest launch is an application dispatch encoded without its
+   /* G16G/G15S: the newest launch is an application dispatch encoded without its
     * serial ordinary barrier. Vulkan orders dispatches only through explicit
     * barriers, so a following application dispatch needs none; every other
     * record (internal/meta launch, cache flush, link, terminate) is preceded
