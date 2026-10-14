@@ -190,6 +190,27 @@ hk_drm_attachment_set_merge(struct hk_drm_attachment_set *dst,
    return true;
 }
 
+/* Union of two possibly incomplete ledgers: the result names every span
+ * either names and is complete only when both were. Fails only when the
+ * union exceeds the limit (dst unchanged then). */
+bool
+hk_drm_attachment_set_union(struct hk_drm_attachment_set *dst,
+                            const struct hk_drm_attachment_set *src,
+                            unsigned limit)
+{
+   struct hk_drm_attachment_set merged = *dst;
+   for (unsigned i = 0; i < src->count; i++) {
+      if (!hk_drm_attachment_set_add(&merged, src->list[i].pointer,
+                                      src->list[i].size))
+         return false;
+   }
+   if (merged.count > limit)
+      return false;
+   merged.complete = dst->complete && src->complete;
+   *dst = merged;
+   return true;
+}
+
 static bool
 hk_drm_command_is_attachment(uint16_t type)
 {

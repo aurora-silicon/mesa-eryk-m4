@@ -685,6 +685,16 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
    const bool batch_queries =
       hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
       debug_get_bool_option("HK_M4_BATCH_QUERY_COPIES", false);
+   /* G16G: a compute stream's ledger lists only the meta destinations it
+    * knows; application dispatches add none, so ordinary streams are never
+    * "complete". The ledger is a firmware completion hint, not an access
+    * list, and a merged stream retires all members together, so the union
+    * of two incomplete ledgers covers at least what each member alone did.
+    * Merging keeps the member's end-of-stream ordinary+wide barriers, which
+    * carry the API memory dependency inside the linked stream. */
+   const bool union_ledgers =
+      hk_cmd_buffer_device(cmd)->dev.chip == AGX_CHIP_G16G &&
+      debug_get_bool_option("HK_M4_MERGE_INCOMPLETE_LEDGERS", true);
 
    /* Most dispatches have an incomplete destination ledger. Only after all
     * recording is finished can we prove this stream contains clears alone
@@ -758,9 +768,13 @@ merge_control_streams(struct hk_cmd_buffer *cmd)
             !last->ends_timestamp_reset && !cs->ends_timestamp_reset &&
             hk_drm_attachment_sets_disjoint(&last->clear_destinations,
                                              &cs->clear_destinations))) &&
-          hk_drm_attachment_set_merge(&last->compute_attachments,
+          (union_ledgers ?
+           hk_drm_attachment_set_union(&last->compute_attachments,
                                        &cs->compute_attachments,
-                                       hk_cmd_buffer_device(cmd)->dev.params.max_attachments)) {
+                                       hk_cmd_buffer_device(cmd)->dev.params.max_attachments) :
+           hk_drm_attachment_set_merge(&last->compute_attachments,
+                                       &cs->compute_attachments,
+                                       hk_cmd_buffer_device(cmd)->dev.params.max_attachments))) {
 
          hk_cs_merge_cdm(last, cs);
          list_del(&cs->node);

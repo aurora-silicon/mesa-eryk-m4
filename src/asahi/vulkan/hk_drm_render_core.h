@@ -57,6 +57,9 @@ bool hk_drm_attachment_set_add(struct hk_drm_attachment_set *set,
 bool hk_drm_attachment_set_merge(struct hk_drm_attachment_set *dst,
                                  const struct hk_drm_attachment_set *src,
                                  unsigned limit);
+bool hk_drm_attachment_set_union(struct hk_drm_attachment_set *dst,
+                                 const struct hk_drm_attachment_set *src,
+                                 unsigned limit);
 
 /* Only meaningful for canonical, nonaliasing address mappings. */
 bool hk_drm_attachment_sets_disjoint(const struct hk_drm_attachment_set *a,
