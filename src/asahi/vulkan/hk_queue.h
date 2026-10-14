@@ -9,8 +9,19 @@
 
 #include "hk_private.h"
 #include "vk_queue.h"
+#include "c11/threads.h"
+#include "util/u_dynarray.h"
 
 struct hk_device;
+struct agx_bo;
+
+/* G15S submission batching (see hk_queue.c): CDM storage of one batch. */
+#define HK_BATCH_SLOTS 8
+struct hk_batch_slot {
+   struct agx_bo *bo;
+   uint8_t *map;
+   uint64_t point; /* queue timeline value of its last use */
+};
 
 struct hk_queue {
    struct vk_queue vk;
@@ -32,6 +43,24 @@ struct hk_queue {
        */
       uint64_t timeline_value;
    } drm;
+
+   /* G15S submission batching: compute-only submissions made while two of
+    * this queue's DRM submissions are executing wait here and are submitted
+    * together, as one compute command, when one of those completes. */
+   struct {
+      bool enabled, run;
+      mtx_t lock;
+      cnd_t wake;
+      thrd_t thread;
+      /* Pending submissions: their CDM records without terminates, their
+       * signal operations, and whether all retain the wide final barrier. */
+      struct util_dynarray cdm;
+      struct util_dynarray signals;
+      uint32_t count;
+      bool wide_visibility;
+      struct hk_batch_slot slot[HK_BATCH_SLOTS];
+      unsigned next_slot;
+   } batch;
 };
 
 static inline struct hk_device *

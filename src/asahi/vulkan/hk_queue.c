@@ -1262,8 +1262,8 @@ hk_queue_submit_bind_sparse_memory(struct hk_device *device,
 }
 
 static VkResult
-queue_submit(struct hk_device *dev, struct hk_queue *queue,
-             struct vk_queue_submit *submit)
+queue_submit_now(struct hk_device *dev, struct hk_queue *queue,
+                 struct vk_queue_submit *submit)
 {
    /* TODO: Support asynchronous sparse queue? */
    if (submit->buffer_bind_count || submit->image_bind_count ||
@@ -1523,6 +1523,286 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
    return result;
 }
 
+/*
+ * G15S submission batching.
+ *
+ * Each DRM submission becomes at least one firmware work, and on the J514S
+ * firmware (RTKit 2419) a work costs ~70 us of firmware time however little
+ * it does. An application that queues many small compute-only submissions
+ * (one dispatch each) is therefore bound by that cost. The kernel queue
+ * runs two submissions at a time; while two are executing, hold further
+ * compute-only submissions here and submit all that accumulated, as one
+ * compute command whose CDM stream is their streams in submission order,
+ * when the older of the two completes (a helper thread waits for it).
+ *
+ * A held submission has no waits, no sparse binds, only binary,
+ * non-shareable signal operations (typically its fence), and command buffers
+ * whose control streams are single-chunk CDM streams without timestamps,
+ * queries, attachments, sampler heap or scratch. Each stream already ends
+ * with the ordinary+wide barrier pair before its terminate, so the joined
+ * stream runs the submissions one after the other and publishes their writes
+ * as a firmware work boundary would. Every signal operation of every held
+ * submission is attached to the joined submission: it signals once all of
+ * them completed, which is later than necessary but never earlier.
+ *
+ * Any other submission (including signal-only ones from vkQueueWaitIdle)
+ * first submits what is held, so DRM order is Vulkan submission order. A
+ * wait on a held fence blocks in the kernel (syncobj waits use
+ * WAIT_FOR_SUBMIT) until the helper thread submits it, which it does as soon
+ * as the older executing submission completes.
+ *
+ * HK_M3_SUBMIT_BATCH=0 disables it.
+ */
+#define HK_BATCH_BYTES (16384 - 4)
+#define HK_BATCH_MAX 64
+
+static bool
+hk_batch_enabled(struct hk_device *dev)
+{
+   return dev->dev.chip == AGX_CHIP_G15S &&
+          debug_get_bool_option("HK_M3_SUBMIT_BATCH", true);
+}
+
+/* The bytes of a control stream that may join a batch, or 0. */
+static size_t
+hk_batch_cs_bytes(struct hk_device *dev, struct hk_cs *cs, bool *wide)
+{
+   if (cs->type != HK_CS_CDM || cs->stream_linked ||
+       cs->timestamp.start.handle || cs->timestamp.end.handle ||
+       cs->timestamp.end_copy_count || cs->ends_timestamp_reset ||
+       cs->uses_sampler_heap || cs->scratch.cs.main || cs->scratch.cs.preamble ||
+       cs->compute_attachments.count || cs->stats.query_copies)
+      return 0;
+
+   const size_t len = (uint8_t *)cs->current - (uint8_t *)cs->start;
+   uint32_t last;
+   if (len < 8 || len > 4096)
+      return 0;
+   memcpy(&last, (uint8_t *)cs->current - 4, 4);
+   if (last != 0x40000000)
+      return 0;
+
+   *wide &= cs->ends_wide_visibility && !cs->ends_timestamp_reset &&
+            (dev->dev.params.features & DRM_ASAHI_FEATURE_COMPUTE_WIDE_VISIBILITY);
+   return len - 4;
+}
+
+static bool
+hk_batch_submit_ok(struct hk_device *dev, struct vk_queue_submit *submit,
+                   size_t *bytes, bool *wide)
+{
+   if (submit->wait_count || vk_queue_submit_has_bind(submit) ||
+       !submit->command_buffer_count || submit->perf_pass_index ||
+       submit->is_protected)
+      return false;
+
+   for (unsigned i = 0; i < submit->signal_count; ++i) {
+      const struct vk_sync *sync = submit->signals[i].sync;
+      if (!vk_sync_type_is_drm_syncobj(sync->type) ||
+          (sync->flags & (VK_SYNC_IS_TIMELINE | VK_SYNC_IS_SHAREABLE |
+                          VK_SYNC_IS_SHARED)))
+         return false;
+   }
+
+   *bytes = 0;
+   for (unsigned i = 0; i < submit->command_buffer_count; ++i) {
+      struct hk_cmd_buffer *cmdbuf =
+         (struct hk_cmd_buffer *)submit->command_buffers[i];
+
+      if (list_is_empty(&cmdbuf->control_streams))
+         return false;
+
+      list_for_each_entry(struct hk_cs, cs, &cmdbuf->control_streams, node) {
+         size_t len = hk_batch_cs_bytes(dev, cs, wide);
+         if (!len)
+            return false;
+         *bytes += len;
+      }
+   }
+   return *bytes <= HK_BATCH_BYTES;
+}
+
+/* DRM submissions of this queue not yet complete. */
+static uint64_t
+hk_queue_in_flight(struct hk_device *dev, struct hk_queue *queue)
+{
+   uint64_t done = 0;
+   if (drmSyncobjQuery(dev->dev.fd, &queue->drm.syncobj, &done, 1))
+      return 0;
+   return queue->drm.timeline_value > done ? queue->drm.timeline_value - done : 0;
+}
+
+/* Submit what is held as one compute command. Batch lock held. */
+static VkResult
+hk_batch_flush_locked(struct hk_device *dev, struct hk_queue *queue)
+{
+   if (!queue->batch.count)
+      return VK_SUCCESS;
+
+   struct hk_batch_slot *slot =
+      &queue->batch.slot[queue->batch.next_slot++ % HK_BATCH_SLOTS];
+   if (!slot->bo) {
+      slot->bo = agx_bo_create(&dev->dev, HK_BATCH_BYTES + 4, 0, 0,
+                               "Submission batch CDM");
+      slot->map = slot->bo ? agx_bo_map(slot->bo) : NULL;
+      if (!slot->map)
+         return vk_device_set_lost(&dev->vk, "batch CDM allocation failed");
+   } else if (slot->point) {
+      /* Its previous batch normally retired long ago. */
+      uint64_t point = slot->point;
+      if (drmSyncobjTimelineWait(dev->dev.fd, &queue->drm.syncobj, &point, 1,
+                                 INT64_MAX,
+                                 DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL))
+         return vk_device_set_lost(&dev->vk, "batch slot wait failed");
+   }
+
+   const size_t len = queue->batch.cdm.size;
+   const uint32_t terminate = 0x40000000;
+   memcpy(slot->map, queue->batch.cdm.data, len);
+   memcpy(slot->map + len, &terminate, 4);
+
+   struct util_dynarray payload = UTIL_DYNARRAY_INIT;
+   const struct drm_asahi_cmd_header att = {
+      .cmd_type = DRM_ASAHI_SET_COMPUTE_ATTACHMENTS,
+      .size = 0,
+      .vdm_barrier = DRM_ASAHI_BARRIER_NONE,
+      .cdm_barrier = DRM_ASAHI_BARRIER_NONE,
+   };
+   util_dynarray_append(&payload, att);
+   util_dynarray_append(&payload, agx_cmd_header(true, 0, 0));
+   const struct drm_asahi_cmd_compute cmd = {
+      .flags = queue->batch.wide_visibility &&
+                     debug_get_bool_option("HK_M4_COALESCE_COMPUTE_STAMPS", true)
+                  ? DRM_ASAHI_COMPUTE_WIDE_VISIBILITY : 0,
+      .cdm_ctrl_stream_base = slot->bo->va->addr,
+      .cdm_ctrl_stream_end = slot->bo->va->addr + len + 4,
+   };
+   util_dynarray_append(&payload, cmd);
+
+   const struct drm_asahi_sync progress = {
+      .sync_type = DRM_ASAHI_SYNC_TIMELINE_SYNCOBJ,
+      .handle = queue->drm.syncobj,
+      .timeline_value = ++queue->drm.timeline_value,
+   };
+   util_dynarray_append(&queue->batch.signals, progress);
+
+   struct drm_asahi_submit submit_ioctl = {
+      .flags = 0,
+      .queue_id = queue->drm.id,
+      .in_sync_count = 0,
+      .out_sync_count = util_dynarray_num_elements(&queue->batch.signals,
+                                                   struct drm_asahi_sync),
+      .cmdbuf_size = payload.size,
+      .syncs = (uint64_t)(uintptr_t)queue->batch.signals.data,
+      .cmdbuf = (uint64_t)(uintptr_t)payload.data,
+   };
+   if (debug_get_bool_option("HK_COMMAND_PROFILE", false))
+      fprintf(stderr, "HK_SUBMIT_BATCH queue=%u timeline=%" PRIu64
+              " submissions=%u bytes=%zu\n", queue->drm.id,
+              queue->drm.timeline_value, queue->batch.count, len);
+
+   VkResult result =
+      queue_submit_single(dev, &submit_ioctl, queue->drm.virt_ring_idx);
+   slot->point = queue->drm.timeline_value;
+
+   util_dynarray_fini(&payload);
+   util_dynarray_clear(&queue->batch.cdm);
+   util_dynarray_clear(&queue->batch.signals);
+   queue->batch.count = 0;
+   return result;
+}
+
+/* Hold this submission if it qualifies and the queue is busy. Batch lock
+ * held. */
+static bool
+hk_batch_defer(struct hk_device *dev, struct hk_queue *queue,
+               struct vk_queue_submit *submit)
+{
+   size_t bytes;
+   bool wide = true;
+
+   if (!hk_batch_submit_ok(dev, submit, &bytes, &wide))
+      return false;
+   static int busy = -1;
+   if (busy < 0)
+      busy = CLAMP(debug_get_num_option("HK_M3_SUBMIT_BATCH_BUSY", 1), 1, 2);
+   if (!queue->batch.count && hk_queue_in_flight(dev, queue) < busy)
+      return false;
+   if (queue->batch.count >= HK_BATCH_MAX ||
+       queue->batch.cdm.size + bytes > HK_BATCH_BYTES) {
+      /* Full: submit what is held and start again with this one. */
+      if (hk_batch_flush_locked(dev, queue) != VK_SUCCESS)
+         return false;
+   }
+
+   for (unsigned i = 0; i < submit->command_buffer_count; ++i) {
+      struct hk_cmd_buffer *cmdbuf =
+         (struct hk_cmd_buffer *)submit->command_buffers[i];
+
+      list_for_each_entry(struct hk_cs, cs, &cmdbuf->control_streams, node) {
+         const size_t len = (uint8_t *)cs->current - (uint8_t *)cs->start - 4;
+         memcpy(util_dynarray_grow_bytes(&queue->batch.cdm, 1, len),
+                cs->start, len);
+      }
+   }
+   for (unsigned i = 0; i < submit->signal_count; ++i) {
+      struct drm_asahi_sync *sync = util_dynarray_grow(
+         &queue->batch.signals, struct drm_asahi_sync, 1);
+      asahi_fill_sync(sync, submit->signals[i].sync,
+                      submit->signals[i].signal_value);
+   }
+   queue->batch.wide_visibility =
+      queue->batch.count ? queue->batch.wide_visibility && wide : wide;
+   if (!queue->batch.count++)
+      cnd_signal(&queue->batch.wake);
+   return true;
+}
+
+/* Helper thread: submit a held batch once only one submission executes. */
+static int
+hk_batch_thread(void *data)
+{
+   struct hk_queue *queue = data;
+   struct hk_device *dev = hk_queue_device(queue);
+
+   mtx_lock(&queue->batch.lock);
+   for (;;) {
+      while (queue->batch.run && !queue->batch.count)
+         cnd_wait(&queue->batch.wake, &queue->batch.lock);
+      if (!queue->batch.count)
+         break;
+
+      /* Let it grow while two submissions execute: wait for the older. */
+      uint64_t point = queue->drm.timeline_value - 1;
+      mtx_unlock(&queue->batch.lock);
+      drmSyncobjTimelineWait(dev->dev.fd, &queue->drm.syncobj, &point, 1,
+                             INT64_MAX, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT,
+                             NULL);
+      mtx_lock(&queue->batch.lock);
+      hk_batch_flush_locked(dev, queue);
+   }
+   mtx_unlock(&queue->batch.lock);
+   return 0;
+}
+
+static VkResult
+queue_submit(struct hk_device *dev, struct hk_queue *queue,
+             struct vk_queue_submit *submit)
+{
+   if (!queue->batch.enabled)
+      return queue_submit_now(dev, queue, submit);
+
+   VkResult result = VK_SUCCESS;
+   mtx_lock(&queue->batch.lock);
+   if (!hk_batch_defer(dev, queue, submit)) {
+      result = hk_batch_flush_locked(dev, queue);
+      if (result == VK_SUCCESS)
+         result = queue_submit_now(dev, queue, submit);
+   }
+   mtx_unlock(&queue->batch.lock);
+   return result;
+}
+
 static VkResult
 hk_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
 {
@@ -1649,6 +1929,18 @@ hk_queue_init(struct hk_device *dev, const VkDeviceQueueCreateInfo *pCreateInfo,
                        "DRM_IOCTL_TIMELINE_SYNCOBJ_SIGNAL failed: %m");
    }
 
+   if (hk_batch_enabled(dev)) {
+      util_dynarray_init(&queue->batch.cdm, NULL);
+      util_dynarray_init(&queue->batch.signals, NULL);
+      if (mtx_init(&queue->batch.lock, mtx_plain) == thrd_success &&
+          cnd_init(&queue->batch.wake) == thrd_success) {
+         queue->batch.run = true;
+         queue->batch.enabled =
+            thrd_create(&queue->batch.thread, hk_batch_thread, queue) ==
+            thrd_success;
+      }
+   }
+
    return VK_SUCCESS;
 }
 
@@ -1658,6 +1950,29 @@ hk_queue_finish(struct hk_device *dev, struct hk_queue *queue)
    /* Drain and join the runtime submit worker while its DRM queue and
     * timeline still exist. Sparse publication may have enabled a worker. */
    vk_queue_finish(&queue->vk);
+
+   if (queue->batch.enabled) {
+      /* The helper submits what is still held, then exits. */
+      mtx_lock(&queue->batch.lock);
+      queue->batch.run = false;
+      cnd_signal(&queue->batch.wake);
+      mtx_unlock(&queue->batch.lock);
+      thrd_join(queue->batch.thread, NULL);
+      queue->batch.enabled = false;
+
+      uint64_t point = queue->drm.timeline_value;
+      drmSyncobjTimelineWait(dev->dev.fd, &queue->drm.syncobj, &point, 1,
+                             INT64_MAX, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT,
+                             NULL);
+      for (unsigned i = 0; i < HK_BATCH_SLOTS; ++i) {
+         if (queue->batch.slot[i].bo)
+            agx_bo_unreference(&dev->dev, queue->batch.slot[i].bo);
+      }
+      util_dynarray_fini(&queue->batch.cdm);
+      util_dynarray_fini(&queue->batch.signals);
+      cnd_destroy(&queue->batch.wake);
+      mtx_destroy(&queue->batch.lock);
+   }
    drmSyncobjDestroy(dev->dev.fd, queue->drm.syncobj);
    agx_destroy_command_queue(&dev->dev, queue->drm.id);
    vk_free(&dev->vk.alloc, queue);
