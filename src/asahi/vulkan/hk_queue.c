@@ -1708,6 +1708,8 @@ hk_batch_flush_locked(struct hk_device *dev, struct hk_queue *queue)
    VkResult result =
       queue_submit_single(dev, &submit_ioctl, queue->drm.virt_ring_idx);
    slot->point = queue->drm.timeline_value;
+   queue->batch.members[1] = queue->batch.members[0];
+   queue->batch.members[0] = queue->batch.count;
 
    util_dynarray_fini(&payload);
    util_dynarray_clear(&queue->batch.cdm);
@@ -1785,6 +1787,7 @@ hk_batch_thread(void *data)
 
       /* Let it grow while two submissions execute: wait for the older. */
       uint64_t point = queue->drm.timeline_value - 1;
+      const uint32_t older = queue->batch.members[1], newer = queue->batch.members[0];
       mtx_unlock(&queue->batch.lock);
       drmSyncobjTimelineWait(dev->dev.fd, &queue->drm.syncobj, &point, 1,
                              INT64_MAX, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT,
@@ -1792,30 +1795,34 @@ hk_batch_thread(void *data)
       mtx_lock(&queue->batch.lock);
 
       /* The older submission completed and its submitter is typically now
-       * resubmitting a burst of work, while the other one still executes
-       * (~70 us of firmware time). Keep gathering while submissions keep
-       * arriving within HK_M3_SUBMIT_BATCH_GATHER_US (default 5 us) of each
-       * other, for at most 8 such windows, so one burst becomes one batch. */
+       * resubmitting a burst, while the newer one still executes (~70 us of
+       * firmware time). Gather while each next submission arrives within
+       * HK_M3_/HK_M4_SUBMIT_BATCH_GATHER_US (G15S 15 us, G16G 5 us; 0:
+       * submit at once), for at most eight such windows. On G15S, stop once
+       * half of what those two carried has arrived (at most what completed),
+       * so that both executing batches stay equally full. */
+      const bool g16g = dev->dev.chip == AGX_CHIP_G16G;
       static int gather = -1;
       if (gather < 0)
-         gather = CLAMP(debug_get_num_option(dev->dev.chip == AGX_CHIP_G16G ?
-                                                "HK_M4_SUBMIT_BATCH_GATHER_US" :
-                                                "HK_M3_SUBMIT_BATCH_GATHER_US", 5),
+         gather = CLAMP(debug_get_num_option(g16g ? "HK_M4_SUBMIT_BATCH_GATHER_US" :
+                                                    "HK_M3_SUBMIT_BATCH_GATHER_US",
+                                             g16g ? 5 : 15),
                         0, 1000);
-      if (gather) {
-         for (unsigned rounds = 0; queue->batch.count && rounds < 8; rounds++) {
-            uint32_t seen = queue->batch.count;
-            struct timespec until;
-            timespec_get(&until, TIME_UTC);
-            until.tv_nsec += gather * 1000;
-            if (until.tv_nsec >= 1000000000) {
-               until.tv_sec++;
-               until.tv_nsec -= 1000000000;
-            }
-            cnd_timedwait(&queue->batch.wake, &queue->batch.lock, &until);
-            if (queue->batch.count == seen)
-               break;
+      const uint32_t target =
+         g16g ? UINT32_MAX : MAX2(1, MIN2(older, (older + newer + 1) / 2));
+      for (unsigned rounds = 0; gather && queue->batch.count &&
+                                queue->batch.count < target && rounds < 8; rounds++) {
+         uint32_t seen = queue->batch.count;
+         struct timespec until;
+         timespec_get(&until, TIME_UTC);
+         until.tv_nsec += gather * 1000;
+         if (until.tv_nsec >= 1000000000) {
+            until.tv_sec++;
+            until.tv_nsec -= 1000000000;
          }
+         cnd_timedwait(&queue->batch.wake, &queue->batch.lock, &until);
+         if (queue->batch.count == seen)
+            break;
       }
       hk_batch_flush_locked(dev, queue);
    }
@@ -1834,8 +1841,11 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
    mtx_lock(&queue->batch.lock);
    if (!hk_batch_defer(dev, queue, submit)) {
       result = hk_batch_flush_locked(dev, queue);
-      if (result == VK_SUCCESS)
+      if (result == VK_SUCCESS) {
          result = queue_submit_now(dev, queue, submit);
+         queue->batch.members[1] = queue->batch.members[0];
+         queue->batch.members[0] = 1;
+      }
    }
    mtx_unlock(&queue->batch.lock);
    return result;

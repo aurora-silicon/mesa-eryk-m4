@@ -60,6 +60,8 @@ struct hk_queue {
       bool wide_visibility;
       struct hk_batch_slot slot[HK_BATCH_SLOTS];
       unsigned next_slot;
+      /* Submissions in the newest and the previous DRM submission. */
+      uint32_t members[2];
    } batch;
 };
 
