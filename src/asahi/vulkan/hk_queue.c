@@ -1525,7 +1525,7 @@ queue_submit_now(struct hk_device *dev, struct hk_queue *queue,
 }
 
 /*
- * G15S submission batching.
+ * G15S/G16G submission batching.
  *
  * Each DRM submission becomes at least one firmware work, and on the J514S
  * firmware (RTKit 2419) a work costs ~70 us of firmware time however little
@@ -1552,7 +1552,7 @@ queue_submit_now(struct hk_device *dev, struct hk_queue *queue,
  * WAIT_FOR_SUBMIT) until the helper thread submits it, which it does as soon
  * as the older executing submission completes.
  *
- * HK_M3_SUBMIT_BATCH=0 disables it.
+ * HK_M3_SUBMIT_BATCH=0 (G15S) / HK_M4_SUBMIT_BATCH=0 (G16G) disables it.
  */
 #define HK_BATCH_BYTES (16384 - 4)
 #define HK_BATCH_MAX 64
@@ -1560,8 +1560,11 @@ queue_submit_now(struct hk_device *dev, struct hk_queue *queue,
 static bool
 hk_batch_enabled(struct hk_device *dev)
 {
-   return dev->dev.chip == AGX_CHIP_G15S &&
-          debug_get_bool_option("HK_M3_SUBMIT_BATCH", true);
+   if (dev->dev.chip == AGX_CHIP_G15S)
+      return debug_get_bool_option("HK_M3_SUBMIT_BATCH", true);
+   if (dev->dev.chip == AGX_CHIP_G16G)
+      return debug_get_bool_option("HK_M4_SUBMIT_BATCH", true);
+   return false;
 }
 
 /* The bytes of a control stream that may join a batch, or 0. */
@@ -1726,7 +1729,10 @@ hk_batch_defer(struct hk_device *dev, struct hk_queue *queue,
       return false;
    static int busy = -1;
    if (busy < 0)
-      busy = CLAMP(debug_get_num_option("HK_M3_SUBMIT_BATCH_BUSY", 1), 1, 2);
+      busy = CLAMP(debug_get_num_option(dev->dev.chip == AGX_CHIP_G16G ?
+                                           "HK_M4_SUBMIT_BATCH_BUSY" :
+                                           "HK_M3_SUBMIT_BATCH_BUSY", 1),
+                   1, 2);
    if (!queue->batch.count && hk_queue_in_flight(dev, queue) < busy)
       return false;
    if (queue->batch.count >= HK_BATCH_MAX ||
@@ -1792,7 +1798,10 @@ hk_batch_thread(void *data)
        * other, for at most 8 such windows, so one burst becomes one batch. */
       static int gather = -1;
       if (gather < 0)
-         gather = CLAMP(debug_get_num_option("HK_M3_SUBMIT_BATCH_GATHER_US", 5), 0, 1000);
+         gather = CLAMP(debug_get_num_option(dev->dev.chip == AGX_CHIP_G16G ?
+                                                "HK_M4_SUBMIT_BATCH_GATHER_US" :
+                                                "HK_M3_SUBMIT_BATCH_GATHER_US", 5),
+                        0, 1000);
       if (gather) {
          for (unsigned rounds = 0; queue->batch.count && rounds < 8; rounds++) {
             uint32_t seen = queue->batch.count;
