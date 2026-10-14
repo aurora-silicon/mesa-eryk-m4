@@ -820,6 +820,7 @@ hk_EndCommandBuffer(VkCommandBuffer commandBuffer)
     */
    list_for_each_entry(struct hk_cs, cs, &cmd->control_streams, node) {
       if (cs->type == HK_CS_CDM) {
+         hk_cs_flush_serial_barrier(cs);
          cs->current = hk_cmd_buffer_emit_cdm_terminate(cmd, cs->current);
       }
    }

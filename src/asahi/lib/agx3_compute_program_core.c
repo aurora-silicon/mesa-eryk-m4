@@ -219,6 +219,31 @@ agx3_g17p_native_compute_launch_pack(
    return true;
 }
 
+/* Only the 40-byte direct launch, without the trailing ordinary barrier.
+ * The caller owns the ordering contract: it must emit the barrier itself
+ * before any record that depends on this launch. */
+bool
+agx3_g17p_native_compute_launch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink)
+{
+   if (!program || !grid || !sink ||
+       (sink->capacity != 0 && !sink->data) || sink->length > sink->capacity ||
+       AGX3_CDM_DIRECT_LAUNCH_SIZE > sink->capacity - sink->length ||
+       !agx_chip_uses_hal200_ioto(program->chip) ||
+       !program->g17p_native_compute_live_bound)
+      return false;
+
+   uint8_t staged[AGX3_CDM_DIRECT_LAUNCH_SIZE];
+   if (!agx3_g17p_native_compute_launch_pack(program, grid, staged))
+      return false;
+
+   memcpy(sink->data + sink->length, staged, sizeof(staged));
+   sink->length += sizeof(staged);
+   return true;
+}
+
 bool
 agx3_g17p_native_compute_dispatch_append(
    const struct agx3_compute_program *program,

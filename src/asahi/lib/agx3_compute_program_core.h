@@ -192,6 +192,13 @@ bool agx3_g17p_native_compute_program_bind(
    const struct agx3_g17p_native_compute_program_desc *desc,
    struct agx3_compute_program *program);
 
+/* Append only one direct G17P launch, without its serial barrier: the
+ * caller must emit the ordinary barrier before any dependent record. */
+bool agx3_g17p_native_compute_launch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink);
+
 /* Append one direct G17P launch and the flags=0 barrier used by the
  * output-positive native compute stream.  Direct global or threadgroup counts
  * are accepted; indirect dispatch uses a different helper-program contract. */

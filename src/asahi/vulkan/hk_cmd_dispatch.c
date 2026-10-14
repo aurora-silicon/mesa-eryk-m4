@@ -52,10 +52,47 @@ hk_cmd_bind_compute_shader(struct hk_cmd_buffer *cmd,
    cmd->state.cs.shader = shader;
 }
 
+/* Emit the ordinary serial barrier an elided application launch still owes
+ * before any other record. */
+void
+hk_cs_flush_serial_barrier(struct hk_cs *cs)
+{
+   if (!cs->serial_barrier_pending)
+      return;
+
+   struct hk_device *dev = hk_cmd_buffer_device(cs->cmd);
+   const struct agx3_cdm_barrier_info info = {
+      .chip = dev->dev.chip,
+      .flags = 0,
+   };
+   uint8_t packed[AGX3_CDM_BARRIER_SIZE];
+   cs->serial_barrier_pending = false;
+   assert((uint8_t *)cs->current + sizeof(packed) < (uint8_t *)cs->end &&
+          "caller must ensure space");
+   if (!agx3_cdm_barrier_pack(&info, packed)) {
+      vk_command_buffer_set_error(&cs->cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+   memcpy(cs->current, packed, sizeof(packed));
+   cs->current = (uint32_t *)((uint8_t *)cs->current + sizeof(packed));
+}
+
+/* G16G: encode consecutive application dispatches without the serial
+ * barrier between them (see hk_cs::serial_barrier_pending). */
+static bool
+hk_elide_dispatch_barrier(struct hk_device *dev)
+{
+   static int enabled = -1;
+   if (enabled < 0)
+      enabled = debug_get_bool_option("HK_M4_ELIDE_DISPATCH_BARRIER", true);
+   return enabled && dev->dev.chip == AGX_CHIP_G16G;
+}
+
 void
 hk_cdm_cache_flush(struct hk_device *dev, struct hk_cs *cs)
 {
    assert(cs->type == HK_CS_CDM);
+   hk_cs_flush_serial_barrier(cs);
    assert(cs->current + AGX_CDM_BARRIER_LENGTH < cs->end &&
           "caller must ensure space");
 
@@ -769,6 +806,12 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    };
 
    hk_ensure_cs_has_space(cmd, cs, 0x2000);
+   /* Only a direct application dispatch following another application
+    * dispatch (or starting the stream) may omit the serial barrier. */
+   const bool elide = cmd->state.cs.user_dispatch && !cmd->in_meta &&
+                      !agx_is_indirect(grid) && hk_elide_dispatch_barrier(dev);
+   if (!elide)
+      hk_cs_flush_serial_barrier(cs);
    struct agx3_compute_dispatch_sink sink = {
       .data = (uint8_t *)cs->current,
       .capacity = (uint8_t *)cs->end - (uint8_t *)cs->current,
@@ -779,6 +822,9 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       appended = agx3_hal200_indirect_compute_append(
          &program.launch, grid.ptr,
          grid.mode == AGX_CDM_MODE_INDIRECT_LOCAL ? NULL : local, &sink);
+   } else if (elide) {
+      appended = agx3_g17p_native_compute_launch_append(
+         &program.launch, &direct, &sink);
    } else {
       appended = hk_agx3_g17p_native_compute_dispatch_append(
          &program.launch, &direct, &sink);
@@ -839,6 +885,7 @@ hk_dispatch_g17p_native_linked(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    }
 
    cs->current = (uint32_t *)((uint8_t *)cs->current + sink.length);
+   cs->serial_barrier_pending = elide;
    /* Queue overlap decisions apply to CDM producers too, including meta
     * kernels and graphics stages lowered to compute. */
    cs->writes_memory |= s->info.writes_memory ||
@@ -891,7 +938,9 @@ dispatch(struct hk_cmd_buffer *cmd, struct agx_grid grid)
    /* The fixed-local indirect CDM record consumes workgroup counts, unlike
     * the direct record above. Keep Vulkan's indirect arguments unchanged. */
 
+   cmd->state.cs.user_dispatch = true;
    hk_dispatch_with_local_size(cmd, cs, s, grid, local_size);
+   cmd->state.cs.user_dispatch = false;
    cs->stats.calls++;
 }
 

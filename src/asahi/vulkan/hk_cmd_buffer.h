@@ -386,6 +386,10 @@ struct hk_graphics_state {
 struct hk_compute_state {
    struct hk_descriptor_state descriptors;
    struct hk_api_shader *shader;
+
+   /* An application vkCmdDispatch* launch is being encoded (not a meta or
+    * internal precompiled kernel). */
+   bool user_dispatch;
 };
 
 struct hk_cmd_push {
@@ -460,6 +464,13 @@ struct hk_cs {
 
    /* Exact native wide-visibility operation is at the end of this CDM. */
    bool ends_wide_visibility;
+
+   /* G16G: the newest launch is an application dispatch encoded without its
+    * serial ordinary barrier. Vulkan orders dispatches only through explicit
+    * barriers, so a following application dispatch needs none; every other
+    * record (internal/meta launch, cache flush, link, terminate) is preceded
+    * by the ordinary barrier first, exactly as if each launch carried it. */
+   bool serial_barrier_pending;
 
    /* Active-context selector consumed by AGX3 VertexProgramVariant. */
    bool agx3_active_context_selector_valid;
@@ -571,6 +582,8 @@ struct hk_cs {
 void *hk_cmd_buffer_emit_cs_jump(struct hk_cmd_buffer *cmd, void *current,
                                  uint64_t target, bool vdm);
 
+void hk_cs_flush_serial_barrier(struct hk_cs *cs);
+
 /*
  * Helper to merge two compute control streams, concatenating the second control
  * stream to the first one. Must sync with hk_cs.
@@ -581,6 +594,9 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    assert(a->type == HK_CS_CDM && b->type == HK_CS_CDM);
    assert(a->cmd == b->cmd);
    assert(!a->timestamp.end.handle && !b->timestamp.start.handle);
+
+   /* The first stream's launches complete before the second's records. */
+   hk_cs_flush_serial_barrier(a);
 
    void *link_end =
       hk_cmd_buffer_emit_cs_jump(a->cmd, a->current, b->addr, false);
@@ -602,6 +618,7 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    a->ends_timestamp_reset |= b->ends_timestamp_reset;
    a->ends_memory_dependency |= b->ends_memory_dependency;
    a->ends_wide_visibility = b->ends_wide_visibility;
+   a->serial_barrier_pending = b->serial_barrier_pending;
 
    a->clear_dispatches += b->clear_dispatches;
    a->fill_dispatches += b->fill_dispatches;
