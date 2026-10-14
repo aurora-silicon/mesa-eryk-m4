@@ -917,7 +917,7 @@ hk_render_merge_barrier_ok(const VkDependencyInfo *dep)
 }
 
 /*
- * G15S: a compute->compute memory dependency between buffer-only launches is
+ * G15S/G16G: a compute->compute memory dependency between buffer-only launches is
  * encoded as one serial barrier word, 0x60001560 (the native serial
  * encoder's post-launch barrier with pending visibility), instead of the
  * ordinary + wide pair. Restricted to what was qualified: no image barriers,
@@ -927,24 +927,37 @@ hk_render_merge_barrier_ok(const VkDependencyInfo *dep)
  * device with its own VA (sparse or capture/replay: physical aliases). A
  * consumer or record outside that set gets the wide visibility barrier
  * before it (hk_cs_flush_serial_barrier), and the stream end keeps its own
- * wide barrier. HK_M3_SINGLE_WORD_DEPENDENCY=0 restores the pair.
+ * wide barrier. HK_M3_SINGLE_WORD_DEPENDENCY=0 (G15S) or
+ * HK_M4_SINGLE_WORD_DEPENDENCY=0 (G16G) restores the pair.
  */
 static bool
 hk_g15_single_word_dependency(struct hk_cmd_buffer *cmd, const VkDependencyInfo *dep,
                               const struct hk_cs *cs)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
-   static int enabled = -1;
+   static int enabled_g15s = -1, enabled_g16g = -1;
    const VkAccessFlags2 storage =
       VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT |
       VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT |
       VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
    VkAccessFlags2 dst_access = 0;
+   bool enabled;
 
-   if (dev->dev.chip != AGX_CHIP_G15S)
+   /* G16G: the native serial encoder's post-launch word is the same
+    * (0x60000160, or 0x60001560 with pending visibility). */
+   if (dev->dev.chip == AGX_CHIP_G15S) {
+      if (enabled_g15s < 0)
+         enabled_g15s =
+            debug_get_bool_option("HK_M3_SINGLE_WORD_DEPENDENCY", true);
+      enabled = enabled_g15s;
+   } else if (dev->dev.chip == AGX_CHIP_G16G) {
+      if (enabled_g16g < 0)
+         enabled_g16g =
+            debug_get_bool_option("HK_M4_SINGLE_WORD_DEPENDENCY", true);
+      enabled = enabled_g16g;
+   } else {
       return false;
-   if (enabled < 0)
-      enabled = debug_get_bool_option("HK_M3_SINGLE_WORD_DEPENDENCY", true);
+   }
    if (!enabled || dep->imageMemoryBarrierCount || cs->segment_non_buffer ||
        p_atomic_read(&dev->own_va_buffers))
       return false;

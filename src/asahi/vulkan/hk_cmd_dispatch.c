@@ -74,7 +74,7 @@ hk_cs_emit_cdm_barrier(struct hk_cs *cs, uint32_t flags, bool wide)
    cs->current = (uint32_t *)((uint8_t *)cs->current + sizeof(packed));
 }
 
-/* G15S single-word compute dependency: whether launches of shader s may
+/* G15S/G16G single-word compute dependency: whether launches of shader s may
  * follow a held one-word memory dependency and be counted as buffer-only
  * producers (see hk_g15_single_word_dependency). */
 static bool

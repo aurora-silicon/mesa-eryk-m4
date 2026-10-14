@@ -476,7 +476,7 @@ struct hk_cs {
     * by the ordinary barrier first, exactly as if each launch carried it. */
    bool serial_barrier_pending;
 
-   /* G15S single-word compute dependency (hk_g15_compute_barrier_in_stream):
+   /* G15S/G16G single-word compute dependency (hk_g15_compute_barrier_in_stream):
     * dep_wide_pending: a memory dependency was encoded as the one serial
     * barrier 0x60001560 for buffer-only producers; a consumer that is not a
     * buffer-only application dispatch, and every other record, is preceded

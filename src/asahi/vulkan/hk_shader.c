@@ -2765,7 +2765,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    unsigned nr_vbos = 0;
    bool kill_psiz = false;
    shader->info.writes_memory = nir->info.writes_memory;
-   if (sw_stage == MESA_SHADER_COMPUTE && dev->dev.chip == AGX_CHIP_G15S)
+   if (sw_stage == MESA_SHADER_COMPUTE &&
+       (dev->dev.chip == AGX_CHIP_G15S || dev->dev.chip == AGX_CHIP_G16G))
       shader->info.cs.buffer_only = hk_nir_buffer_only(nir);
 
    if (sw_stage == MESA_SHADER_TESS_EVAL ||

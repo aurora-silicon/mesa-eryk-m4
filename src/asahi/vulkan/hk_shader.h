@@ -101,7 +101,7 @@ struct hk_shader_info {
       struct poly_gs_info gs;
 
       struct {
-         /* G15S: no texture or image instruction; every memory access is a
+         /* G15S/G16G: no texture or image instruction; every memory access is a
           * buffer (global) load, store or atomic. */
          bool buffer_only;
          uint8_t _pad[7];
