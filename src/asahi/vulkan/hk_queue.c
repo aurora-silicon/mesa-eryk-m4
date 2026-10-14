@@ -31,6 +31,7 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <sys/prctl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <xf86drm.h>
@@ -1753,8 +1754,9 @@ hk_batch_defer(struct hk_device *dev, struct hk_queue *queue,
    }
    queue->batch.wide_visibility =
       queue->batch.count ? queue->batch.wide_visibility && wide : wide;
-   if (!queue->batch.count++)
-      cnd_signal(&queue->batch.wake);
+   /* Wakes the helper, also while it gathers. */
+   queue->batch.count++;
+   cnd_signal(&queue->batch.wake);
    return true;
 }
 
@@ -1764,6 +1766,9 @@ hk_batch_thread(void *data)
 {
    struct hk_queue *queue = data;
    struct hk_device *dev = hk_queue_device(queue);
+
+   /* Microsecond timed waits while gathering, not the default 50 us slack. */
+   prctl(PR_SET_TIMERSLACK, 1, 0, 0, 0);
 
    mtx_lock(&queue->batch.lock);
    for (;;) {
@@ -1779,6 +1784,30 @@ hk_batch_thread(void *data)
                              INT64_MAX, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT,
                              NULL);
       mtx_lock(&queue->batch.lock);
+
+      /* The older submission completed and its submitter is typically now
+       * resubmitting a burst of work, while the other one still executes
+       * (~70 us of firmware time). Keep gathering while submissions keep
+       * arriving within HK_M3_SUBMIT_BATCH_GATHER_US (default 5 us) of each
+       * other, for at most 8 such windows, so one burst becomes one batch. */
+      static int gather = -1;
+      if (gather < 0)
+         gather = CLAMP(debug_get_num_option("HK_M3_SUBMIT_BATCH_GATHER_US", 5), 0, 1000);
+      if (gather) {
+         for (unsigned rounds = 0; queue->batch.count && rounds < 8; rounds++) {
+            uint32_t seen = queue->batch.count;
+            struct timespec until;
+            timespec_get(&until, TIME_UTC);
+            until.tv_nsec += gather * 1000;
+            if (until.tv_nsec >= 1000000000) {
+               until.tv_sec++;
+               until.tv_nsec -= 1000000000;
+            }
+            cnd_timedwait(&queue->batch.wake, &queue->batch.lock, &until);
+            if (queue->batch.count == seen)
+               break;
+         }
+      }
       hk_batch_flush_locked(dev, queue);
    }
    mtx_unlock(&queue->batch.lock);
