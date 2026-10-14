@@ -1004,6 +1004,171 @@ hk_pack_zls_control(struct agx_zls_control_packed *packed,
    agx_pack_zls_control(packed, z_layout, s_layout, &zls);
 }
 
+/*
+ * G15S render merging.
+ *
+ * On the J514S firmware (RTKit 2419) every hardware render pass costs two
+ * firmware works, TA and FS, each with its own admission, start, finalize
+ * and completion processing (~50 us per work against a few us of GPU time
+ * for a small pass). Early tiling only overlaps them; it does not remove
+ * them. When an application ends a rendering and the next command that
+ * produces work begins another rendering of exactly the same colour
+ * attachments, record both into one VDM stream: one TA and one FS work.
+ *
+ * Admission (both renderings): no flags, no pNext, one layer, no multiview,
+ * colour attachments only (no depth/stencil, no resolve, no feedback-loop
+ * layout), one sample, no spilled tilebuffer, not meta. The second one must
+ * name the same image views and the same render area.
+ *
+ * Between them only state commands and pipeline barriers whose stages are
+ * framebuffer stages and whose accesses are attachment accesses, with no
+ * layout transition or ownership transfer, are accepted
+ * (hk_render_merge_barrier_ok). Every other command that records work ends
+ * the open rendering first: creating any control stream, ending graphics,
+ * queries and timestamps, command buffer end.
+ *
+ * Why this preserves the global dependency of such a barrier: the first
+ * rendering's stream writes no memory except its attachments (writes_memory
+ * is false, no statistics, timestamps, queries, pre/post-graphics work) and
+ * a draw of a later merged rendering whose shaders write memory, or that
+ * needs geometry/tessellation/XFB work, splits the stream first, so it runs
+ * after the earlier renderings completed, exactly as with separate passes.
+ * Within the merged pass the only accesses the barrier orders are colour
+ * attachment accesses of the same pixels of the same views, which tile
+ * rasterization order keeps in API order. Shader reads of the attachments
+ * would need a shader read access in the barrier, which is not accepted.
+ *
+ * The second rendering keeps the open stream's background (load/clear) and
+ * gets its own end-of-tile (store) program; its CLEAR load ops become an
+ * unconditional in-pass clear of the render area. A stream split (capacity,
+ * depth bias, side effects) stores everything and the next stream loads it,
+ * as for any partial render.
+ *
+ * HK_M3_RENDER_MERGE=0 disables it; HK_M3_RENDER_MERGE_PASSES (32) and
+ * HK_M3_RENDER_MERGE_DRAWS (256) bound one hardware pass.
+ */
+static bool
+hk_render_merge_enabled(struct hk_device *dev)
+{
+   static int enabled = -1;
+
+   if (dev->dev.chip != AGX_CHIP_G15S)
+      return false;
+   if (enabled < 0)
+      enabled = debug_get_bool_option("HK_M3_RENDER_MERGE", true);
+   return enabled;
+}
+
+static unsigned
+hk_render_merge_max_passes(void)
+{
+   static int value = -1;
+   if (value < 0)
+      value = CLAMP(debug_get_num_option("HK_M3_RENDER_MERGE_PASSES", 32), 2, 1024);
+   return value;
+}
+
+static unsigned
+hk_render_merge_max_draws(void)
+{
+   static int value = -1;
+   if (value < 0)
+      value = CLAMP(debug_get_num_option("HK_M3_RENDER_MERGE_DRAWS", 256), 1, 65536);
+   return value;
+}
+
+static bool
+hk_render_merge_info_ok(const VkRenderingInfo *info)
+{
+   if (info->flags || info->pNext || info->layerCount != 1 || info->viewMask ||
+       !info->colorAttachmentCount ||
+       (info->pDepthAttachment && info->pDepthAttachment->imageView) ||
+       (info->pStencilAttachment && info->pStencilAttachment->imageView))
+      return false;
+
+   for (uint32_t i = 0; i < info->colorAttachmentCount; i++) {
+      const VkRenderingAttachmentInfo *att = &info->pColorAttachments[i];
+
+      if (!att->imageView || att->pNext ||
+          att->resolveMode != VK_RESOLVE_MODE_NONE ||
+          att->imageLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)
+         return false;
+      if (att->loadOp != VK_ATTACHMENT_LOAD_OP_LOAD &&
+          att->loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR &&
+          att->loadOp != VK_ATTACHMENT_LOAD_OP_DONT_CARE &&
+          att->loadOp != VK_ATTACHMENT_LOAD_OP_NONE_KHR)
+         return false;
+   }
+   return true;
+}
+
+/* EndRendering: may this rendering stay open for a following one? A stream
+ * without draws stays separate: hk_optimize_empty_vdm replaces it using the
+ * ending rendering's clears, which would be the last merged one's. */
+static bool
+hk_render_merge_can_defer(struct hk_cmd_buffer *cmd, const struct hk_cs *cs)
+{
+   const struct hk_rendering_state *render = &cmd->state.gfx.render;
+
+   return cs && cs->stats.cmds > 0 && render->merge_candidate && !cmd->in_meta &&
+          !cs->writes_memory && !cs->writes_statistics &&
+          !cs->timestamp.start.handle && !cs->timestamp.end.handle &&
+          !cs->timestamp.end_copy_count && !cmd->current_cs.pre_gfx &&
+          !cmd->current_cs.post_gfx &&
+          cmd->state.gfx.occlusion.mode == AGX_VISIBILITY_MODE_NONE &&
+          MAX2(cs->logical_passes, 1) < hk_render_merge_max_passes() &&
+          cs->stats.cmds < hk_render_merge_max_draws();
+}
+
+/* BeginRendering: may this rendering continue the one left open? */
+static bool
+hk_render_merge_compatible(struct hk_cmd_buffer *cmd,
+                           const VkRenderingInfo *info)
+{
+   const struct hk_rendering_state *render = &cmd->state.gfx.render;
+
+   if (!cmd->current_cs.gfx || cmd->in_meta || !render->merge_candidate ||
+       !hk_render_merge_info_ok(info) ||
+       memcmp(&info->renderArea, &render->area, sizeof(render->area)) ||
+       info->colorAttachmentCount != render->color_att_count)
+      return false;
+
+   for (uint32_t i = 0; i < info->colorAttachmentCount; i++) {
+      if (hk_image_view_from_handle(info->pColorAttachments[i].imageView) !=
+          render->color_att[i].iview)
+         return false;
+   }
+   return true;
+}
+
+/* End a rendering left open for merging, as hk_CmdEndRendering would have. */
+void
+hk_render_merge_flush(struct hk_cmd_buffer *cmd)
+{
+   if (!cmd->render_merge_pending)
+      return;
+
+   cmd->render_merge_pending = false;
+   perf_debug(cmd, "End rendering (merge window closed)");
+   hk_cmd_buffer_end_graphics(cmd);
+   memset(&cmd->state.gfx.render, 0, sizeof(cmd->state.gfx.render));
+}
+
+/* A draw of a merged stream that must not share it with earlier renderings. */
+static bool
+hk_render_merge_draw_splits(struct hk_cmd_buffer *cmd, const struct hk_cs *cs)
+{
+   struct hk_graphics_state *gfx = &cmd->state.gfx;
+   struct hk_shader *fs = hk_bound_fs(gfx);
+
+   return !gfx->shaders[MESA_SHADER_VERTEX] ||
+          gfx->shaders[MESA_SHADER_GEOMETRY] ||
+          gfx->shaders[MESA_SHADER_TESS_EVAL] || gfx->xfb_enabled ||
+          hk_bound_hw_vs(gfx)->info.writes_memory ||
+          (fs && fs->info.writes_memory) ||
+          cs->stats.cmds >= hk_render_merge_max_draws();
+}
+
 VKAPI_ATTR void VKAPI_CALL
 hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
                      const VkRenderingInfo *pRenderingInfo)
@@ -1042,6 +1207,16 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
          load_info.pStencilAttachment = &load_stencil;
       }
       pRenderingInfo = &load_info;
+   }
+
+   /* Continue a compatible rendering left open by EndRendering, or end it. */
+   bool merge = false;
+   if (cmd->render_merge_pending) {
+      merge = hk_render_merge_compatible(cmd, pRenderingInfo);
+      if (merge)
+         cmd->render_merge_pending = false;
+      else
+         hk_render_merge_flush(cmd);
    }
 
    memset(render, 0, sizeof(*render));
@@ -1298,36 +1473,56 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    cmd->state.gfx.descriptors.root.draw.view_index = 0;
    cmd->state.gfx.descriptors.root_dirty = true;
 
+   render->merge_candidate = hk_render_merge_enabled(dev) &&
+                             hk_render_merge_info_ok(pRenderingInfo) &&
+                             render->tilebuffer.nr_samples <= 1 &&
+                             !agx_tilebuffer_spills(&render->tilebuffer);
+
    if (render->flags & VK_RENDERING_RESUMING_BIT)
       return;
 
-   /* The first control stream of the render pass is special since it gets
-    * the clears. Create it and swap in the clear.
-    */
-   assert(!cmd->current_cs.gfx && "not already in a render pass");
-   struct hk_cs *cs = hk_cmd_buffer_get_cs(cmd, false /* compute */);
-   if (!cs)
-      return;
+   struct hk_cs *cs;
+   merge &= cmd->current_cs.gfx != NULL;
+   if (merge) {
+      /* Same views, hence the same tilebuffer: still a candidate. */
+      assert(render->merge_candidate);
 
-   cs->cr.bg.main = render->cr.bg.main;
-   cs->cr.zls_control = render->cr.zls_control;
+      /* Same attachments: keep the open stream, its background program and
+       * ZLS control. This rendering's clears are drawn below. */
+      cs = cmd->current_cs.gfx;
+      cs->logical_passes = MAX2(cs->logical_passes, 1) + 1;
+      perf_debug(cmd, "Rendering merged into the open pass (%u logical)",
+                 cs->logical_passes);
+   } else {
 
-   /* Reordering barrier for post-gfx, in case we had any. */
-   hk_cmd_buffer_end_compute_internal(cmd, &cmd->current_cs.post_gfx);
+      /* The first control stream of the render pass is special since it gets
+       * the clears. Create it and swap in the clear.
+       */
+      assert(!cmd->current_cs.gfx && "not already in a render pass");
+      cs = hk_cmd_buffer_get_cs(cmd, false /* compute */);
+      if (!cs)
+         return;
 
-   /* Don't reorder compute across render passes.
-    *
-    * TODO: Check if this is necessary if the proper PipelineBarriers are
-    * handled... there may be CTS bugs...
-    */
-   hk_cmd_buffer_end_compute(cmd);
+      cs->cr.bg.main = render->cr.bg.main;
+      cs->cr.zls_control = render->cr.zls_control;
+
+      /* Reordering barrier for post-gfx, in case we had any. */
+      hk_cmd_buffer_end_compute_internal(cmd, &cmd->current_cs.post_gfx);
+
+      /* Don't reorder compute across render passes.
+       *
+       * TODO: Check if this is necessary if the proper PipelineBarriers are
+       * handled... there may be CTS bugs...
+       */
+      hk_cmd_buffer_end_compute(cmd);
+   }
 
    /* If we spill colour attachments, we need to decompress them. This happens
     * at the start of the render; it is not re-emitted when resuming
     * secondaries. It could be hoisted to the start of the command buffer but
     * we're not that clever yet.
     */
-   if (agx_tilebuffer_spills(&render->tilebuffer)) {
+   if (!merge && agx_tilebuffer_spills(&render->tilebuffer)) {
       const unsigned descriptor_generation =
          agx_chip_descriptor_generation(dev->dev.chip);
       if (!hk_native_pbe_hardware_supported(descriptor_generation)) {
@@ -1452,8 +1647,10 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       }
       clear_count = selected;
    }
+   if (merge)
+      resolved_clear |= cs->cr.process_empty_tiles;
    cs->cr.process_empty_tiles = resolved_clear;
-   if (clear_count > 0 && (incomplete_render_area || clear_spills)) {
+   if (clear_count > 0 && (incomplete_render_area || clear_spills || merge)) {
       const VkClearRect clear_rect = {
          .rect = render->area,
          .baseArrayLayer = 0,
@@ -1490,6 +1687,13 @@ hk_CmdEndRendering(VkCommandBuffer commandBuffer)
    struct hk_cs *cs = cmd->current_cs.gfx;
    if (cs) {
       cs->cr.eot.main = render->cr.eot.main;
+   }
+
+   /* G15S: leave it open; the next command decides (hk_render_merge_*). */
+   if (hk_render_merge_can_defer(cmd, cs)) {
+      cs->logical_passes = MAX2(cs->logical_passes, 1);
+      cmd->render_merge_pending = true;
+      return;
    }
 
    perf_debug(cmd, "End rendering");
@@ -5267,6 +5471,18 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
 
    if (!cs)
       return NULL;
+
+   /* G15S render merging: a draw that writes memory or needs pre-graphics
+    * work starts a new stream after the merged renderings (see
+    * hk_render_merge_*), which loads what they stored. */
+   if (unlikely(cs->logical_passes > 1) &&
+       hk_render_merge_draw_splits(cmd, cs)) {
+      perf_debug(cmd, "Splitting a merged pass before a draw with side effects");
+      hk_cmd_buffer_end_graphics(cmd);
+      cs = hk_cmd_buffer_get_cs(cmd, false /* compute */);
+      if (!cs)
+         return NULL;
+   }
 
    /* Diagnostic attribution only: retained-render transitions preserve
     * attachments while exposing each draw to existing GPU pass timestamps.

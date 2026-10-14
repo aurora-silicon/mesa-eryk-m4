@@ -322,6 +322,7 @@ hk_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    cmd->current_cs.cs = NULL;
    cmd->current_cs.post_gfx = NULL;
    cmd->current_cs.pre_gfx = NULL;
+   cmd->render_merge_pending = false;
 
    assert(!cmd->in_meta);
    cmd->geom_index_buffer = 0;
@@ -349,6 +350,8 @@ hk_CmdExecuteCommands(VkCommandBuffer commandBuffer,
                       const VkCommandBuffer *pCommandBuffers)
 {
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
+
+   hk_render_merge_flush(cmd);
 
    /* Secondary command buffers are materialized by replaying their common
     * command queues into the primary.  Their last bound state is therefore
@@ -790,6 +793,8 @@ hk_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
 
+   hk_render_merge_flush(cmd);
+
    assert(cmd->current_cs.gfx == NULL && cmd->current_cs.pre_gfx == NULL &&
           "must end rendering before ending the command buffer");
 
@@ -849,6 +854,66 @@ hk_EndCommandBuffer(VkCommandBuffer commandBuffer)
    }
 
    return vk_command_buffer_get_record_result(&cmd->vk);
+}
+
+/*
+ * G15S render merging (see hk_cmd_draw.c): a dependency between two
+ * renderings of the same attachments that only orders framebuffer stages'
+ * attachment accesses, without layout transition or ownership transfer, is
+ * kept by the merged pass's rasterization order.
+ */
+static bool
+hk_render_merge_barrier_ok(const VkDependencyInfo *dep)
+{
+   const VkPipelineStageFlags2 fb_stages =
+      VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
+      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+   const VkAccessFlags2 att_access =
+      VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
+      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+   if (dep->bufferMemoryBarrierCount)
+      return false;
+
+   for (unsigned i = 0;
+        i < dep->memoryBarrierCount + dep->imageMemoryBarrierCount; i++) {
+      VkPipelineStageFlags2 src_stages, dst_stages;
+      VkAccessFlags2 src_access, dst_access;
+
+      if (i < dep->memoryBarrierCount) {
+         const VkMemoryBarrier2 *b = &dep->pMemoryBarriers[i];
+         src_stages = b->srcStageMask;
+         dst_stages = b->dstStageMask;
+         src_access = b->srcAccessMask;
+         dst_access = b->dstAccessMask;
+      } else {
+         const VkImageMemoryBarrier2 *b =
+            &dep->pImageMemoryBarriers[i - dep->memoryBarrierCount];
+         if (b->oldLayout != b->newLayout ||
+             b->srcQueueFamilyIndex != b->dstQueueFamilyIndex)
+            return false;
+         src_stages = b->srcStageMask;
+         dst_stages = b->dstStageMask;
+         src_access = b->srcAccessMask;
+         dst_access = b->dstAccessMask;
+      }
+
+      /* TOP_OF_PIPE as a source and BOTTOM_OF_PIPE as a destination order
+       * nothing. */
+      src_stages &= ~VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+      dst_stages &= ~VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+      const VkPipelineStageFlags2 src = vk_expand_src_stage_flags2(src_stages);
+      const VkPipelineStageFlags2 dst = vk_expand_dst_stage_flags2(dst_stages);
+      if ((src & ~fb_stages) || (dst & ~fb_stages) ||
+          (vk_expand_src_access_flags2(src, src_access) & ~att_access) ||
+          (vk_expand_dst_access_flags2(dst, dst_access) & ~att_access))
+         return false;
+   }
+   return true;
 }
 
 /*
@@ -945,6 +1010,11 @@ hk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
       destinations |= pDependencyInfo->pBufferMemoryBarriers[i].dstStageMask;
    for (unsigned i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++)
       destinations |= pDependencyInfo->pImageMemoryBarriers[i].dstStageMask;
+
+   if (cmd->render_merge_pending && hk_render_merge_barrier_ok(pDependencyInfo)) {
+      perf_debug(cmd, "Attachment-only barrier between merged renderings");
+      return;
+   }
 
    if (hk_g15_compute_barrier_in_stream(cmd, pDependencyInfo))
       return;
